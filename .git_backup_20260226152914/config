@@ -1,0 +1,22 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[remote "origin"]
+	url = https://github.com/guiga2026/APP01.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[lfs]
+	repositoryformatversion = 0
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+	vscode-merge-base = origin/main
+[branch "pr02"]
+	remote = origin
+	merge = refs/heads/pr02
+	vscode-merge-base = origin/main
+[branch "provisore"]
+	vscode-merge-base = origin/pr02

@@ -1,0 +1,446 @@
+/* Utilitário para selects destacados */
+.estilo-select {
+	border: 2px solid var(--leaf-500);
+	background: linear-gradient(90deg, #f0fdf4 0%, #f9fafb 100%);
+	box-shadow: 0 2px 8px rgba(15,157,88,0.06);
+	transition: border-color .18s, box-shadow .18s;
+}
+.estilo-select:focus {
+	border-color: var(--leaf-600);
+	box-shadow: 0 4px 16px rgba(15,157,88,0.13);
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   DESIGN SYSTEM – HORTIFLOW PREMIUM
+========================================================= */
+
+:root{
+
+	/* Brand palette refinada */
+	--leaf-500: #0F9D58;
+	--leaf-600: #0C7C47;
+	--leaf-700: #0A5E36;
+
+	--soil-500: #8B5E3C;
+	--sun-500: #F59E0B;
+
+	--accent-500: #06B6D4;
+
+	--bg-surface: #F4F8F4;
+	--card-bg: #FFFFFF;
+
+	--muted: #64748B;
+	--muted-2: #94A3B8;
+
+	--foreground: #0F172A;
+
+	--brand-500: var(--leaf-500);
+	--brand-600: var(--leaf-600);
+
+	/* Sidebar */
+	--sidebar-surface: #F8FAF8;
+	--sidebar-accent: #E8F5EC;
+	--sidebar-border: rgba(15,23,42,0.06);
+	--sidebar-text: #0F172A;
+
+	/* Shadows */
+	--shadow-soft: 0 4px 20px rgba(2,6,23,0.04);
+	--shadow-card: 0 10px 35px rgba(2,6,23,0.06);
+	--shadow-hover: 0 15px 45px rgba(2,6,23,0.08);
+
+	/* Radius scale */
+	--radius-sm: 10px;
+	--radius-md: 14px;
+	--radius-lg: 18px;
+}
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+.dark{
+	--bg-surface: #0F172A;
+	--card-bg: #111827;
+	--foreground: #E2E8F0;
+	--muted: #94A3B8;
+	--sidebar-surface: #0B1220;
+	--sidebar-accent: rgba(255,255,255,0.04);
+}
+
+/* =========================================================
+   BASE LAYOUT
+========================================================= */
+
+html, body, #app {
+	height: 100%;
+	min-height: 100vh;
+}
+
+body {
+	font-family: 'Inter', ui-sans-serif, system-ui, -apple-system;
+	color: var(--foreground);
+	background: linear-gradient(180deg,#F7FBF7 0%, #EEF6EF 100%);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* smoother scroll */
+html {
+	scroll-behavior: smooth;
+}
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.topbar {
+	background: linear-gradient(
+		90deg,
+		var(--leaf-600),
+		var(--leaf-500)
+	);
+	box-shadow: var(--shadow-soft);
+	color: white;
+	backdrop-filter: blur(8px);
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.sidebar {
+	background: var(--sidebar-surface);
+	color: var(--sidebar-text);
+	min-height: 100vh;
+	padding-top: 1rem;
+	border-right: 1px solid var(--sidebar-border);
+}
+
+.sidebar .nav-item {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding: 10px 15px;
+	border-radius: var(--radius-sm);
+	transition: all .18s ease;
+	background: transparent;
+	color: var(--sidebar-text);
+	position: relative;
+}
+
+.sidebar .nav-item:hover {
+	background: var(--sidebar-accent);
+	transform: translateX(2px);
+}
+
+.sidebar .nav-item:active {
+	transform: scale(.98);
+}
+
+/* Active item */
+.router-link-active,
+.nav-item.active {
+	background: rgba(16,185,129,0.10);
+	color: var(--brand-600);
+	font-weight: 600;
+	box-shadow: inset 3px 0 0 0 var(--leaf-500);
+}
+
+/* =========================================================
+   PANELS & CARDS
+========================================================= */
+
+.page-panel {
+	padding: 1.5rem;
+	border-radius: var(--radius-md);
+	background: transparent;
+}
+
+.panel-inner {
+	background: var(--card-bg);
+	border-radius: var(--radius-md);
+	padding: 1.75rem;
+	box-shadow: var(--shadow-card);
+	transition: all .25s ease;
+	border: 1px solid rgba(2,6,23,0.03);
+}
+
+.panel-inner:hover {
+	box-shadow: var(--shadow-hover);
+	transform: translateY(-2px);
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.btn-primary {
+	background: linear-gradient(
+		135deg,
+		var(--leaf-600),
+		var(--leaf-500)
+	);
+	color: white;
+	padding: .65rem 1rem;
+	border-radius: var(--radius-md);
+	font-weight: 600;
+	box-shadow: 0 8px 20px rgba(15,157,88,0.18);
+	transition: all .2s ease;
+}
+
+.btn-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 28px rgba(15,157,88,0.25);
+}
+
+.btn-secondary {
+	background: #E5E7EB;
+	color: #374151;
+	padding: .6rem .95rem;
+	border-radius: var(--radius-md);
+	transition: all .2s ease;
+}
+
+.btn-secondary:hover {
+	background: #D1D5DB;
+	transform: translateY(-1px);
+}
+
+/* =========================================================
+   TYPOGRAPHY
+========================================================= */
+
+h1, h2, h3 {
+	color: var(--foreground);
+	letter-spacing: -0.3px;
+}
+
+h1 { font-size: 1.8rem; font-weight: 700; }
+h2 { font-size: 1.25rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 600; }
+
+.muted {
+	color: var(--muted);
+}
+
+/* subtle underline accent */
+.page-fade h2::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	width: 60px;
+	height: 3px;
+	background: linear-gradient(
+		90deg,
+		var(--leaf-500),
+		var(--sun-500)
+	);
+	bottom: -8px;
+	border-radius: 3px;
+	opacity: 0.4;
+}
+
+/* =========================================================
+   LINKS
+========================================================= */
+
+a {
+	color: var(--brand-600);
+	text-decoration: none;
+	transition: color .15s ease;
+}
+
+a:hover {
+	color: var(--brand-500);
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+/* =========================================================
+   ACCESSIBILITY
+========================================================= */
+
+:focus {
+	outline: 3px solid rgba(6,182,212,0.25);
+	outline-offset: 2px;
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+
+.dt-badge.warn {
+	background: rgba(250,204,21,0.15);
+	color: #B45309;
+	border-radius: 999px;
+	padding: 4px 10px;
+	font-size: 12px;
+}
+
+.dt-badge.danger {
+	background: rgba(239,68,68,0.12);
+	color: #DC2626;
+	border-radius: 999px;
+	padding: 4px 10px;
+	font-size: 12px;
+}
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+footer {
+	border-top: 1px solid rgba(15,23,42,0.06);
+	padding: 1rem 0;
+	color: var(--muted);
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 767px) {
+
+	.sidebar {
+		position: fixed;
+		width: 18rem;
+		top: 0;
+		left: 0;
+		z-index: 50;
+	}
+
+	.panel-inner {
+		padding: 1.25rem;
+	}
+}
+
+/* nova implementação*/
+.input-modern{
+ padding:14px 16px;
+ border-radius:14px;
+ border:1px solid #e5e7eb;
+ background:#fff;
+ transition:.2s;
+ outline:none;
+}
+
+.input-modern:focus{
+ border-color:#16a34a;
+ box-shadow:0 0 0 3px rgba(22,163,74,.15);
+}
+
+.scale-hover{
+ transition:.2s;
+}
+.scale-hover:hover{
+ transform:scale(1.05);
+}
+
+.animate-scale{
+ animation:pop .18s ease;
+}
+
+@keyframes pop{
+ from{transform:scale(.95);opacity:.5}
+ to{transform:scale(1);opacity:1}
+}
+
+/* =========================================================
+   SELECT / PLACEHOLDER STYLES
+   Improved global select visuals: consistent padding, arrow,
+   floating placeholder and focus/hover states.
+========================================================= */
+
+select {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	display: inline-block;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 12px 40px 12px 16px; /* room for the caret */
+	border-radius: 12px;
+	border: 1px solid #e5e7eb;
+	background-color: #fff;
+	background-image: linear-gradient(45deg, transparent 50%, rgba(15,23,42,0.35) 50%),
+					  linear-gradient(135deg, rgba(15,23,42,0.35) 50%, transparent 50%),
+					  linear-gradient(90deg, rgba(2,6,23,0.04), rgba(2,6,23,0.04));
+	background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 12px) calc(1em + 2px), calc(100% - 28px) 50%;
+	background-size: 6px 6px, 6px 6px, 1px 36px;
+	background-repeat: no-repeat;
+	color: var(--foreground);
+	font-family: inherit;
+	font-size: 0.95rem;
+	line-height: 1.2;
+	transition: border-color .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+
+/* Muted placeholder option color */
+select option[disabled] { color: var(--muted); }
+
+/* When using Vue to mark empty selects with the 'empty' class */
+select.empty { color: var(--muted); }
+
+select:hover { border-color: rgba(15,23,42,0.15); }
+select:focus { border-color: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12); outline: none; }
+
+/* Wrapper that allows a visually overlaid placeholder */
+.select-wrapper{ position: relative; display:inline-block; }
+.select-wrapper select{ padding-left:16px; }
+.select-wrapper .select-placeholder{
+	position:absolute;
+	left:16px;
+	top:50%;
+	transform:translateY(-50%);
+	pointer-events:none;
+	color:var(--muted);
+	font-size:0.95rem;
+	transition: all .14s ease;
+	opacity: 1;
+}
+
+/* when a value is selected the placeholder floats and fades */
+.select-wrapper select:not(.empty) + .select-placeholder{
+	transform: translateY(-140%);
+	font-size:0.78rem;
+	opacity: 0.85;
+}
+
+/* when empty keep placeholder visible */
+.select-wrapper select.empty + .select-placeholder{ transform: translateY(-50%); opacity:1; }
+
+/* small utility for UF inputs (two-letter codes) */
+.input-uf{ display:inline-block; width:auto; min-width:72px; }
+
+/* Toggle switch */
+.switch{display:inline-block; width:48px; height:28px; background:#E5E7EB; border-radius:999px; position:relative; cursor:pointer; transition:all .18s ease; vertical-align:middle}
+.switch input{display:none}
+.switch .knob{position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; box-shadow:0 6px 18px rgba(2,6,23,0.08); transition:all .18s ease}
+.switch.active{background:var(--leaf-500)}
+.switch.active .knob{transform:translateX(20px)}
+.switch-label{display:inline-flex; align-items:center; gap:8px; cursor:pointer}
+
+/* Status label styling next to switch */
+.switch-label .status-text{
+	display:inline-flex;
+	align-items:center;
+	padding:4px 8px;
+	border-radius:999px;
+	background:rgba(2,6,23,0.03);
+	color:var(--muted);
+	font-size:0.9rem;
+	transition:all .15s ease;
+}
+.switch-label .switch.active + .status-text{
+	background:linear-gradient(90deg,var(--leaf-600),var(--leaf-500));
+	color:white;
+	font-weight:600;
+}
+
+/* Segmented control (CPF / CNPJ) */
+.segmented{display:inline-flex; border-radius:999px; overflow:hidden; border:1px solid #e5e7eb}
+.segmented button{background:transparent; border:0; padding:8px 12px; cursor:pointer; color:var(--foreground); font-weight:500}
+.segmented button.active{background:var(--leaf-500); color:white}
+

@@ -1,0 +1,24 @@
+# Dockerfile para backend PHP
+FROM php:8.3-apache
+
+# Instala extensões necessárias
+RUN docker-php-ext-install pdo pdo_mysql
+
+# Copia arquivos do backend para o container
+COPY backend/ /var/www/html/
+
+# Habilita mod_rewrite para rotas
+RUN a2enmod rewrite
+
+# Configura permissões
+RUN chown -R www-data:www-data /var/www/html
+
+# Configura o Apache para usar public como DocumentRoot
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+WORKDIR /var/www/html
+
+EXPOSE 80
+
+# Inicia Apache
+CMD ["apache2-foreground"]

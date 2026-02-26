@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run PHPUnit backend tests",
+			"type": "shell",
+			"command": "vendor\\bin\\phpunit",
+			"args": [],
+			"problemMatcher": [
+				"$phpunit"
+			],
+			"group": "test"
+		}
+	]
+}
