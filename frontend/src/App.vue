@@ -219,7 +219,3 @@ body {
   aside { width: 16rem; }
 }
 </style>
-
-<script setup>
-// register toast provider globally via script setup import (keeps App.vue small)
-</script>
