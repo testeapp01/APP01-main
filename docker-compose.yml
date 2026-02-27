@@ -6,12 +6,13 @@ services:
     volumes:
       - ./backend:/var/www/html
     environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASS=
+      - DB_HOST=safrion_v1_mysql
+      - DB_USER=admin
+      - DB_PASS=nautico2@
       - DB_NAME=hortifrutnectar
     depends_on:
       - db
+
   frontend:
     build:
       context: .
@@ -24,13 +25,18 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`safrion-v1-app02.pre9vq.easypanel.host`)"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
   db:
     image: mysql:8.0
     restart: always
+    container_name: safrion_v1_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ''
-      MYSQL_DATABASE: 'hortifrut'
+      MYSQL_ROOT_PASSWORD: nautico2@
+      MYSQL_DATABASE: hortifrutnectar
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: nautico2@
     volumes:
       - dbdata:/var/lib/mysql
+
 volumes:
   dbdata:
