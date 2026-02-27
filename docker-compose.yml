@@ -6,7 +6,7 @@ services:
     volumes:
       - ./backend:/var/www/html
     environment:
-      - DB_HOST=safrion_v1_mysql
+      - DB_HOST=db
       - DB_USER=admin
       - DB_PASS=nautico2@
       - DB_NAME=hortifrutnectar
