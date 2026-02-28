@@ -16,11 +16,37 @@ function parseEnv($path)
 }
 
 $env = parseEnv(__DIR__ . '/../.env');
-$host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? '127.0.0.1');
-$port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '3306');
-$db   = getenv('DB_DATABASE') ?: (getenv('DB_NAME') ?: ($env['DB_DATABASE'] ?? ($env['DB_NAME'] ?? 'hortifrutnectar')));
-$user = getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: ($env['DB_USERNAME'] ?? ($env['DB_USER'] ?? 'root')));
-$pass = getenv('DB_PASSWORD') ?: (getenv('DB_PASS') ?: ($env['DB_PASSWORD'] ?? ($env['DB_PASS'] ?? '')));
+$isContainer = file_exists('/.dockerenv') || getenv('COOLIFY_RESOURCE_UUID') || getenv('KUBERNETES_SERVICE_HOST');
+
+function resolveDbVar(array $envNames, array $envFile, array $envFileNames, string $default, bool $isContainer): string
+{
+    foreach ($envNames as $name) {
+        $value = getenv($name);
+        if ($value !== false && $value !== '') {
+            return $value;
+        }
+    }
+
+    if (!$isContainer) {
+        foreach ($envFileNames as $name) {
+            if (!empty($envFile[$name])) {
+                return $envFile[$name];
+            }
+        }
+    }
+
+    return $default;
+}
+
+$host = resolveDbVar(['DB_HOST'], $env, ['DB_HOST'], '127.0.0.1', $isContainer);
+$port = resolveDbVar(['DB_PORT'], $env, ['DB_PORT'], '3306', $isContainer);
+$db   = resolveDbVar(['DB_DATABASE', 'DB_NAME'], $env, ['DB_DATABASE', 'DB_NAME'], 'hortifrutnectar', $isContainer);
+$user = resolveDbVar(['DB_USERNAME', 'DB_USER'], $env, ['DB_USERNAME', 'DB_USER'], 'root', $isContainer);
+$pass = resolveDbVar(['DB_PASSWORD', 'DB_PASS'], $env, ['DB_PASSWORD', 'DB_PASS'], '', $isContainer);
+
+if ($isContainer && ($host === '127.0.0.1' || $user === 'root' || $db === 'hortifrutnectar')) {
+    echo "Container mode detected. Ensure DB_HOST, DB_PORT, DB_NAME/DB_DATABASE, DB_USER/DB_USERNAME and DB_PASS/DB_PASSWORD are set in environment.\n";
+}
 
 echo "Connecting to {$host}:{$port} as {$user} to ensure database '{$db}'...\n";
 try {
