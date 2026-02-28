@@ -16,11 +16,11 @@ function parseEnv($path)
 }
 
 $env = parseEnv(__DIR__ . '/../.env');
-$host = $env['DB_HOST'] ?? '127.0.0.1';
-$port = $env['DB_PORT'] ?? '3306';
-$db   = $env['DB_DATABASE'] ?? 'hortifrutnectar';
-$user = $env['DB_USERNAME'] ?? 'root';
-$pass = $env['DB_PASSWORD'] ?? '';
+$host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? '127.0.0.1');
+$port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '3306');
+$db   = getenv('DB_DATABASE') ?: (getenv('DB_NAME') ?: ($env['DB_DATABASE'] ?? ($env['DB_NAME'] ?? 'hortifrutnectar')));
+$user = getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: ($env['DB_USERNAME'] ?? ($env['DB_USER'] ?? 'root')));
+$pass = getenv('DB_PASSWORD') ?: (getenv('DB_PASS') ?: ($env['DB_PASSWORD'] ?? ($env['DB_PASS'] ?? '')));
 
 echo "Connecting to {$host}:{$port} as {$user} to ensure database '{$db}'...\n";
 try {

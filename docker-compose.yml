@@ -16,6 +16,9 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`hw448ggg0cooocckko804kow.187.77.32.86.sslip.io`)"
       - "traefik.http.services.backend.loadbalancer.server.port=80"
+      - "traefik.http.routers.backend_api_from_frontend.rule=Host(`lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.backend_api_from_frontend.priority=100"
+      - "traefik.http.routers.backend_api_from_frontend.service=backend"
 
   frontend:
     build:
