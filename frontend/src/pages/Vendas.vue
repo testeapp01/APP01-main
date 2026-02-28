@@ -1,107 +1,297 @@
 <template>
-  <div class="page-fade">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h2 class="text-2xl font-semibold text-gray-800">Vendas</h2>
-        <p class="mt-2 text-sm text-gray-500">Gerencie suas vendas e pedidos</p>
-      </div>
+  <div class="page-shell page-fade">
+    <PageHero
+      title="Vendas"
+      subtitle="Acompanhe pedidos e operação de entrega com visão comercial em tempo real."
+    >
+      <template #actions>
+        <input
+          v-model="query"
+          placeholder="Buscar por cliente ou produto"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px]"
+          @input="onQuery"
+        >
+        <BaseButton
+          class="btn-secondary w-full sm:w-auto"
+          @click="refresh"
+        >
+          Atualizar
+        </BaseButton>
+        <BaseButton
+          class="btn-primary w-full sm:w-auto whitespace-nowrap"
+          @click="openCreateModal"
+        >
+          Adicionar Venda
+        </BaseButton>
+      </template>
+    </PageHero>
 
-      <div class="flex items-center gap-3">
-        <input v-model="query" @input="onQuery" placeholder="Buscar por cliente ou produto" class="p-3 border border-gray-300 rounded-xl w-full max-w-md" />
-        <BaseButton class="btn-secondary" @click="refresh">Atualizar</BaseButton>
-        <BaseButton class="btn-primary ml-2 whitespace-nowrap" @click="openCreateModal">Adicionar Venda</BaseButton>
-      </div>
-    </div>
+    <section class="saas-context-grid">
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Total de Vendas
+        </div>
+        <div class="saas-kpi-value">
+          {{ totalCount }}
+        </div>
+        <div class="saas-kpi-help">
+          Pedidos rastreados
+        </div>
+      </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Busca Atual
+        </div>
+        <div class="saas-kpi-value">
+          {{ query ? 'Filtrada' : 'Geral' }}
+        </div>
+        <div class="saas-kpi-help">
+          Contexto operacional
+        </div>
+      </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Página
+        </div>
+        <div class="saas-kpi-value">
+          {{ currentPage }}
+        </div>
+        <div class="saas-kpi-help">
+          Navegação ativa
+        </div>
+      </article>
+    </section>
 
     <!-- Table or empty state -->
     <div>
-      <div v-if="loading || visibleVendas.length > 0" class="panel-inner">
-        <BaseTable :columns="tableCols" :rows="paginatedVendas">
-        <template #cliente="{ row }">{{ row.cliente }}</template>
-        <template #produto="{ row }">{{ row.produto }}</template>
-        <template #quantidade="{ row }">{{ row.quantidade }}</template>
-        <template #valor_unitario="{ row }">{{ row.valor_unitario !== undefined && row.valor_unitario !== null ? ('R$ ' + row.valor_unitario) : '-' }}</template>
-        <template #status="{ row }">{{ row.status || '-' }}</template>
-        <template #acoes="{ row }">
-          <div>
-            <BaseButton v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')" variant="primary" @click="openConfirm(row.id)">Entregar</BaseButton>
-            <span v-else class="text-sm muted">Entregue</span>
-          </div>
-        </template>
+      <div
+        v-if="visibleVendas.length > 0"
+        class="panel-inner"
+      >
+        <BaseTable
+          :columns="tableCols"
+          :rows="paginatedVendas"
+        >
+          <template #cliente="{ row }">
+            {{ row.cliente }}
+          </template>
+          <template #produto="{ row }">
+            {{ row.produto }}
+          </template>
+          <template #quantidade="{ row }">
+            {{ row.quantidade }}
+          </template>
+          <template #valor_unitario="{ row }">
+            {{ row.valor_unitario !== undefined && row.valor_unitario !== null ? ('R$ ' + row.valor_unitario) : '-' }}
+          </template>
+          <template #status="{ row }">
+            {{ row.status || '-' }}
+          </template>
+          <template #acoes="{ row }">
+            <div>
+              <BaseButton
+                v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')"
+                variant="primary"
+                @click="openConfirm(row.id)"
+              >
+                Entregar
+              </BaseButton>
+              <span
+                v-else
+                class="text-sm muted"
+              >Entregue</span>
+            </div>
+          </template>
         </BaseTable>
       </div>
 
-      <div v-else class="py-12 text-center">
-        <p class="text-lg font-medium mb-4 text-gray-800">Nenhuma venda encontrada.</p>
-        <p class="text-sm muted mb-6">Você ainda não registrou vendas. Clique abaixo para adicionar a primeira venda.</p>
-        <div class="flex justify-center">
-          <BaseButton class="btn-primary whitespace-nowrap" @click="openCreateModal">Adicionar Venda</BaseButton>
-        </div>
-      </div>
+      <ListState
+        :loading="loading"
+        :has-data="visibleVendas.length > 0"
+        loading-text="Carregando vendas..."
+        empty-title="Nenhuma venda encontrada."
+        empty-message="Você ainda não registrou vendas. Clique abaixo para adicionar a primeira venda."
+        action-label="Adicionar Venda"
+        @action="openCreateModal"
+      />
     </div>
     <!-- Pagination controls -->
-    <div v-if="visibleVendas.length > 0" class="mt-4">
-      <div class="panel-inner flex items-center justify-between">
-          <div class="text-sm muted">Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}</div>
-        <div class="flex items-center gap-2">
-          <BaseButton class="btn-secondary" :disabled="currentPage<=1" @click="prevPage">Anterior</BaseButton>
-          <template v-for="p in Math.min(5, totalPages)" :key="p">
-            <button class="px-3 py-1 rounded text-sm" :class="{ 'bg-gray-200': currentPage===p }" @click="goToPage(p)">{{ p }}</button>
+    <div
+      v-if="visibleVendas.length > 0"
+      class="mt-4"
+    >
+      <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="text-sm muted">
+          Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}
+        </div>
+        <div class="page-pagination">
+          <BaseButton
+            class="btn-secondary"
+            :disabled="currentPage<=1"
+            @click="prevPage"
+          >
+            Anterior
+          </BaseButton>
+          <template
+            v-for="p in Math.min(5, totalPages)"
+            :key="p"
+          >
+            <button
+              type="button"
+              class="page-number"
+              :class="{ 'is-active': currentPage===p }"
+              @click="goToPage(p)"
+            >
+              {{ p }}
+            </button>
           </template>
-          <BaseButton class="btn-secondary" :disabled="currentPage>=totalPages" @click="nextPage">Próximo</BaseButton>
+          <BaseButton
+            class="btn-secondary"
+            :disabled="currentPage>=totalPages"
+            @click="nextPage"
+          >
+            Próximo
+          </BaseButton>
         </div>
       </div>
     </div>
 
-    <ConfirmDialog :modelValue="confirming" title="Confirmar entrega" message="Deseja marcar este pedido como entregue?" @confirm="confirmUpdate" @cancel="cancelConfirm" />
-
-    <!-- Create Sale Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 z-40 flex items-center justify-center">
-      <div class="fixed inset-0 bg-black/40" @click="closeCreateModal" aria-hidden="true"></div>
-      <div class="bg-white rounded-2xl shadow-md z-50 w-full max-w-3xl p-10 md:p-12">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800">Adicionar Venda</h3>
-        <form @submit.prevent="createSale" class="grid grid-cols-1 gap-3">
-          <label class="text-sm text-gray-600">Cliente</label>
-          <select v-model="novaVenda.cliente_id" required class="p-3 border border-gray-300 rounded-xl estilo-select">
-            <option value="" disabled>Selecione um cliente</option>
-            <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.nome }}</option>
-          </select>
-
-          <div class="space-y-2">
-            <div v-for="(item, idx) in novaVenda.items" :key="idx" class="grid grid-cols-12 gap-2 items-end">
-              <div class="col-span-6">
-                <label class="text-sm text-gray-600">Produto</label>
-                <CustomSelect
-                  v-model="item.produto_id"
-                  :options="productOptions"
-                  :placeholder="'Selecione um produto'"
-                  @update:modelValue="onProductChange(idx)"
-                  class="w-full"
-                />
-              </div>
-              <div class="col-span-2">
-                <label class="text-sm text-gray-600">Qtd</label>
-                <input v-model.number="item.quantidade" type="number" placeholder="Qtd" class="p-3 border border-gray-300 rounded-xl w-full" min="1" required />
-              </div>
-              <div class="col-span-3">
-                <label class="text-sm text-gray-600">Valor Unit.</label>
-                <input v-model.number="item.valor_unitario" type="number" placeholder="Valor Unitário" class="p-3 border border-gray-300 rounded-xl w-full" step="0.01" required />
-              </div>
-              <div class="col-span-1">
-                <button type="button" class="btn-secondary w-full" @click="removeItem(idx)">-</button>
-              </div>
-            </div>
-            <div>
-              <button type="button" class="btn-secondary" @click="addItem">+ Adicionar produto</button>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 mt-4">
-            <BaseButton type="button" class="btn-secondary" @click="closeCreateModal">Cancelar</BaseButton>
-            <BaseButton type="submit" class="btn-primary whitespace-nowrap">Adicionar Venda</BaseButton>
-          </div>
-        </form>
+    <div
+      v-if="confirming"
+      class="panel-inner mb-4 border border-emerald-200 bg-emerald-50/60"
+    >
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="text-sm text-slate-700">
+          Confirmar entrega do pedido selecionado?
+        </div>
+        <div class="flex gap-2">
+          <BaseButton
+            variant="secondary"
+            @click="cancelConfirm"
+          >
+            Cancelar
+          </BaseButton>
+          <BaseButton
+            variant="primary"
+            @click="confirmUpdate"
+          >
+            Confirmar entrega
+          </BaseButton>
+        </div>
       </div>
     </div>
+
+    <SideDrawer
+      :open="showCreateModal"
+      title="Adicionar Venda"
+      @close="closeCreateModal"
+    >
+      <form
+        class="drawer-form grid grid-cols-1 gap-3"
+        @submit.prevent="createSale"
+      >
+        <FormFeedback
+          :message="saleFeedback.message"
+          :type="saleFeedback.type"
+        />
+        <label class="text-sm text-gray-600">Cliente</label>
+        <select
+          v-model="novaVenda.cliente_id"
+          required
+          class="p-3 border border-gray-300 rounded-xl estilo-select"
+        >
+          <option
+            value=""
+            disabled
+          >
+            Selecione um cliente
+          </option>
+          <option
+            v-for="c in clients"
+            :key="c.id"
+            :value="c.id"
+          >
+            {{ c.nome }}
+          </option>
+        </select>
+
+        <div class="space-y-2">
+          <div
+            v-for="(item, idx) in novaVenda.items"
+            :key="idx"
+            class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end"
+          >
+            <div class="md:col-span-6">
+              <label class="text-sm text-gray-600">Produto</label>
+              <CustomSelect
+                v-model="item.produto_id"
+                :options="productOptions"
+                :placeholder="'Selecione um produto'"
+                class="w-full"
+                @update:model-value="onProductChange(idx)"
+              />
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-sm text-gray-600">Qtd</label>
+              <input
+                v-model.number="item.quantidade"
+                type="number"
+                placeholder="Qtd"
+                class="p-3 border border-gray-300 rounded-xl w-full"
+                min="1"
+                required
+              >
+            </div>
+            <div class="md:col-span-3">
+              <label class="text-sm text-gray-600">Valor Unit.</label>
+              <input
+                v-model.number="item.valor_unitario"
+                type="number"
+                placeholder="Valor Unitário"
+                class="p-3 border border-gray-300 rounded-xl w-full"
+                step="0.01"
+                required
+              >
+            </div>
+            <div class="md:col-span-1">
+              <BaseButton
+                type="button"
+                class="btn-secondary w-full"
+                @click="removeItem(idx)"
+              >
+                -
+              </BaseButton>
+            </div>
+          </div>
+          <div>
+            <BaseButton
+              type="button"
+              class="btn-secondary"
+              @click="addItem"
+            >
+              + Adicionar produto
+            </BaseButton>
+          </div>
+        </div>
+        <div class="drawer-actions flex justify-end gap-3 mt-4">
+          <BaseButton
+            type="button"
+            class="btn-secondary"
+            @click="closeCreateModal"
+          >
+            Cancelar
+          </BaseButton>
+          <BaseButton
+            type="submit"
+            class="btn-primary whitespace-nowrap"
+            :disabled="submittingSale"
+            :loading="submittingSale"
+          >
+            {{ submittingSale ? 'Salvando...' : 'Adicionar Venda' }}
+          </BaseButton>
+        </div>
+      </form>
+    </SideDrawer>
   </div>
 </template>
 
@@ -111,12 +301,15 @@ import { ref, onMounted, computed } from 'vue'
 import api from '../services/api'
 import BaseTable from '../components/ui/BaseTable.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
-import ConfirmDialog from '../components/ConfirmDialog.vue'
+import SideDrawer from '../components/ui/SideDrawer.vue'
+import PageHero from '../components/ui/PageHero.vue'
+import ListState from '../components/ui/ListState.vue'
+import FormFeedback from '../components/ui/FormFeedback.vue'
 import CustomSelect from '../components/ui/CustomSelect.vue'
 import { useToast } from '../composables/useToast'
 
 export default {
-  components: { BaseTable, BaseButton, ConfirmDialog, CustomSelect },
+  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, CustomSelect },
   data() {
     return {
       vendas: [],
@@ -135,6 +328,8 @@ export default {
       clients: [],
       products: [],
       showCreateModal: false,
+      submittingSale: false,
+      saleFeedback: { message: '', type: 'info' },
       confirmPayload: null,
       confirming: false,
       pageSize: 25,
@@ -166,6 +361,11 @@ export default {
     paginatedVendas() {
       return this.visibleVendas
     },
+  },
+  mounted() {
+    this.loadClients();
+    this.loadProducts();
+    this.loadVendas();
   },
   methods: {
     async loadVendas() {
@@ -216,6 +416,8 @@ export default {
       }
     },
     async createSale() {
+      this.submittingSale = true
+      this.saleFeedback = { message: 'Salvando venda...', type: 'info' }
       try {
         if (!this.novaVenda.cliente_id) throw new Error('Cliente obrigatório')
         const items = (this.novaVenda.items || []).filter(it => it && it.produto_id)
@@ -225,11 +427,15 @@ export default {
           items: items.map(it => ({ produto_id: it.produto_id, quantidade: it.quantidade || 1, valor_unitario: it.valor_unitario || 0 }))
         }
         await api.post('/api/v1/vendas', payload)
+        this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
         this.novaVenda = { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
-        this.showCreateModal = false
+        setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao criar venda:', e)
+        this.saleFeedback = { message: e?.message || 'Falha ao salvar venda.', type: 'error' }
+      } finally {
+        this.submittingSale = false
       }
     },
     onProductChange(idx) {
@@ -241,17 +447,12 @@ export default {
         this.novaVenda.items[idx].valor_unitario = null
       }
     },
-    openCreateModal() { this.showCreateModal = true },
-    closeCreateModal() { this.showCreateModal = false; this.novaVenda = { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
+    openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },
     refresh() { this.loadVendas() },
     onQuery() { clearTimeout(this.timer); this.timer = setTimeout(() => this.loadVendas(), 350) },
-  },
-  mounted() {
-    this.loadClients();
-    this.loadProducts();
-    this.loadVendas();
   },
 }
 </script>

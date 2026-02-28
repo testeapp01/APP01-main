@@ -16,6 +16,7 @@ export default {
     size: { type: String, default: 'md' },
     disabled: { type: Boolean, default: false }
   },
+  emits: ['click'],
   computed: {
     variantClass() {
       if (this.variant === 'primary') return 'btn-primary'

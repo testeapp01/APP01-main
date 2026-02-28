@@ -7,7 +7,7 @@ const api = axios.create({
 
 api.interceptors.request.use(config => {
   // attach auth token if exists
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('hf_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 }, error => Promise.reject(error));
@@ -16,7 +16,10 @@ api.interceptors.response.use(response => response, error => {
   // global error handling
   if (error.response && error.response.status === 401) {
     // example: redirect to login or emit event
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('hf_token');
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.assign('/login');
+    }
   }
   return Promise.reject(error);
 });

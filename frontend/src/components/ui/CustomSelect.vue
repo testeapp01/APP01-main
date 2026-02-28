@@ -1,12 +1,36 @@
 <template>
-  <div class="custom-select" @keydown.tab="close" @keydown.esc="close" tabindex="0">
-    <div class="custom-select__input" :class="{ open }" @click="toggle" @blur="close">
-      <span v-if="!selectedLabel" class="custom-select__placeholder">{{ placeholder }}</span>
-      <span v-else class="custom-select__value">{{ selectedLabel }}</span>
+  <div
+    class="custom-select"
+    tabindex="0"
+    @keydown.tab="close"
+    @keydown.esc="close"
+  >
+    <div
+      class="custom-select__input"
+      :class="{ open }"
+      @click="toggle"
+      @blur="close"
+    >
+      <span
+        v-if="!selectedLabel"
+        class="custom-select__placeholder"
+      >{{ placeholder }}</span>
+      <span
+        v-else
+        class="custom-select__value"
+      >{{ selectedLabel }}</span>
       <span class="custom-select__arrow">▼</span>
     </div>
-    <ul v-if="open" class="custom-select__dropdown">
-      <li v-for="option in options" :key="option.value" :class="{ selected: option.value === modelValue }" @mousedown.prevent="select(option.value)">
+    <ul
+      v-if="open"
+      class="custom-select__dropdown"
+    >
+      <li
+        v-for="option in options"
+        :key="option.value"
+        :class="{ selected: option.value === modelValue }"
+        @mousedown.prevent="select(option.value)"
+      >
         {{ option.label }}
       </li>
     </ul>
@@ -16,7 +40,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 const props = defineProps({
-  modelValue: [String, Number, null],
+  modelValue: { type: [String, Number], default: '' },
   options: { type: Array, required: true },
   placeholder: { type: String, default: 'Selecione...' }
 })

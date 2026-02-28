@@ -1,36 +1,71 @@
 <template>
-  <div class="dashboard-container">
+  <div class="page-shell dashboard-container">
+    <PageHero
+      title="Painel Executivo"
+      subtitle="Visão consolidada de performance comercial e operacional."
+    >
+      <template #context>
+        <div class="saas-context-grid">
+          <article class="saas-kpi-card">
+            <div class="saas-kpi-label">
+              Receita de Vendas
+            </div>
+            <div class="saas-kpi-value">
+              R$ {{ totals.sales }}
+            </div>
+            <div class="saas-kpi-help">
+              Indicador comercial
+            </div>
+          </article>
+          <article class="saas-kpi-card">
+            <div class="saas-kpi-label">
+              Volume de Compras
+            </div>
+            <div class="saas-kpi-value">
+              R$ {{ totals.purchases }}
+            </div>
+            <div class="saas-kpi-help">
+              Reposição de estoque
+            </div>
+          </article>
+          <article class="saas-kpi-card">
+            <div class="saas-kpi-label">
+              Clientes Ativos
+            </div>
+            <div class="saas-kpi-value">
+              {{ totals.clients }}
+            </div>
+            <div class="saas-kpi-help">
+              Base relacional
+            </div>
+          </article>
+        </div>
+      </template>
+    </PageHero>
 
-    <!-- HEADER -->
-    <div class="dashboard-header">
-      <h2 class="dashboard-title">Dashboard</h2>
-    </div>
-
-    <!-- STATS -->
     <DashboardStats :totals="totals" />
 
-    <!-- CHART CARD -->
     <div class="chart-card">
       <div class="chart-header">
-        <h3>Gráfico de Vendas</h3>
+        <h3>Projeção de Vendas</h3>
       </div>
 
       <div class="chart-wrapper">
-        <canvas id="sales-chart"></canvas>
+        <canvas id="sales-chart" />
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import DashboardStats from '../components/DashboardStats.vue'
+import PageHero from '../components/ui/PageHero.vue'
 import api from '../services/api'
 import Chart from 'chart.js/auto'
 
 export default {
-  components: { DashboardStats },
+  components: { DashboardStats, PageHero },
 
   setup() {
 
@@ -134,9 +169,9 @@ export default {
 <style scoped>
 
 .dashboard-container {
-  padding: 24px;
+  padding: 12px;
   background: #f9fafb;
-  min-height: 100vh;
+  min-height: auto;
 }
 
 .dashboard-header {
@@ -144,16 +179,16 @@ export default {
 }
 
 .dashboard-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #111827;
 }
 
 .chart-card {
-  margin-top: 30px;
+  margin-top: 16px;
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   transition: all .3s ease;
 }
@@ -173,7 +208,14 @@ export default {
 .chart-wrapper {
   position: relative;
   width: 100%;
-  height: 320px; /* altura fixa = sem scroll infinito */
+  height: 240px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-container { padding: 20px; }
+  .dashboard-title { font-size: 28px; }
+  .chart-card { margin-top: 24px; padding: 20px; }
+  .chart-wrapper { height: 300px; }
 }
 
 canvas {

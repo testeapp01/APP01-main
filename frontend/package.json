@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "lint": "eslint . --ext .js,.vue || true",
+    "lint": "eslint .",
     "test:e2e": "playwright test",
     "open:logged": "node ./scripts/open_logged.js"
   },

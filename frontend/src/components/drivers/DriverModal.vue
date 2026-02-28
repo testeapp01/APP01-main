@@ -1,53 +1,120 @@
 <template>
-  <div v-if="showCreateModal" class="fixed inset-0 z-40 flex items-center justify-center">
-    <div class="fixed inset-0 bg-black/40" @click="closeCreateModal" aria-hidden="true"></div>
-    <div class="bg-white rounded-2xl shadow-md z-50 w-full max-w-md p-8">
-      <h3 class="text-xl font-semibold mb-4 text-gray-800">Adicionar Motorista</h3>
-      <form @submit.prevent="emitCreate" class="grid grid-cols-1 gap-3">
-        <input v-model="local.nome" placeholder="Nome" class="p-3 border border-gray-300 rounded-xl" required />
-        <input v-model="local.cpf" placeholder="CPF" class="p-3 border border-gray-300 rounded-xl" />
-        <input v-model="local.placa" placeholder="Placa" class="p-3 border border-gray-300 rounded-xl" />
-        <input v-model="local.veiculo" placeholder="Veículo" class="p-3 border border-gray-300 rounded-xl" />
-        <input v-model="local.telefone" placeholder="Telefone" class="p-3 border border-gray-300 rounded-xl" />
-        <div class="mb-2" style="min-width:88px">
-          <CustomSelect
-            v-model="local.uf"
-            :options="ufOptions"
-            :placeholder="'UF'"
-            class="w-full input-uf"
-          />
-        </div>
-        <div class="mb-2">
-          <CustomSelect
-            v-model="local.TpCaminhao"
-            :options="caminhaoOptions"
-            :placeholder="'Tipo de Caminhão'"
-            class="w-full input-uf"
-          />
-        </div>
-        <div class="switch-label mb-2">
-          <label class="switch" :class="{ active: local.status }">
-            <input type="checkbox" v-model="local.status" />
-            <span class="knob"></span>
-          </label>
-          <span class="text-sm status-text">{{ local.status ? 'ATIVO' : 'INATIVO' }}</span>
-        </div>
-        <div class="flex justify-end gap-3 mt-4">
-          <BaseButton type="button" class="btn-secondary" @click="closeCreateModal">Cancelar</BaseButton>
-          <BaseButton type="submit" class="btn-primary">Adicionar</BaseButton>
-        </div>
-      </form>
-    </div>
-  </div>
+  <SideDrawer
+    :open="showCreateModal"
+    title="Adicionar Motorista"
+    @close="closeCreateModal"
+  >
+    <form
+      class="drawer-form grid grid-cols-1 gap-3"
+      @submit.prevent="emitCreate"
+    >
+      <FormFeedback
+        :message="feedbackMessage"
+        :type="feedbackType"
+      />
+      <input
+        v-model="local.nome"
+        placeholder="Nome"
+        class="p-3 border border-gray-300 rounded-xl"
+        required
+      >
+      <input
+        v-model="local.cpf"
+        placeholder="CPF"
+        class="p-3 border border-gray-300 rounded-xl"
+      >
+      <input
+        v-model="local.placa"
+        placeholder="Placa"
+        class="p-3 border border-gray-300 rounded-xl"
+      >
+      <input
+        v-model="local.veiculo"
+        placeholder="Veículo"
+        class="p-3 border border-gray-300 rounded-xl"
+      >
+      <input
+        v-model="local.telefone"
+        placeholder="Telefone"
+        class="p-3 border border-gray-300 rounded-xl"
+      >
+      <div class="mb-2 uf-field">
+        <CustomSelect
+          v-model="local.uf"
+          :options="ufOptions"
+          :placeholder="'UF'"
+          class="w-full input-uf"
+        />
+      </div>
+      <div class="mb-2">
+        <CustomSelect
+          v-model="local.tpCaminhao"
+          :options="caminhaoOptions"
+          :placeholder="'Tipo de Caminhão'"
+          class="w-full input-uf"
+        />
+      </div>
+      <div class="switch-label mb-2">
+        <label
+          class="switch"
+          :class="{ active: local.status }"
+        >
+          <input
+            v-model="local.status"
+            type="checkbox"
+          >
+          <span class="knob" />
+        </label>
+        <span class="text-sm status-text">{{ local.status ? 'ATIVO' : 'INATIVO' }}</span>
+      </div>
+      <div class="drawer-actions flex justify-end gap-3 mt-4">
+        <BaseButton
+          type="button"
+          class="btn-secondary"
+          @click="closeCreateModal"
+        >
+          Cancelar
+        </BaseButton>
+        <BaseButton
+          type="submit"
+          class="btn-primary"
+          :disabled="submitting"
+          :loading="submitting"
+        >
+          {{ submitting ? 'Salvando...' : 'Adicionar' }}
+        </BaseButton>
+      </div>
+    </form>
+  </SideDrawer>
 </template>
 
 <script>
-import { reactive, watch, toRefs } from 'vue'
+import { reactive, watch } from 'vue'
 import CustomSelect from '../ui/CustomSelect.vue'
 import BaseButton from '../ui/BaseButton.vue'
+import SideDrawer from '../ui/SideDrawer.vue'
+import FormFeedback from '../ui/FormFeedback.vue'
 export default {
-  components: { CustomSelect, BaseButton },
-  props: ['showCreateModal', 'closeCreateModal', 'create', 'nome', 'cpf', 'placa', 'veiculo', 'telefone', 'uf', 'TpCaminhao', 'status', 'ufOptions', 'caminhaoOptions'],
+  components: { CustomSelect, BaseButton, SideDrawer, FormFeedback },
+  props: {
+    showCreateModal: { type: Boolean, default: false },
+    closeCreateModal: { type: Function, default: () => {} },
+    create: { type: Function, default: () => {} },
+    nome: { type: String, default: '' },
+    cpf: { type: String, default: '' },
+    placa: { type: String, default: '' },
+    veiculo: { type: String, default: '' },
+    telefone: { type: String, default: '' },
+    uf: { type: String, default: '' },
+    tpCaminhao: { type: [String, Number], default: '' },
+    status: { type: Boolean, default: true },
+    ufOptions: { type: Array, default: () => [] },
+    caminhaoOptions: { type: Array, default: () => [] },
+    submitting: { type: Boolean, default: false },
+    feedbackMessage: { type: String, default: '' },
+    feedbackType: { type: String, default: 'info' }
+  },
+  emits: ['update:nome', 'update:cpf', 'update:placa', 'update:veiculo', 'update:telefone', 'update:uf', 'update:tpCaminhao', 'update:status'],
   setup(props, { emit }) {
     const local = reactive({
       nome: props.nome || '',
@@ -56,7 +123,7 @@ export default {
       veiculo: props.veiculo || '',
       telefone: props.telefone || '',
       uf: props.uf || '',
-      TpCaminhao: props.TpCaminhao || '',
+      tpCaminhao: props.tpCaminhao || '',
       status: props.status ?? true,
     })
     watch(() => props.showCreateModal, (val) => {
@@ -67,7 +134,7 @@ export default {
         local.veiculo = props.veiculo || '';
         local.telefone = props.telefone || '';
         local.uf = props.uf || '';
-        local.TpCaminhao = props.TpCaminhao || '';
+        local.tpCaminhao = props.tpCaminhao || '';
         local.status = props.status ?? true;
       }
     });
@@ -78,7 +145,7 @@ export default {
       emit('update:veiculo', local.veiculo)
       emit('update:telefone', local.telefone)
       emit('update:uf', local.uf)
-      emit('update:TpCaminhao', local.TpCaminhao)
+      emit('update:tpCaminhao', local.tpCaminhao)
       emit('update:status', local.status)
       props.create()
     }

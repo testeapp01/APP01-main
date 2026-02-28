@@ -8,6 +8,7 @@ import ToastProvider from './components/ToastProvider.vue'
 import BaseButton from './components/ui/BaseButton.vue'
 import BaseCard from './components/ui/BaseCard.vue'
 import BaseTable from './components/ui/BaseTable.vue'
+import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -39,4 +40,7 @@ app.config.globalProperties.$theme = {
 	}
 }
 
-app.mount('#app')
+const auth = useAuthStore(pinia)
+auth.hydrateSession().finally(() => {
+	app.mount('#app')
+})

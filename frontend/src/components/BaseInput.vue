@@ -1,14 +1,26 @@
 <template>
   <label class="flex flex-col text-sm">
     <span class="mb-1 text-sm">{{ label }}</span>
-    <input :type="type" v-model="localValue" :placeholder="placeholder" :aria-label="label" :class="['p-2 border rounded', inputClass]" />
+    <input
+      v-model="localValue"
+      :type="type"
+      :placeholder="placeholder"
+      :aria-label="label"
+      :class="['p-2 border rounded', inputClass]"
+    >
   </label>
 </template>
 
 <script>
 export default {
   name: 'BaseInput',
-  props: { modelValue: [String, Number], label: String, placeholder: String, type: { type: String, default: 'text' }, inputClass: String },
+  props: {
+    modelValue: { type: [String, Number], default: '' },
+    label: { type: String, default: '' },
+    placeholder: { type: String, default: '' },
+    type: { type: String, default: 'text' },
+    inputClass: { type: String, default: '' }
+  },
   emits: ['update:modelValue'],
   computed: {
     localValue: {

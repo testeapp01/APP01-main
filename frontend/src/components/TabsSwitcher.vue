@@ -1,7 +1,14 @@
 <template>
   <div>
     <div class="flex gap-2 border-b mb-4">
-      <button v-for="t in tabs" :key="t" @click="select(t)" :class="['px-3 py-2', active === t ? 'font-semibold border-b-2 border-brand-500' : 'text-muted']">{{ t }}</button>
+      <button
+        v-for="t in tabs"
+        :key="t"
+        :class="['px-3 py-2', active === t ? 'font-semibold border-b-2 border-brand-500' : 'text-muted']"
+        @click="select(t)"
+      >
+        {{ t }}
+      </button>
     </div>
     <div>
       <slot :active="active" />

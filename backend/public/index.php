@@ -9,9 +9,6 @@ use App\Middlewares\AuthMiddleware;
 use App\Middlewares\InputSanitizer;
 use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\SecureHeadersMiddleware;
-use App\Repositories\PurchaseRepository;
-use App\Repositories\ProductRepository;
-use App\Services\PurchaseService;
 use App\Controllers\AuthController;
 use App\Controllers\PurchaseController;
 use App\Controllers\SalesController;
@@ -31,6 +28,12 @@ header('Content-Type: application/json; charset=utf-8');
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
+$authUser = null;
+
+if ($method === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 // apply secure headers first
 SecureHeadersMiddleware::apply();
@@ -51,19 +54,21 @@ if ($raw) {
 
 // public routes
 if ($uri === '/api/v1/auth/login' && $method === 'POST') {
-    // use sanitized input if present
-    if (isset($GLOBALS['SANITIZED_INPUT'])) {
-        // controllers still read php://input; temporarily override stream
-        // but simpler: inject sanitized via $_POST-like global for our simple controllers
-        file_put_contents('php://memory', json_encode($GLOBALS['SANITIZED_INPUT']));
-    }
     (new AuthController($pdo))->login();
     exit;
 }
 
-// protected routes (simple middleware check)
-if (in_array($uri, ['/api/v1/compras', '/api/v1/compras/receive', '/api/v1/vendas', '/api/v1/vendas/deliver', '/api/v1/relatorios', '/api/v1/clientes', '/api/v1/motoristas', '/api/v1/produtos']) ) {
-    $user = AuthMiddleware::authenticate();
+// protect all API routes except login
+if (str_starts_with($uri, '/api/v1/')) {
+    $isPublic = ($uri === '/api/v1/auth/login' && $method === 'POST');
+    if (!$isPublic) {
+        $authUser = AuthMiddleware::authenticate();
+    }
+}
+
+if ($uri === '/api/v1/auth/me' && $method === 'GET') {
+    (new AuthController($pdo))->me((array) $authUser);
+    exit;
 }
 
 // compras
@@ -120,6 +125,11 @@ if ($uri === '/api/v1/motoristas' && $method === 'GET') {
 // fornecedores
 if ($uri === '/api/v1/fornecedores' && $method === 'GET') {
     (new FornecedorController($pdo))->index();
+    exit;
+}
+
+if ($uri === '/api/v1/fornecedores' && $method === 'POST') {
+    (new FornecedorController($pdo))->create();
     exit;
 }
 

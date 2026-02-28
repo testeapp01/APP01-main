@@ -2,32 +2,68 @@
   <div>
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="text-xl font-semibold">Clientes</h2>
-        <p class="text-sm muted">Gerencie os clientes cadastrados</p>
+        <h2 class="text-xl font-semibold">
+          Clientes
+        </h2>
+        <p class="text-sm muted">
+          Gerencie os clientes cadastrados
+        </p>
       </div>
       <div class="flex items-center gap-2">
-        <input v-model="localQuery" @input="onSearch" placeholder="Buscar clientes" class="p-2 border rounded w-full max-w-sm" />
-        <BaseButton class="ml-2" @click="refresh">Atualizar</BaseButton>
+        <input
+          v-model="localQuery"
+          placeholder="Buscar clientes"
+          class="p-2 border rounded w-full max-w-sm"
+          @input="onSearch"
+        >
+        <BaseButton
+          class="ml-2"
+          @click="refresh"
+        >
+          Atualizar
+        </BaseButton>
       </div>
     </div>
 
     <BaseTable>
       <template #head>
         <tr class="text-sm text-muted">
-          <th class="p-2">Nome</th>
-          <th class="p-2">Telefone</th>
-          <th class="p-2">Cidade</th>
+          <th class="p-2">
+            Nome
+          </th>
+          <th class="p-2">
+            Telefone
+          </th>
+          <th class="p-2">
+            Cidade
+          </th>
         </tr>
       </template>
 
       <template #body>
         <tr v-if="store.loading">
-          <td colspan="3" class="p-4">Carregando...</td>
+          <td
+            colspan="3"
+            class="p-4"
+          >
+            Carregando...
+          </td>
         </tr>
-        <tr v-else v-for="c in store.clients" :key="c.id" class="hover:bg-gray-50 dark:hover:bg-slate-800">
-          <td class="p-2">{{ c.name || c.nome }}</td>
-          <td class="p-2">{{ c.phone || c.telefone }}</td>
-          <td class="p-2">{{ c.city || c.cidade || '-' }}</td>
+        <tr
+          v-for="c in store.clients"
+          v-else
+          :key="c.id"
+          class="hover:bg-gray-50 dark:hover:bg-slate-800"
+        >
+          <td class="p-2">
+            {{ c.name || c.nome }}
+          </td>
+          <td class="p-2">
+            {{ c.phone || c.telefone }}
+          </td>
+          <td class="p-2">
+            {{ c.city || c.cidade || '-' }}
+          </td>
         </tr>
       </template>
     </BaseTable>

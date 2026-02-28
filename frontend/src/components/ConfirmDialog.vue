@@ -1,10 +1,24 @@
 <template>
-  <BaseModal :show="visible" :title="title" @update:show="onClose">
+  <BaseModal
+    :show="visible"
+    :title="title"
+    @update:show="onClose"
+  >
     <div class="p-2">
       <p>{{ message }}</p>
       <div class="mt-4 flex justify-end gap-2">
-        <BaseButton variant="secondary" @click="cancel">Cancelar</BaseButton>
-        <BaseButton variant="primary" @click="confirm">Confirmar</BaseButton>
+        <BaseButton
+          variant="secondary"
+          @click="cancel"
+        >
+          Cancelar
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          @click="confirm"
+        >
+          Confirmar
+        </BaseButton>
       </div>
     </div>
   </BaseModal>

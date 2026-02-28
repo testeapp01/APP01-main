@@ -1,79 +1,229 @@
 <template>
-  <div>
-    <h1 class="text-2xl font-bold mb-4 text-gray-800">Fornecedores</h1>
+  <div class="page-shell">
+    <PageHero
+      title="Fornecedores"
+      subtitle="Centralize fornecedores, contatos e disponibilidade de forma confiável."
+    >
+      <template #actions>
+        <BaseButton
+          class="btn-primary"
+          @click="openCreateFornecedor"
+        >
+          Adicionar Fornecedor
+        </BaseButton>
+      </template>
+    </PageHero>
+
+    <section class="saas-context-grid">
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Fornecedores
+        </div>
+        <div class="saas-kpi-value">
+          {{ visibleFornecedores.length }}
+        </div>
+        <div class="saas-kpi-help">
+          Cadastros ativos na listagem
+        </div>
+      </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Página Atual
+        </div>
+        <div class="saas-kpi-value">
+          {{ currentPageFornecedores }}
+        </div>
+        <div class="saas-kpi-help">
+          Controle de navegação
+        </div>
+      </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Ação Primária
+        </div>
+        <div class="saas-kpi-value">
+          Cadastro
+        </div>
+        <div class="saas-kpi-help">
+          Fluxo contextual em painel lateral
+        </div>
+      </article>
+    </section>
 
     <!-- Fornecedores Table -->
     <div class="mb-6">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xl font-semibold text-gray-800">Lista de Fornecedores</h2>
-        <BaseButton class="btn-primary" @click="openCreateFornecedor">Adicionar Fornecedor</BaseButton>
+      <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-2">
+        <h2 class="text-xl font-semibold text-gray-800">
+          Lista de Fornecedores
+        </h2>
       </div>
-      <div v-if="visibleFornecedores.length > 0" class="panel-inner">
-        <BaseTable :columns="fornecedorCols" :rows="paginatedFornecedores">
-          <template #razao_social="{ row }">{{ row.razao_social }}</template>
-          <template #cnpj="{ row }">{{ row.cnpj || '-' }}</template>
-          <template #inscricao_estadual="{ row }">{{ row.inscricao_estadual || '-' }}</template>
-          <template #uf="{ row }">{{ row.uf || '-' }}</template>
-          <template #telefone="{ row }">{{ row.telefone || '-' }}</template>
-          <template #email="{ row }">{{ row.email || '-' }}</template>
-          <template #status="{ row }">{{ row.status ? 'ATIVO' : 'INATIVO' }}</template>
+      <div
+        v-if="visibleFornecedores.length > 0"
+        class="panel-inner"
+      >
+        <BaseTable
+          :columns="fornecedorCols"
+          :rows="paginatedFornecedores"
+        >
+          <template #razao_social="{ row }">
+            {{ row.razao_social }}
+          </template>
+          <template #cnpj="{ row }">
+            {{ row.cnpj || '-' }}
+          </template>
+          <template #inscricao_estadual="{ row }">
+            {{ row.inscricao_estadual || '-' }}
+          </template>
+          <template #uf="{ row }">
+            {{ row.uf || '-' }}
+          </template>
+          <template #telefone="{ row }">
+            {{ row.telefone || '-' }}
+          </template>
+          <template #email="{ row }">
+            {{ row.email || '-' }}
+          </template>
+          <template #status="{ row }">
+            {{ row.status ? 'ATIVO' : 'INATIVO' }}
+          </template>
           <template #acoes="{ row }">
             <div class="flex items-center gap-2">
-              <BaseButton variant="ghost" @click="editFornecedor(row)">Editar</BaseButton>
-              <BaseButton variant="destructive" @click="deleteFornecedor(row)">Excluir</BaseButton>
+              <BaseButton
+                variant="ghost"
+                @click="editFornecedor(row)"
+              >
+                Editar
+              </BaseButton>
+              <BaseButton
+                variant="destructive"
+                @click="deleteFornecedor(row)"
+              >
+                Excluir
+              </BaseButton>
             </div>
           </template>
         </BaseTable>
-        <div class="mt-2 flex items-center justify-end gap-2">
-          <BaseButton class="btn-secondary" :disabled="currentPageFornecedores<=1" @click="prevFornecedores">Anterior</BaseButton>
-          <template v-for="p in Math.min(5, totalPagesFornecedores)" :key="p">
-            <button class="px-2 py-1 rounded text-sm" :class="{ 'bg-gray-200': currentPageFornecedores===p }" @click="goToFornecedores(p)">{{ p }}</button>
+        <div class="mt-2 page-pagination">
+          <BaseButton
+            class="btn-secondary"
+            :disabled="currentPageFornecedores<=1"
+            @click="prevFornecedores"
+          >
+            Anterior
+          </BaseButton>
+          <template
+            v-for="p in Math.min(5, totalPagesFornecedores)"
+            :key="p"
+          >
+            <button
+              type="button"
+              class="page-number"
+              :class="{ 'is-active': currentPageFornecedores===p }"
+              @click="goToFornecedores(p)"
+            >
+              {{ p }}
+            </button>
           </template>
-          <BaseButton class="btn-secondary" :disabled="currentPageFornecedores>=totalPagesFornecedores" @click="nextFornecedores">Próximo</BaseButton>
+          <BaseButton
+            class="btn-secondary"
+            :disabled="currentPageFornecedores>=totalPagesFornecedores"
+            @click="nextFornecedores"
+          >
+            Próximo
+          </BaseButton>
         </div>
       </div>
-      <div v-else class="py-12 text-center">
-        <p class="text-lg font-medium mb-4 text-gray-800">Nenhum fornecedor cadastrado.</p>
-        <p class="text-sm muted mb-6">Adicione fornecedores para começar.</p>
-        <div class="flex justify-center">
-          <BaseButton class="btn-primary" @click="openCreateFornecedor">Adicionar Fornecedor</BaseButton>
-        </div>
-      </div>
+      <ListState
+        :loading="loading"
+        :has-data="visibleFornecedores.length > 0"
+        loading-text="Carregando fornecedores..."
+        empty-title="Nenhum fornecedor cadastrado."
+        empty-message="Adicione fornecedores para começar."
+        action-label="Adicionar Fornecedor"
+        @action="openCreateFornecedor"
+      />
     </div>
 
-    <!-- Create Fornecedor Modal -->
-    <div v-if="showCreateFornecedor" class="fixed inset-0 z-40 flex items-center justify-center">
-      <div class="fixed inset-0 bg-black/40" @click="closeCreateFornecedor" aria-hidden="true"></div>
-      <div class="bg-white rounded-2xl shadow-md z-50 w-full max-w-md p-8">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800">Adicionar Fornecedor</h3>
-        <form @submit.prevent="createFornecedor" class="grid grid-cols-1 gap-3">
-          <input v-model="novoFornecedor.razao_social" placeholder="Razão Social" class="p-3 border border-gray-300 rounded-xl" required />
-          <input v-model="novoFornecedor.cnpj" placeholder="CNPJ" class="p-3 border border-gray-300 rounded-xl" />
-          <input v-model="novoFornecedor.inscricao_estadual" placeholder="Inscrição Estadual" class="p-3 border border-gray-300 rounded-xl" />
-          <input v-model="novoFornecedor.telefone" placeholder="Telefone" class="p-3 border border-gray-300 rounded-xl" />
-          <input v-model="novoFornecedor.email" placeholder="Email" type="email" class="p-3 border border-gray-300 rounded-xl" />
-          <div class="mb-2" style="min-width:88px">
-            <CustomSelect
-              v-model="novoFornecedor.uf"
-              :options="ufOptions"
-              :placeholder="'UF'"
-              class="w-full input-uf"
-            />
-          </div>
-          <div class="switch-label mb-2">
-            <label class="switch" :class="{ active: novoFornecedor.status }">
-              <input type="checkbox" v-model="novoFornecedor.status" />
-              <span class="knob"></span>
-            </label>
-            <span class="text-sm status-text">{{ novoFornecedor.status ? 'ATIVO' : 'INATIVO' }}</span>
-          </div>
-          <div class="flex justify-end gap-3 mt-4">
-            <BaseButton type="button" class="btn-secondary" @click="closeCreateFornecedor">Cancelar</BaseButton>
-            <BaseButton type="submit" class="btn-primary">Adicionar</BaseButton>
-          </div>
-        </form>
-      </div>
-    </div>
+    <SideDrawer
+      :open="showCreateFornecedor"
+      title="Adicionar Fornecedor"
+      @close="closeCreateFornecedor"
+    >
+      <form
+        class="drawer-form grid grid-cols-1 gap-3"
+        @submit.prevent="createFornecedor"
+      >
+        <FormFeedback
+          :message="fornecedorFeedback.message"
+          :type="fornecedorFeedback.type"
+        />
+        <input
+          v-model="novoFornecedor.razao_social"
+          placeholder="Razão Social"
+          class="p-3 border border-gray-300 rounded-xl"
+          required
+        >
+        <input
+          v-model="novoFornecedor.cnpj"
+          placeholder="CNPJ"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <input
+          v-model="novoFornecedor.inscricao_estadual"
+          placeholder="Inscrição Estadual"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <input
+          v-model="novoFornecedor.telefone"
+          placeholder="Telefone"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <input
+          v-model="novoFornecedor.email"
+          placeholder="Email"
+          type="email"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <div class="mb-2 uf-field">
+          <CustomSelect
+            v-model="novoFornecedor.uf"
+            :options="ufOptions"
+            :placeholder="'UF'"
+            class="w-full input-uf"
+          />
+        </div>
+        <div class="switch-label mb-2">
+          <label
+            class="switch"
+            :class="{ active: novoFornecedor.status }"
+          >
+            <input
+              v-model="novoFornecedor.status"
+              type="checkbox"
+            >
+            <span class="knob" />
+          </label>
+          <span class="text-sm status-text">{{ novoFornecedor.status ? 'ATIVO' : 'INATIVO' }}</span>
+        </div>
+        <div class="drawer-actions flex justify-end gap-3 mt-4">
+          <BaseButton
+            type="button"
+            class="btn-secondary"
+            @click="closeCreateFornecedor"
+          >
+            Cancelar
+          </BaseButton>
+          <BaseButton
+            type="submit"
+            class="btn-primary"
+            :disabled="submittingFornecedor"
+            :loading="submittingFornecedor"
+          >
+            {{ submittingFornecedor ? 'Salvando...' : 'Adicionar' }}
+          </BaseButton>
+        </div>
+      </form>
+    </SideDrawer>
   </div>
 </template>
 
@@ -81,6 +231,10 @@
 import BaseTable from '../components/ui/BaseTable.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 import CustomSelect from '../components/ui/CustomSelect.vue'
+import SideDrawer from '../components/ui/SideDrawer.vue'
+import PageHero from '../components/ui/PageHero.vue'
+import ListState from '../components/ui/ListState.vue'
+import FormFeedback from '../components/ui/FormFeedback.vue'
 import api from '../services/api'
 
 export default {
@@ -89,19 +243,23 @@ export default {
     BaseTable,
     BaseButton,
     CustomSelect,
+    SideDrawer,
+    PageHero,
+    ListState,
+    FormFeedback,
   },
   data() {
     return {
       fornecedores: [],
+      loading: true,
       pageSize: 25,
       currentPageFornecedores: 1,
       showCreateFornecedor: false,
+      submittingFornecedor: false,
+      fornecedorFeedback: { message: '', type: 'info' },
       novoFornecedor: { razao_social: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true },
       editingFornecedorIndex: null,
     }
-  },
-  mounted() {
-    this.fetchFornecedores()
   },
   computed: {
     fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'inscricao_estadual', label: 'Inscrição Estadual' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
@@ -115,22 +273,30 @@ export default {
       ]
     },
   },
+  mounted() {
+    this.fetchFornecedores()
+  },
   methods: {
     async fetchFornecedores() {
+      this.loading = true
       try {
         const res = await api.get('/api/v1/fornecedores')
         this.fornecedores = Array.isArray(res.data) ? res.data : (res.data.items || [])
       } catch (e) {
         console.error('Erro ao carregar fornecedores', e)
         this.fornecedores = []
+      } finally {
+        this.loading = false
       }
     },
     prevFornecedores() { if (this.currentPageFornecedores>1) this.currentPageFornecedores-- },
     nextFornecedores() { if (this.currentPageFornecedores < this.totalPagesFornecedores) this.currentPageFornecedores++ },
     goToFornecedores(n){ this.currentPageFornecedores = Math.min(Math.max(1,n), this.totalPagesFornecedores) },
-    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.novoFornecedor = { razao_social: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
-    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.novoFornecedor={razao_social:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
+    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
+    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
     async createFornecedor(){
+      this.submittingFornecedor = true
+      this.fornecedorFeedback = { message: 'Salvando fornecedor...', type: 'info' }
       try {
         const payload = {
           razao_social: this.novoFornecedor.razao_social,
@@ -145,9 +311,13 @@ export default {
         if (res.data && res.data.id) {
           this.fornecedores.unshift({ id: res.data.id, ...payload })
         }
-        this.closeCreateFornecedor()
+        this.fornecedorFeedback = { message: 'Fornecedor salvo com sucesso.', type: 'success' }
+        setTimeout(() => this.closeCreateFornecedor(), 300)
       } catch (e) {
         console.error('Erro ao criar fornecedor', e)
+        this.fornecedorFeedback = { message: 'Falha ao salvar fornecedor. Tente novamente.', type: 'error' }
+      } finally {
+        this.submittingFornecedor = false
       }
     },
     editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.novoFornecedor = { ...row, status: !!row.status }; this.showCreateFornecedor = true } },

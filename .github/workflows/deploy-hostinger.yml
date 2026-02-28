@@ -3,6 +3,7 @@ name: Build and Deploy to Hostinger
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -44,6 +45,19 @@ jobs:
           file: ./Dockerfile.frontend
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/app-frontend:latest
+
+      - name: Validate deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.HOSTINGER_HOST }}
+          DEPLOY_USER: ${{ secrets.HOSTINGER_USER }}
+          DEPLOY_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          DEPLOY_PORT: ${{ secrets.HOSTINGER_PORT }}
+          DEPLOY_PATH: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_KEY" ] || [ -z "$DEPLOY_PORT" ] || [ -z "$DEPLOY_PATH" ]; then
+            echo "Missing deploy secrets. Configure HOSTINGER_HOST, HOSTINGER_USER, HOSTINGER_SSH_KEY, HOSTINGER_PORT and HOSTINGER_DEPLOY_PATH."
+            exit 1
+          fi
 
       - name: Deploy to Hostinger via SSH
         uses: appleboy/ssh-action@master

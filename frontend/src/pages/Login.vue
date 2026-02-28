@@ -1,39 +1,83 @@
 <template>
-  <div class="max-w-md mx-auto mt-20 bg-white p-6 rounded shadow">
-    <h2 class="text-xl font-semibold mb-4">Login</h2>
-    <form @submit.prevent="submit" class="space-y-3">
-      <input v-model="email" placeholder="Email" type="email" class="w-full p-2 border rounded" />
-      <input v-model="password" placeholder="Senha" type="password" class="w-full p-2 border rounded" />
-      <div class="flex justify-between items-center">
-        <label class="text-sm"><input type="checkbox" v-model="remember" /> Lembrar</label>
-        <button class="px-4 py-2 bg-green-600 text-white rounded">Entrar</button>
-      </div>
-    </form>
-    <p class="mt-4 text-sm text-red-600" v-if="error">{{ error }}</p>
+  <div class="page-shell px-4 sm:px-0 py-6 sm:py-10">
+    <div class="auth-card">
+      <h2 class="text-xl sm:text-2xl font-bold mb-2">
+        Login
+      </h2>
+      <p class="text-sm text-slate-500 mb-4">
+        Acesse sua conta para continuar no workspace.
+      </p>
+      <form
+        class="space-y-3"
+        @submit.prevent="submit"
+      >
+        <input
+          v-model="email"
+          placeholder="Email"
+          type="email"
+          class="w-full p-3 border border-gray-300 rounded-xl"
+          required
+        >
+        <input
+          v-model="password"
+          placeholder="Senha"
+          type="password"
+          class="w-full p-3 border border-gray-300 rounded-xl"
+          required
+        >
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between sm:items-center">
+          <label class="text-sm inline-flex items-center gap-2"><input
+            v-model="remember"
+            type="checkbox"
+          > Lembrar</label>
+          <BaseButton
+            class="w-full sm:w-auto btn-primary"
+            :loading="submitting"
+            :disabled="submitting"
+            type="submit"
+          >
+            Entrar
+          </BaseButton>
+        </div>
+      </form>
+      <p
+        v-if="error"
+        class="mt-4 text-sm text-red-600"
+      >
+        {{ error }}
+      </p>
+    </div>
   </div>
 </template>
 
 <script>
 import { useAuthStore } from '../stores/auth'
+import BaseButton from '../components/ui/BaseButton.vue'
 
 export default {
-  data() { return { email: '', password: '', remember: false, error: null } },
+  components: { BaseButton },
   setup() {
     const auth = useAuthStore()
     return { auth }
   },
+  data() { return { email: '', password: '', remember: false, error: null, submitting: false } },
   mounted() {
     if (this.auth && this.auth.token) {
-      window.location.hash = '#/'
+      this.$router.replace('/')
     }
   },
   methods: {
     async submit() {
+      this.submitting = true
+      this.error = null
       try {
         await this.auth.login(this.email, this.password)
-        window.location.hash = '#/'
+        const destination = this.$route.query.redirect || '/'
+        this.$router.replace(destination)
       } catch (e) {
         this.error = e.response ? e.response.data.error : e.message
+      } finally {
+        this.submitting = false
       }
     }
   }

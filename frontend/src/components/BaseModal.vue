@@ -1,26 +1,50 @@
 
 <template>
   <transition name="modal-fade">
-    <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center" @keydown.esc="onEsc" tabindex="-1" ref="modalRoot">
-      <div class="absolute inset-0 bg-black/40" @click="close" aria-hidden="true"></div>
+    <div
+      v-if="show"
+      ref="modalRoot"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+      tabindex="-1"
+      @keydown.esc="onEsc"
+    >
       <div
+        class="absolute inset-0 bg-black/40"
+        aria-hidden="true"
+        @click="close"
+      />
+      <div
+        ref="dialog"
         class="bg-white dark:bg-slate-800 rounded-lg shadow-lg z-10 w-full max-w-2xl p-4 outline-none"
         role="dialog"
         aria-modal="true"
         :aria-label="title || undefined"
-        ref="dialog"
         @keydown.tab.prevent="trapFocus"
       >
-        <header v-if="$slots.header || title" class="flex items-center justify-between mb-4">
+        <header
+          v-if="$slots.header || title"
+          class="flex items-center justify-between mb-4"
+        >
           <slot name="header">
-            <h3 class="text-lg font-semibold">{{ title }}</h3>
+            <h3 class="text-lg font-semibold">
+              {{ title }}
+            </h3>
           </slot>
-          <button @click="close" aria-label="Fechar" class="ml-2 text-xl">✕</button>
+          <button
+            aria-label="Fechar"
+            class="ml-2 text-xl"
+            @click="close"
+          >
+            ✕
+          </button>
         </header>
         <section>
           <slot />
         </section>
-        <footer v-if="$slots.footer" class="mt-4">
+        <footer
+          v-if="$slots.footer"
+          class="mt-4"
+        >
           <slot name="footer" />
         </footer>
       </div>
