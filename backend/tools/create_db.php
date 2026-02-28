@@ -44,7 +44,13 @@ $db   = resolveDbVar(['DB_DATABASE', 'DB_NAME'], $env, ['DB_DATABASE', 'DB_NAME'
 $user = resolveDbVar(['DB_USERNAME', 'DB_USER'], $env, ['DB_USERNAME', 'DB_USER'], 'root', $isContainer);
 $pass = resolveDbVar(['DB_PASSWORD', 'DB_PASS'], $env, ['DB_PASSWORD', 'DB_PASS'], '', $isContainer);
 
-if ($isContainer && ($host === '127.0.0.1' || $user === 'root' || $db === 'hortifrutnectar')) {
+if ($isContainer && (
+    getenv('DB_HOST') === false ||
+    getenv('DB_PORT') === false ||
+    (getenv('DB_NAME') === false && getenv('DB_DATABASE') === false) ||
+    (getenv('DB_USER') === false && getenv('DB_USERNAME') === false) ||
+    (getenv('DB_PASS') === false && getenv('DB_PASSWORD') === false)
+)) {
     echo "Container mode detected. Ensure DB_HOST, DB_PORT, DB_NAME/DB_DATABASE, DB_USER/DB_USERNAME and DB_PASS/DB_PASSWORD are set in environment.\n";
 }
 
