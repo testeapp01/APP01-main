@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+import api from '../services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -11,13 +11,13 @@ export const useAuthStore = defineStore('auth', {
     setToken(token) {
       this.token = token
       if (typeof localStorage !== 'undefined') localStorage.setItem('hf_token', token)
-      axios.defaults.headers.common.Authorization = `Bearer ${token}`
+      api.defaults.headers.common.Authorization = `Bearer ${token}`
     },
     clear(redirect = true) {
       this.token = null
       this.user = null
       if (typeof localStorage !== 'undefined') localStorage.removeItem('hf_token')
-      delete axios.defaults.headers.common.Authorization
+      delete api.defaults.headers.common.Authorization
       if (redirect && typeof window !== 'undefined') {
         window.location.assign('/login')
       }
@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', {
 
       this.setToken(storedToken)
       try {
-        const response = await axios.get('/api/v1/auth/me')
+        const response = await api.get('/auth/me')
         this.user = response.data?.user || null
       } catch (error) {
         this.clear(false)
@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async login(email, password) {
-      const res = await axios.post('/api/v1/auth/login', { email, password })
+      const res = await api.post('/auth/login', { email, password })
       this.user = res.data.user
       this.setToken(res.data.token)
       return res.data

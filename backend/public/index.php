@@ -30,6 +30,21 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 $authUser = null;
 
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOriginsRaw = getenv('CORS_ALLOWED_ORIGINS') ?: '';
+$allowedOrigins = array_filter(array_map('trim', explode(',', $allowedOriginsRaw)));
+
+if ($origin !== '') {
+    if (empty($allowedOrigins) || in_array($origin, $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+        header('Access-Control-Allow-Credentials: true');
+    }
+}
+
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With');
+
 if ($method === 'OPTIONS') {
     http_response_code(204);
     exit;
