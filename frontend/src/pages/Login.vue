@@ -4,12 +4,12 @@
       <div class="flex items-center gap-3 mb-4">
         <img
           src="/brand-logo.svg"
-          alt="Hortifrut"
+          alt="Safrion"
           class="h-11 w-11 rounded-xl object-contain border border-slate-200 bg-white p-1"
         >
         <div>
           <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
-            Hortifrut
+            Safrion
           </p>
           <p class="text-sm font-semibold text-slate-700">
             Painel de gestão

@@ -34,12 +34,12 @@
             <div class="flex items-center gap-3">
               <img
                 src="/brand-logo.svg"
-                alt="Hortifrut"
+                alt="Safrion"
                 class="h-10 w-10 rounded-xl object-contain border border-slate-200 bg-white p-1"
               >
               <div>
                 <div class="text-lg font-bold">
-                  Hortifrut
+                  Safrion
                 </div>
                 <div class="text-xs muted">
                   v1
@@ -358,7 +358,7 @@
         </div>
 
         <div class="mt-6 text-sm muted">
-          &copy; 2026 Hortifrut
+          &copy; 2026 Safrion
         </div>
       </div>
     </aside>
@@ -384,7 +384,7 @@
         </button>
         <img
           src="/brand-logo.svg"
-          alt="Hortifrut"
+          alt="Safrion"
           class="h-7 w-7 rounded-md object-contain border border-slate-200 bg-white p-[2px]"
         >
         <div class="text-sm font-semibold text-slate-800 truncate">
@@ -428,7 +428,7 @@
 
       <footer class="px-4 py-3 bg-white/85 border-t border-slate-200 text-center">
         <div class="text-xs text-slate-500">
-          © 2026 Hortifrut
+          © 2026 Safrion
         </div>
       </footer>
     </div>

@@ -2,7 +2,7 @@
   <aside class="w-64 bg-slate-900 text-white min-h-screen p-4 hidden md:block">
     <div class="mb-6">
       <h2 class="text-xl font-bold">
-        Hortifrut
+        Safrion
       </h2>
       <p class="text-sm text-slate-400">
         Gestão interna
