@@ -11,7 +11,7 @@ class FornecedorController
 
     public function index(): void
     {
-        $stmt = $this->pdo->query('SELECT id, razao_social, cnpj, email, telefone, inscricao_estadual, status, uf FROM fornecedores ORDER BY razao_social ASC');
+        $stmt = $this->pdo->query('SELECT id, razao_social, endereco, numero, complemento, bairro, cep, cidade, cnpj, email, telefone, inscricao_estadual, status, uf FROM fornecedores ORDER BY razao_social ASC');
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($items);
     }
@@ -30,6 +30,12 @@ class FornecedorController
             $data['status'] = 1;
         }
         $data['uf'] = $data['uf'] ?? null;
+        $data['endereco'] = $data['endereco'] ?? null;
+        $data['numero'] = $data['numero'] ?? null;
+        $data['complemento'] = $data['complemento'] ?? null;
+        $data['bairro'] = $data['bairro'] ?? null;
+        $data['cep'] = $data['cep'] ?? null;
+        $data['cidade'] = $data['cidade'] ?? null;
         require_once __DIR__.'/../Helpers/Validator.php';
         if ($data['cnpj'] && !Validator::validateCNPJ($data['cnpj'])) {
             http_response_code(400);
@@ -46,9 +52,15 @@ class FornecedorController
             echo json_encode(['error' => 'Email inválido']);
             return;
         }
-        $stmt = $this->pdo->prepare('INSERT INTO fornecedores (razao_social, cnpj, email, telefone, inscricao_estadual, status, uf) VALUES (:razao_social, :cnpj, :email, :telefone, :inscricao_estadual, :status, :uf)');
+        $stmt = $this->pdo->prepare('INSERT INTO fornecedores (razao_social, endereco, numero, complemento, bairro, cep, cidade, cnpj, email, telefone, inscricao_estadual, status, uf) VALUES (:razao_social, :endereco, :numero, :complemento, :bairro, :cep, :cidade, :cnpj, :email, :telefone, :inscricao_estadual, :status, :uf)');
         $stmt->execute([
             'razao_social' => $data['razao_social'],
+            'endereco' => $data['endereco'] ?? null,
+            'numero' => $data['numero'] ?? null,
+            'complemento' => $data['complemento'] ?? null,
+            'bairro' => $data['bairro'] ?? null,
+            'cep' => $data['cep'] ?? null,
+            'cidade' => $data['cidade'] ?? null,
             'cnpj' => $data['cnpj'] ?? null,
             'email' => $data['email'] ?? null,
             'telefone' => $data['telefone'] ?? null,

@@ -1,0 +1,24 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="10" y1="8" x2="38" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A3E635"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="32" y1="18" x2="54" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="10" y1="20" x2="30" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDE047"/>
+      <stop offset="1" stop-color="#84CC16"/>
+    </linearGradient>
+    <linearGradient id="soil" x1="10" y1="42" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EA580C"/>
+      <stop offset="1" stop-color="#7C2D12"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 8C33.7 8 35 9.3 35 11V29C35 30.7 33.7 32 32 32C30.3 32 29 30.7 29 29V11C29 9.3 30.3 8 32 8Z" fill="url(#g1)"/>
+  <path d="M40 15C46 18 50 24 50 30C50 31.7 49.7 33.3 49 34.9L44.6 32.9C45 31.9 45.2 30.9 45.2 30C45.2 25.2 42.6 21 38.4 18.8L40 15Z" fill="url(#g2)"/>
+  <path d="M15 34.9C14.3 33.3 14 31.7 14 30C14 23.9 17.9 18.6 23.8 15.3L25.6 19.1C21.3 21.4 18.8 25.6 18.8 30C18.8 30.9 19 31.9 19.4 32.9L15 34.9Z" fill="url(#g3)"/>
+  <path d="M16 42C23.6 36 40.4 36 48 42C43 50 21 50.5 16 42Z" fill="url(#soil)"/>
+</svg>

@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Hortifrut Logo</title>
+  <desc id="desc">Marca com anel de energia em gradiente e base orgânica.</desc>
+  <defs>
+    <linearGradient id="gGreen" x1="128" y1="120" x2="256" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A3E635"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="gBlue" x1="320" y1="160" x2="420" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <linearGradient id="gYellow" x1="120" y1="180" x2="230" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDE047"/>
+      <stop offset="1" stop-color="#84CC16"/>
+    </linearGradient>
+    <linearGradient id="gSoil" x1="128" y1="360" x2="384" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EA580C"/>
+      <stop offset="1" stop-color="#7C2D12"/>
+    </linearGradient>
+    <filter id="shadow" x="84" y="92" width="344" height="368" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <path d="M256 108C269 108 280 119 280 132V266C280 279 269 290 256 290C243 290 232 279 232 266V132C232 119 243 108 256 108Z" fill="url(#gGreen)"/>
+
+    <path d="M318 156C356 176 382 215 382 260C382 272 380 283 375 294L349 282C352 275 354 268 354 260C354 226 335 197 306 181L318 156Z" fill="url(#gBlue)"/>
+
+    <path d="M130 294C126 283 124 272 124 260C124 216 149 177 186 157L198 182C170 197 152 226 152 260C152 268 154 275 157 282L130 294Z" fill="url(#gYellow)"/>
+
+    <path d="M144 332C191 294 320 294 368 332C337 389 175 391 144 332Z" fill="url(#gSoil)"/>
+    <path d="M176 342C225 322 287 322 336 342" stroke="#FDBA74" stroke-width="10" stroke-linecap="round" opacity="0.5"/>
+    <path d="M196 356C236 340 276 340 316 356" stroke="#FB923C" stroke-width="8" stroke-linecap="round" opacity="0.45"/>
+  </g>
+</svg>

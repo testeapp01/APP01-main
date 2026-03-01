@@ -27,6 +27,11 @@ class ClientController
             return;
         }
         // Normalize status, uf, and ensure all fields are present
+        $data['endereco'] = $data['endereco'] ?? null;
+        $data['numero'] = $data['numero'] ?? null;
+        $data['complemento'] = $data['complemento'] ?? null;
+        $data['bairro'] = $data['bairro'] ?? null;
+        $data['cep'] = $data['cep'] ?? null;
         $data['cpf_cnpj'] = $data['cpf_cnpj'] ?? null;
         $data['telefone'] = $data['telefone'] ?? null;
         $data['email'] = $data['email'] ?? null;

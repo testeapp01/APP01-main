@@ -73,11 +73,33 @@ function insertIfNotExists(PDO $pdo, $table, $checkColumn, $checkValue, $data)
         echo "Skipping existing {$table} ({$checkValue})\n";
         return;
     }
-    $cols = array_keys($data);
+
+    static $tableColumnsCache = [];
+    if (!isset($tableColumnsCache[$table])) {
+        $colStmt = $pdo->query("SHOW COLUMNS FROM {$table}");
+        $tableColumnsCache[$table] = array_map(
+            fn($row) => $row['Field'] ?? null,
+            $colStmt->fetchAll(PDO::FETCH_ASSOC)
+        );
+    }
+
+    $allowedColumns = array_filter($tableColumnsCache[$table]);
+    $filteredData = array_filter(
+        $data,
+        fn($value, $key) => in_array($key, $allowedColumns, true),
+        ARRAY_FILTER_USE_BOTH
+    );
+
+    if (!$filteredData) {
+        echo "No compatible columns for {$table}; skipping seed for {$checkValue}\n";
+        return;
+    }
+
+    $cols = array_keys($filteredData);
     $place = array_map(fn($c) => ':' . $c, $cols);
     $sql = "INSERT INTO {$table} (" . implode(',', $cols) . ") VALUES (" . implode(',', $place) . ")";
     $stmt = $pdo->prepare($sql);
-    foreach ($data as $k => $v) $stmt->bindValue(':' . $k, $v);
+    foreach ($filteredData as $k => $v) $stmt->bindValue(':' . $k, $v);
     $stmt->execute();
     echo "Inserted into {$table}: {$checkValue}\n";
 }

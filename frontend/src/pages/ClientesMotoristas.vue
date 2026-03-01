@@ -68,6 +68,9 @@
           <template #cpf_cnpj="{ row }">
             {{ row.cpf_cnpj || '-' }}
           </template>
+          <template #endereco="{ row }">
+            {{ formatAddress(row) }}
+          </template>
           <template #uf="{ row }">
             {{ row.uf || '-' }}
           </template>
@@ -158,10 +161,52 @@
           required
         >
         <input
+          v-model="novaCliente.endereco"
+          placeholder="Endereço"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            v-model="novaCliente.numero"
+            placeholder="Número"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+          <input
+            v-model="novaCliente.complemento"
+            placeholder="Complemento"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            v-model="novaCliente.bairro"
+            placeholder="Bairro"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+          <input
+            v-model="novaCliente.cep"
+            placeholder="CEP"
+            class="p-3 border border-gray-300 rounded-xl"
+            @input="onClienteCepInput"
+          >
+        </div>
+        <input
+          v-model="novaCliente.cidade"
+          placeholder="Cidade"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <input
           v-model="novaCliente.cpf_cnpj"
           placeholder="CPF ou CNPJ"
           class="p-3 border border-gray-300 rounded-xl"
+          @input="onClienteCpfCnpjInput"
         >
+        <p
+          v-if="clienteDocumentoError"
+          class="text-sm text-red-600"
+        >
+          {{ clienteDocumentoError }}
+        </p>
         <input
           v-model="novaCliente.telefone"
           placeholder="Telefone"
@@ -329,15 +374,16 @@ export default {
       submittingClient: false,
       submittingDriver: false,
       clientFeedback: { message: '', type: 'info' },
+      clienteDocumentoError: '',
       driverFeedback: { message: '', type: 'info' },
-      novaCliente: { nome: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true },
+      novaCliente: { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true },
       novoMotorista: { nome: '', placa: '', veiculo: '', uf: '', telefone: '', status: true },
       editingClientIndex: null,
       editingDriverIndex: null,
     };
   },
   computed: {
-    clientCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'cpf_cnpj', label: 'CPF / CNPJ' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
+    clientCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'cpf_cnpj', label: 'CPF / CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
     driverCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'placa', label: 'Placa' }, { key: 'veiculo', label: 'Veículo' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
     visibleClients() { return (this.clients||[]).filter(c=> c && (c.nome||c.cpf_cnpj||c.telefone||c.email)) },
     totalPagesClients() { return Math.max(1, Math.ceil(this.visibleClients.length / this.pageSize)) },
@@ -387,15 +433,28 @@ export default {
     prevDrivers() { if (this.currentPageDrivers>1) this.currentPageDrivers-- },
     nextDrivers() { if (this.currentPageDrivers < this.totalPagesDrivers) this.currentPageDrivers++ },
     goToDrivers(n){ this.currentPageDrivers = Math.min(Math.max(1,n), this.totalPagesDrivers) },
-    openCreateClient(){ this.editingClientIndex = null; this.clientFeedback = { message: '', type: 'info' }; this.novaCliente = { nome: '', cpf_cnpj: '', telefone: '', email: '', status: true }; this.showCreateClient=true },
-    closeCreateClient(){ this.showCreateClient=false; this.submittingClient=false; this.clientFeedback = { message: '', type: 'info' }; this.novaCliente={nome:'',cpf_cnpj:'',telefone:'',email:'',status:true}; this.editingClientIndex = null },
+    openCreateClient(){ this.editingClientIndex = null; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente = { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateClient=true },
+    closeCreateClient(){ this.showCreateClient=false; this.submittingClient=false; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente={nome:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cpf_cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingClientIndex = null },
     async createClient(){
       this.submittingClient = true
       this.clientFeedback = { message: 'Salvando cliente...', type: 'info' }
       try {
+        const documento = this.onlyDigits(this.novaCliente.cpf_cnpj)
+        if (documento && !this.isValidCpfCnpj(documento)) {
+          this.clienteDocumentoError = 'CPF/CNPJ inválido.'
+          this.clientFeedback = { message: 'Verifique o CPF/CNPJ informado.', type: 'error' }
+          return
+        }
+        this.clienteDocumentoError = ''
         const payload = {
           nome: this.novaCliente.nome,
-          cpf_cnpj: this.novaCliente.cpf_cnpj,
+          endereco: this.novaCliente.endereco,
+          numero: this.novaCliente.numero,
+          complemento: this.novaCliente.complemento,
+          bairro: this.novaCliente.bairro,
+          cep: this.onlyDigits(this.novaCliente.cep),
+          cidade: this.novaCliente.cidade,
+          cpf_cnpj: documento,
           telefone: this.novaCliente.telefone,
           email: this.novaCliente.email,
           uf: this.novaCliente.uf || null,
@@ -414,7 +473,7 @@ export default {
         this.submittingClient = false
       }
     },
-    editClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) { this.editingClientIndex = idx; this.novaCliente = { ...row, status: !!row.status }; this.showCreateClient = true } },
+    editClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) { this.editingClientIndex = idx; this.clienteDocumentoError = ''; this.novaCliente = { ...row, cep: this.applyCepMask(row.cep), cpf_cnpj: this.applyCpfCnpjMask(row.cpf_cnpj), status: !!row.status }; this.showCreateClient = true } },
     deleteClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) this.clients.splice(idx,1) },
     openCreateDriver(){ this.editingDriverIndex = null; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista = { nome: '', placa: '', veiculo: '', telefone: '', status: true }; this.showCreateDriver=true },
     closeCreateDriver(){ this.showCreateDriver=false; this.submittingDriver=false; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista={nome:'',placa:'',veiculo:'',telefone:'',status:true}; this.editingDriverIndex = null },
@@ -444,7 +503,77 @@ export default {
       }
     },
     editDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) { this.editingDriverIndex = idx; this.novoMotorista = { ...row, status: !!row.status }; this.showCreateDriver = true } },
-    deleteDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) this.motoristas.splice(idx,1) }
+    deleteDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) this.motoristas.splice(idx,1) },
+    formatAddress(row) {
+      const parts = [
+        row.endereco,
+        row.numero,
+        row.complemento,
+        row.bairro,
+        row.cidade,
+        row.cep ? `CEP ${row.cep}` : null,
+      ].filter(Boolean)
+      return parts.length ? parts.join(', ') : '-'
+    },
+    onlyDigits(value) {
+      return String(value || '').replace(/\D+/g, '')
+    },
+    applyCepMask(value) {
+      const digits = this.onlyDigits(value).slice(0, 8)
+      return digits.replace(/(\d{5})(\d{0,3})/, (_, a, b) => (b ? `${a}-${b}` : a))
+    },
+    applyCpfCnpjMask(value) {
+      const digits = this.onlyDigits(value).slice(0, 14)
+      if (digits.length <= 11) {
+        return digits
+          .replace(/(\d{3})(\d)/, '$1.$2')
+          .replace(/(\d{3})(\d)/, '$1.$2')
+          .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+      }
+      return digits
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+    },
+    isValidCpfCnpj(value) {
+      const digits = this.onlyDigits(value)
+      if (digits.length === 11) return this.isValidCpf(digits)
+      if (digits.length === 14) return this.isValidCnpj(digits)
+      return false
+    },
+    isValidCpf(cpf) {
+      if (!cpf || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+      const calc = (base, factor) => {
+        let total = 0
+        for (let i = 0; i < base.length; i += 1) total += Number(base[i]) * (factor - i)
+        const remainder = (total * 10) % 11
+        return remainder === 10 ? 0 : remainder
+      }
+      const d1 = calc(cpf.slice(0, 9), 10)
+      const d2 = calc(cpf.slice(0, 10), 11)
+      return d1 === Number(cpf[9]) && d2 === Number(cpf[10])
+    },
+    isValidCnpj(cnpj) {
+      if (!cnpj || cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false
+      const calc = (base, multipliers) => {
+        const total = base
+          .split('')
+          .reduce((sum, digit, idx) => sum + Number(digit) * multipliers[idx], 0)
+        const remainder = total % 11
+        return remainder < 2 ? 0 : 11 - remainder
+      }
+      const d1 = calc(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+      const d2 = calc(cnpj.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+      return d1 === Number(cnpj[12]) && d2 === Number(cnpj[13])
+    },
+    onClienteCepInput() {
+      this.novaCliente.cep = this.applyCepMask(this.novaCliente.cep)
+    },
+    onClienteCpfCnpjInput() {
+      this.clienteDocumentoError = ''
+      this.novaCliente.cpf_cnpj = this.applyCpfCnpjMask(this.novaCliente.cpf_cnpj)
+    }
 
   }
 }

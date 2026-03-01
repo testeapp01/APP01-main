@@ -71,6 +71,9 @@
           <template #cnpj="{ row }">
             {{ row.cnpj || '-' }}
           </template>
+          <template #endereco="{ row }">
+            {{ formatAddress(row) }}
+          </template>
           <template #inscricao_estadual="{ row }">
             {{ row.inscricao_estadual || '-' }}
           </template>
@@ -164,9 +167,45 @@
           required
         >
         <input
+          v-model="novoFornecedor.endereco"
+          placeholder="Endereço"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            v-model="novoFornecedor.numero"
+            placeholder="Número"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+          <input
+            v-model="novoFornecedor.complemento"
+            placeholder="Complemento"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            v-model="novoFornecedor.bairro"
+            placeholder="Bairro"
+            class="p-3 border border-gray-300 rounded-xl"
+          >
+          <input
+            v-model="novoFornecedor.cep"
+            placeholder="CEP"
+            class="p-3 border border-gray-300 rounded-xl"
+            @input="onFornecedorCepInput"
+          >
+        </div>
+        <input
+          v-model="novoFornecedor.cidade"
+          placeholder="Cidade"
+          class="p-3 border border-gray-300 rounded-xl"
+        >
+        <input
           v-model="novoFornecedor.cnpj"
           placeholder="CNPJ"
           class="p-3 border border-gray-300 rounded-xl"
+          @input="onFornecedorCnpjInput"
         >
         <input
           v-model="novoFornecedor.inscricao_estadual"
@@ -257,12 +296,12 @@ export default {
       showCreateFornecedor: false,
       submittingFornecedor: false,
       fornecedorFeedback: { message: '', type: 'info' },
-      novoFornecedor: { razao_social: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true },
+      novoFornecedor: { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true },
       editingFornecedorIndex: null,
     }
   },
   computed: {
-    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'inscricao_estadual', label: 'Inscrição Estadual' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
+    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'inscricao_estadual', label: 'Inscrição Estadual' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
     visibleFornecedores() { return (this.fornecedores||[]).filter(f=> f && (f.razao_social||f.cnpj||f.telefone||f.email)) },
     totalPagesFornecedores() { return Math.max(1, Math.ceil(this.visibleFornecedores.length / this.pageSize)) },
     paginatedFornecedores() { const s=(this.currentPageFornecedores-1)*this.pageSize; return this.visibleFornecedores.slice(s,s+this.pageSize) },
@@ -292,15 +331,21 @@ export default {
     prevFornecedores() { if (this.currentPageFornecedores>1) this.currentPageFornecedores-- },
     nextFornecedores() { if (this.currentPageFornecedores < this.totalPagesFornecedores) this.currentPageFornecedores++ },
     goToFornecedores(n){ this.currentPageFornecedores = Math.min(Math.max(1,n), this.totalPagesFornecedores) },
-    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
-    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
+    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
+    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
     async createFornecedor(){
       this.submittingFornecedor = true
       this.fornecedorFeedback = { message: 'Salvando fornecedor...', type: 'info' }
       try {
         const payload = {
           razao_social: this.novoFornecedor.razao_social,
-          cnpj: this.novoFornecedor.cnpj,
+          endereco: this.novoFornecedor.endereco,
+          numero: this.novoFornecedor.numero,
+          complemento: this.novoFornecedor.complemento,
+          bairro: this.novoFornecedor.bairro,
+          cep: this.onlyDigits(this.novoFornecedor.cep),
+          cidade: this.novoFornecedor.cidade,
+          cnpj: this.onlyDigits(this.novoFornecedor.cnpj),
           inscricao_estadual: this.novoFornecedor.inscricao_estadual,
           telefone: this.novoFornecedor.telefone,
           email: this.novoFornecedor.email,
@@ -320,8 +365,40 @@ export default {
         this.submittingFornecedor = false
       }
     },
-    editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.novoFornecedor = { ...row, status: !!row.status }; this.showCreateFornecedor = true } },
-    deleteFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) this.fornecedores.splice(idx,1) }
+    editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.novoFornecedor = { ...row, cep: this.applyCepMask(row.cep), cnpj: this.applyCnpjMask(row.cnpj), status: !!row.status }; this.showCreateFornecedor = true } },
+    deleteFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) this.fornecedores.splice(idx,1) },
+    formatAddress(row) {
+      const parts = [
+        row.endereco,
+        row.numero,
+        row.complemento,
+        row.bairro,
+        row.cidade,
+        row.cep ? `CEP ${row.cep}` : null,
+      ].filter(Boolean)
+      return parts.length ? parts.join(', ') : '-'
+    },
+    onlyDigits(value) {
+      return String(value || '').replace(/\D+/g, '')
+    },
+    applyCepMask(value) {
+      const digits = this.onlyDigits(value).slice(0, 8)
+      return digits.replace(/(\d{5})(\d{0,3})/, (_, a, b) => (b ? `${a}-${b}` : a))
+    },
+    applyCnpjMask(value) {
+      const digits = this.onlyDigits(value).slice(0, 14)
+      return digits
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+    },
+    onFornecedorCepInput() {
+      this.novoFornecedor.cep = this.applyCepMask(this.novoFornecedor.cep)
+    },
+    onFornecedorCnpjInput() {
+      this.novoFornecedor.cnpj = this.applyCnpjMask(this.novoFornecedor.cnpj)
+    }
   }
 }
 </script>

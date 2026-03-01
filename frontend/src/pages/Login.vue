@@ -1,6 +1,21 @@
 <template>
   <div class="page-shell px-4 sm:px-0 py-6 sm:py-10">
     <div class="auth-card">
+      <div class="flex items-center gap-3 mb-4">
+        <img
+          src="/brand-logo.svg"
+          alt="Hortifrut"
+          class="h-11 w-11 rounded-xl object-contain border border-slate-200 bg-white p-1"
+        >
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+            Hortifrut
+          </p>
+          <p class="text-sm font-semibold text-slate-700">
+            Painel de gestão
+          </p>
+        </div>
+      </div>
       <h2 class="text-xl sm:text-2xl font-bold mb-2">
         Login
       </h2>

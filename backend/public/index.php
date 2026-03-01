@@ -170,6 +170,11 @@ if ($uri === '/api/v1/relatorios' && $method === 'GET') {
     exit;
 }
 
+if ($uri === '/api/v1/relatorios/dashboard' && $method === 'GET') {
+    (new ReportsController($pdo))->dashboard();
+    exit;
+}
+
 // product routes
 if (str_starts_with($uri, '/api/v1/products')) {
     $productController = new ProductController($pdo);

@@ -11,15 +11,20 @@ class ClientRepository
 
     public function all(): array
     {
-        $stmt = $this->pdo->query('SELECT id, nome, cpf_cnpj, telefone, email, uf, status, cidade FROM clientes ORDER BY id DESC');
+        $stmt = $this->pdo->query('SELECT id, nome, endereco, numero, complemento, bairro, cep, cpf_cnpj, telefone, email, uf, status, cidade FROM clientes ORDER BY id DESC');
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare('INSERT INTO clientes (nome, cpf_cnpj, telefone, email, uf, status, cidade) VALUES (:nome, :cpf_cnpj, :telefone, :email, :uf, :status, :cidade)');
+        $stmt = $this->pdo->prepare('INSERT INTO clientes (nome, endereco, numero, complemento, bairro, cep, cpf_cnpj, telefone, email, uf, status, cidade) VALUES (:nome, :endereco, :numero, :complemento, :bairro, :cep, :cpf_cnpj, :telefone, :email, :uf, :status, :cidade)');
         $stmt->execute([
             'nome' => $data['nome'],
+            'endereco' => $data['endereco'] ?? null,
+            'numero' => $data['numero'] ?? null,
+            'complemento' => $data['complemento'] ?? null,
+            'bairro' => $data['bairro'] ?? null,
+            'cep' => $data['cep'] ?? null,
             'cpf_cnpj' => $data['cpf_cnpj'] ?? null,
             'telefone' => $data['telefone'] ?? null,
             'email' => $data['email'] ?? null,

@@ -32,12 +32,14 @@
         <div>
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
-              <div class="app-logo">
-                S
-              </div>
+              <img
+                src="/brand-logo.svg"
+                alt="Hortifrut"
+                class="h-10 w-10 rounded-xl object-contain border border-slate-200 bg-white p-1"
+              >
               <div>
                 <div class="text-lg font-bold">
-                  Safrion
+                  Hortifrut
                 </div>
                 <div class="text-xs muted">
                   v1
@@ -380,6 +382,11 @@
         >
           ☰
         </button>
+        <img
+          src="/brand-logo.svg"
+          alt="Hortifrut"
+          class="h-7 w-7 rounded-md object-contain border border-slate-200 bg-white p-[2px]"
+        >
         <div class="text-sm font-semibold text-slate-800 truncate">
           {{ pageTitle }}
         </div>
