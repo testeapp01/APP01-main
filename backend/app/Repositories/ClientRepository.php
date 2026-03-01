@@ -34,4 +34,10 @@ class ClientRepository
         ]);
         return (int)$this->pdo->lastInsertId();
     }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM clientes WHERE id = :id');
+        return $stmt->execute(['id' => $id]);
+    }
 }

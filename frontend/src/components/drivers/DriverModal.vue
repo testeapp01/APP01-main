@@ -1,7 +1,7 @@
 <template>
   <SideDrawer
     :open="showCreateModal"
-    title="Adicionar Motorista"
+    :title="title"
     @close="closeCreateModal"
   >
     <form
@@ -81,7 +81,7 @@
           :disabled="submitting"
           :loading="submitting"
         >
-          {{ submitting ? 'Salvando...' : 'Adicionar' }}
+          {{ submitting ? 'Salvando...' : submitLabel }}
         </BaseButton>
       </div>
     </form>
@@ -112,7 +112,9 @@ export default {
     caminhaoOptions: { type: Array, default: () => [] },
     submitting: { type: Boolean, default: false },
     feedbackMessage: { type: String, default: '' },
-    feedbackType: { type: String, default: 'info' }
+    feedbackType: { type: String, default: 'info' },
+    title: { type: String, default: 'Adicionar Motorista' },
+    submitLabel: { type: String, default: 'Adicionar' }
   },
   emits: ['update:nome', 'update:cpf', 'update:placa', 'update:veiculo', 'update:telefone', 'update:uf', 'update:tpCaminhao', 'update:status'],
   setup(props, { emit }) {

@@ -71,4 +71,16 @@ class FornecedorController
         http_response_code(201);
         echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }
+
+    public function delete(int $id): void
+    {
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM fornecedores WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+            echo json_encode(['message' => 'Fornecedor removido com sucesso']);
+        } catch (\PDOException $e) {
+            http_response_code(409);
+            echo json_encode(['error' => 'Não foi possível excluir o fornecedor. Verifique vínculos com compras.']);
+        }
+    }
 }

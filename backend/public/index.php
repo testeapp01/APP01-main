@@ -131,9 +131,19 @@ if ($uri === '/api/v1/clientes' && $method === 'POST') {
     exit;
 }
 
+if (preg_match('#^/api/v1/clientes/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new ClientController($pdo))->delete((int)$matches[1]);
+    exit;
+}
+
 // motoristas
 if ($uri === '/api/v1/motoristas' && $method === 'GET') {
     (new MotoristaController($pdo))->index();
+    exit;
+}
+
+if ($uri === '/api/v1/tipos-caminhao' && $method === 'GET') {
+    (new MotoristaController($pdo))->listTiposCaminhao();
     exit;
 }
 
@@ -148,8 +158,23 @@ if ($uri === '/api/v1/fornecedores' && $method === 'POST') {
     exit;
 }
 
+if (preg_match('#^/api/v1/fornecedores/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new FornecedorController($pdo))->delete((int)$matches[1]);
+    exit;
+}
+
 if ($uri === '/api/v1/motoristas' && $method === 'POST') {
     (new MotoristaController($pdo))->create();
+    exit;
+}
+
+if (preg_match('#^/api/v1/motoristas/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
+    (new MotoristaController($pdo))->update((int)$matches[1]);
+    exit;
+}
+
+if (preg_match('#^/api/v1/motoristas/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new MotoristaController($pdo))->delete((int)$matches[1]);
     exit;
 }
 

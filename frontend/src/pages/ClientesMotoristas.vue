@@ -6,6 +6,12 @@
     >
       <template #actions>
         <BaseButton
+          class="btn-secondary"
+          @click="refreshClients"
+        >
+          Atualizar
+        </BaseButton>
+        <BaseButton
           class="btn-primary"
           @click="openCreateClient"
         >
@@ -293,6 +299,14 @@
           placeholder="Telefone"
           class="p-3 border border-gray-300 rounded-xl"
         >
+        <div class="mb-2">
+          <CustomSelect
+            v-model="novoMotorista.TpCaminhao"
+            :options="caminhaoOptions"
+            :placeholder="'Tipo de Caminhão'"
+            class="w-full input-uf"
+          />
+        </div>
         <div class="mb-2 uf-field">
           <CustomSelect
             v-model="novoMotorista.uf"
@@ -333,6 +347,16 @@
         </div>
       </form>
     </SideDrawer>
+
+    <ConfirmDialog
+      :open="confirmDeleteOpen"
+      :title="confirmDeleteTitle"
+      :message="confirmDeleteMessage"
+      :loading="deletingEntity"
+      confirm-label="Excluir"
+      @cancel="cancelDelete"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 
@@ -345,6 +369,7 @@ import SideDrawer from '../components/ui/SideDrawer.vue'
 import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import api from '../services/api'
 
 export default {
@@ -357,6 +382,7 @@ export default {
     PageHero,
     ListState,
     FormFeedback,
+    ConfirmDialog,
   },
   data() {
     return {
@@ -377,9 +403,16 @@ export default {
       clienteDocumentoError: '',
       driverFeedback: { message: '', type: 'info' },
       novaCliente: { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true },
-      novoMotorista: { nome: '', placa: '', veiculo: '', uf: '', telefone: '', status: true },
+      novoMotorista: { nome: '', placa: '', veiculo: '', uf: '', telefone: '', TpCaminhao: '', status: true },
       editingClientIndex: null,
       editingDriverIndex: null,
+      editingDriverId: null,
+      caminhaoOptions: [ { value: '', label: 'Tipo de Caminhão' } ],
+      confirmDeleteOpen: false,
+      confirmDeleteTitle: 'Confirmar exclusão',
+      confirmDeleteMessage: '',
+      deletingEntity: false,
+      pendingDelete: null,
     };
   },
   computed: {
@@ -401,6 +434,7 @@ export default {
   mounted() {
     this.fetchClients()
     this.fetchDrivers()
+    this.fetchTiposCaminhao()
   },
   methods: {
     async fetchClients() {
@@ -427,12 +461,26 @@ export default {
         this.loadingDrivers = false
       }
     },
+    async fetchTiposCaminhao() {
+      try {
+        const res = await api.get('/api/v1/tipos-caminhao')
+        if (Array.isArray(res.data)) {
+          this.caminhaoOptions = [ { value: '', label: 'Tipo de Caminhão' }, ...res.data.map(t => ({ value: t.id, label: t.nome })) ]
+        }
+      } catch (e) {
+        this.caminhaoOptions = [ { value: '', label: 'Tipo de Caminhão' } ]
+      }
+    },
     prevClients() { if (this.currentPageClients>1) this.currentPageClients-- },
     nextClients() { if (this.currentPageClients < this.totalPagesClients) this.currentPageClients++ },
     goToClients(n){ this.currentPageClients = Math.min(Math.max(1,n), this.totalPagesClients) },
     prevDrivers() { if (this.currentPageDrivers>1) this.currentPageDrivers-- },
     nextDrivers() { if (this.currentPageDrivers < this.totalPagesDrivers) this.currentPageDrivers++ },
     goToDrivers(n){ this.currentPageDrivers = Math.min(Math.max(1,n), this.totalPagesDrivers) },
+    async refreshClients() {
+      this.currentPageClients = 1
+      await this.fetchClients()
+    },
     openCreateClient(){ this.editingClientIndex = null; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente = { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateClient=true },
     closeCreateClient(){ this.showCreateClient=false; this.submittingClient=false; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente={nome:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cpf_cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingClientIndex = null },
     async createClient(){
@@ -464,6 +512,8 @@ export default {
         if (res.data && res.data.id) {
           this.clients.unshift({ id: res.data.id, ...payload })
         }
+        this.currentPageClients = 1
+        await this.fetchClients()
         this.clientFeedback = { message: 'Cliente salvo com sucesso.', type: 'success' }
         setTimeout(() => this.closeCreateClient(), 300)
       } catch (e) {
@@ -474,12 +524,18 @@ export default {
       }
     },
     editClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) { this.editingClientIndex = idx; this.clienteDocumentoError = ''; this.novaCliente = { ...row, cep: this.applyCepMask(row.cep), cpf_cnpj: this.applyCpfCnpjMask(row.cpf_cnpj), status: !!row.status }; this.showCreateClient = true } },
-    deleteClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) this.clients.splice(idx,1) },
-    openCreateDriver(){ this.editingDriverIndex = null; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista = { nome: '', placa: '', veiculo: '', telefone: '', status: true }; this.showCreateDriver=true },
-    closeCreateDriver(){ this.showCreateDriver=false; this.submittingDriver=false; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista={nome:'',placa:'',veiculo:'',telefone:'',status:true}; this.editingDriverIndex = null },
+    deleteClient(row){
+      if (!row?.id) return
+      this.pendingDelete = { kind: 'cliente', id: row.id }
+      this.confirmDeleteTitle = 'Excluir cliente'
+      this.confirmDeleteMessage = `Deseja excluir o cliente \"${row.nome || row.id}\"?`
+      this.confirmDeleteOpen = true
+    },
+    openCreateDriver(){ this.editingDriverIndex = null; this.editingDriverId = null; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista = { nome: '', placa: '', veiculo: '', telefone: '', uf: '', TpCaminhao: '', status: true }; this.showCreateDriver=true },
+    closeCreateDriver(){ this.showCreateDriver=false; this.submittingDriver=false; this.driverFeedback = { message: '', type: 'info' }; this.novoMotorista={nome:'',placa:'',veiculo:'',telefone:'',uf:'',TpCaminhao:'',status:true}; this.editingDriverIndex = null; this.editingDriverId = null },
     async createDriver(){
       this.submittingDriver = true
-      this.driverFeedback = { message: 'Salvando motorista...', type: 'info' }
+      this.driverFeedback = { message: this.editingDriverId ? 'Atualizando motorista...' : 'Salvando motorista...', type: 'info' }
       try {
         const payload = {
           nome: this.novoMotorista.nome,
@@ -487,13 +543,20 @@ export default {
           veiculo: this.novoMotorista.veiculo,
           uf: this.novoMotorista.uf || null,
           telefone: this.novoMotorista.telefone,
+          TpCaminhao: this.novoMotorista.TpCaminhao || null,
           status: !!this.novoMotorista.status,
         }
-        const res = await api.post('/api/v1/motoristas', payload)
-        if (res.data && res.data.id) {
-          this.motoristas.unshift({ id: res.data.id, ...payload })
+        if (this.editingDriverId) {
+          await api.put(`/api/v1/motoristas/${this.editingDriverId}`, payload)
+        } else {
+          const res = await api.post('/api/v1/motoristas', payload)
+          if (res.data && res.data.id) {
+            this.motoristas.unshift({ id: res.data.id, ...payload })
+          }
         }
-        this.driverFeedback = { message: 'Motorista salvo com sucesso.', type: 'success' }
+        this.currentPageDrivers = 1
+        await this.fetchDrivers()
+        this.driverFeedback = { message: this.editingDriverId ? 'Motorista atualizado com sucesso.' : 'Motorista salvo com sucesso.', type: 'success' }
         setTimeout(() => this.closeCreateDriver(), 300)
       } catch (e) {
         console.error('Erro ao criar motorista', e)
@@ -502,8 +565,44 @@ export default {
         this.submittingDriver = false
       }
     },
-    editDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) { this.editingDriverIndex = idx; this.novoMotorista = { ...row, status: !!row.status }; this.showCreateDriver = true } },
-    deleteDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) this.motoristas.splice(idx,1) },
+    editDriver(row){ const idx = this.motoristas.indexOf(row); if (idx!==-1) { this.editingDriverIndex = idx; this.editingDriverId = row.id || null; this.novoMotorista = { ...row, status: !!row.status }; this.showCreateDriver = true } },
+    deleteDriver(row){
+      if (!row?.id) return
+      this.pendingDelete = { kind: 'motorista', id: row.id }
+      this.confirmDeleteTitle = 'Excluir motorista'
+      this.confirmDeleteMessage = `Deseja excluir o motorista \"${row.nome || row.id}\"?`
+      this.confirmDeleteOpen = true
+    },
+    cancelDelete() {
+      this.confirmDeleteOpen = false
+      this.confirmDeleteTitle = 'Confirmar exclusão'
+      this.confirmDeleteMessage = ''
+      this.pendingDelete = null
+      this.deletingEntity = false
+    },
+    async confirmDelete() {
+      if (!this.pendingDelete?.id || !this.pendingDelete?.kind) return
+      this.deletingEntity = true
+      try {
+        if (this.pendingDelete.kind === 'cliente') {
+          await api.delete(`/api/v1/clientes/${this.pendingDelete.id}`)
+          this.currentPageClients = 1
+          await this.fetchClients()
+        } else {
+          await api.delete(`/api/v1/motoristas/${this.pendingDelete.id}`)
+          this.currentPageDrivers = 1
+          await this.fetchDrivers()
+        }
+      } catch (e) {
+        if (this.pendingDelete.kind === 'cliente') {
+          this.clientFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o cliente.', type: 'error' }
+        } else {
+          this.driverFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o motorista.', type: 'error' }
+        }
+      } finally {
+        this.cancelDelete()
+      }
+    },
     formatAddress(row) {
       const parts = [
         row.endereco,

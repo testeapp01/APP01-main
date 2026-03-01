@@ -6,6 +6,12 @@
     >
       <template #actions>
         <BaseButton
+          class="btn-secondary"
+          @click="refreshFornecedores"
+        >
+          Atualizar
+        </BaseButton>
+        <BaseButton
           class="btn-primary"
           @click="openCreateFornecedor"
         >
@@ -263,6 +269,16 @@
         </div>
       </form>
     </SideDrawer>
+
+    <ConfirmDialog
+      :open="confirmDeleteOpen"
+      title="Excluir fornecedor"
+      :message="confirmDeleteMessage"
+      :loading="deletingFornecedor"
+      confirm-label="Excluir"
+      @cancel="cancelDeleteFornecedor"
+      @confirm="confirmDeleteFornecedor"
+    />
   </div>
 </template>
 
@@ -274,6 +290,7 @@ import SideDrawer from '../components/ui/SideDrawer.vue'
 import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
+import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import api from '../services/api'
 
 export default {
@@ -286,6 +303,7 @@ export default {
     PageHero,
     ListState,
     FormFeedback,
+    ConfirmDialog,
   },
   data() {
     return {
@@ -298,6 +316,10 @@ export default {
       fornecedorFeedback: { message: '', type: 'info' },
       novoFornecedor: { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true },
       editingFornecedorIndex: null,
+      confirmDeleteOpen: false,
+      confirmDeleteMessage: '',
+      deletingFornecedor: false,
+      fornecedorToDelete: null,
     }
   },
   computed: {
@@ -331,6 +353,10 @@ export default {
     prevFornecedores() { if (this.currentPageFornecedores>1) this.currentPageFornecedores-- },
     nextFornecedores() { if (this.currentPageFornecedores < this.totalPagesFornecedores) this.currentPageFornecedores++ },
     goToFornecedores(n){ this.currentPageFornecedores = Math.min(Math.max(1,n), this.totalPagesFornecedores) },
+    async refreshFornecedores() {
+      this.currentPageFornecedores = 1
+      await this.fetchFornecedores()
+    },
     openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
     closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
     async createFornecedor(){
@@ -356,6 +382,8 @@ export default {
         if (res.data && res.data.id) {
           this.fornecedores.unshift({ id: res.data.id, ...payload })
         }
+        this.currentPageFornecedores = 1
+        await this.fetchFornecedores()
         this.fornecedorFeedback = { message: 'Fornecedor salvo com sucesso.', type: 'success' }
         setTimeout(() => this.closeCreateFornecedor(), 300)
       } catch (e) {
@@ -366,7 +394,32 @@ export default {
       }
     },
     editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.novoFornecedor = { ...row, cep: this.applyCepMask(row.cep), cnpj: this.applyCnpjMask(row.cnpj), status: !!row.status }; this.showCreateFornecedor = true } },
-    deleteFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) this.fornecedores.splice(idx,1) },
+    deleteFornecedor(row){
+      if (!row?.id) return
+      this.fornecedorToDelete = row
+      this.confirmDeleteMessage = `Deseja excluir o fornecedor \"${row.razao_social || row.id}\"?`
+      this.confirmDeleteOpen = true
+    },
+    cancelDeleteFornecedor() {
+      this.confirmDeleteOpen = false
+      this.confirmDeleteMessage = ''
+      this.fornecedorToDelete = null
+      this.deletingFornecedor = false
+    },
+    async confirmDeleteFornecedor() {
+      if (!this.fornecedorToDelete?.id) return
+      this.deletingFornecedor = true
+      try {
+        await api.delete(`/api/v1/fornecedores/${this.fornecedorToDelete.id}`)
+        this.currentPageFornecedores = 1
+        await this.fetchFornecedores()
+      } catch (e) {
+        console.error('Erro ao excluir fornecedor', e)
+        this.fornecedorFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o fornecedor.', type: 'error' }
+      } finally {
+        this.cancelDeleteFornecedor()
+      }
+    },
     formatAddress(row) {
       const parts = [
         row.endereco,

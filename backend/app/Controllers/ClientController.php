@@ -70,4 +70,16 @@ class ClientController
         http_response_code(201);
         echo json_encode(['id' => $id]);
     }
+
+    public function delete(int $id): void
+    {
+        try {
+            $repo = new ClientRepository($this->pdo);
+            $repo->delete($id);
+            echo json_encode(['message' => 'Cliente removido com sucesso']);
+        } catch (\PDOException $e) {
+            http_response_code(409);
+            echo json_encode(['error' => 'Não foi possível excluir o cliente. Verifique vínculos com vendas.']);
+        }
+    }
 }
