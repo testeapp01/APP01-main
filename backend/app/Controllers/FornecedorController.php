@@ -5,13 +5,47 @@ use PDO;
 
 class FornecedorController
 {
+    private ?array $fornecedorColumnsCache = null;
+
     public function __construct(private PDO $pdo)
     {
     }
 
+    private function fornecedorColumns(): array
+    {
+        if ($this->fornecedorColumnsCache !== null) {
+            return $this->fornecedorColumnsCache;
+        }
+
+        $stmt = $this->pdo->query('SHOW COLUMNS FROM fornecedores');
+        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->fornecedorColumnsCache = array_values(array_filter(array_map(
+            static fn(array $row) => $row['Field'] ?? null,
+            $cols
+        )));
+
+        return $this->fornecedorColumnsCache;
+    }
+
+    private function hasFornecedorColumn(string $column): bool
+    {
+        return in_array($column, $this->fornecedorColumns(), true);
+    }
+
     public function index(): void
     {
-        $stmt = $this->pdo->query('SELECT id, razao_social, endereco, numero, complemento, bairro, cep, cidade, cnpj, email, telefone, inscricao_estadual, status, uf FROM fornecedores ORDER BY razao_social ASC');
+        $wanted = ['id', 'razao_social', 'endereco', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'cnpj', 'email', 'telefone', 'inscricao_estadual', 'status', 'uf'];
+        $select = array_map(function (string $column): string {
+            if ($this->hasFornecedorColumn($column)) {
+                return $column;
+            }
+            if ($column === 'status') {
+                return '1 AS status';
+            }
+            return 'NULL AS ' . $column;
+        }, $wanted);
+
+        $stmt = $this->pdo->query('SELECT ' . implode(', ', $select) . ' FROM fornecedores ORDER BY razao_social ASC');
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($items);
     }
@@ -52,8 +86,7 @@ class FornecedorController
             echo json_encode(['error' => 'Email inválido']);
             return;
         }
-        $stmt = $this->pdo->prepare('INSERT INTO fornecedores (razao_social, endereco, numero, complemento, bairro, cep, cidade, cnpj, email, telefone, inscricao_estadual, status, uf) VALUES (:razao_social, :endereco, :numero, :complemento, :bairro, :cep, :cidade, :cnpj, :email, :telefone, :inscricao_estadual, :status, :uf)');
-        $stmt->execute([
+        $possible = [
             'razao_social' => $data['razao_social'],
             'endereco' => $data['endereco'] ?? null,
             'numero' => $data['numero'] ?? null,
@@ -67,7 +100,25 @@ class FornecedorController
             'inscricao_estadual' => $data['inscricao_estadual'] ?? null,
             'status' => $data['status'],
             'uf' => $data['uf'] ?? null,
-        ]);
+        ];
+
+        $insertData = array_filter(
+            $possible,
+            fn($value, $column) => $this->hasFornecedorColumn((string)$column),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        if (empty($insertData)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Tabela fornecedores sem colunas compatíveis para inserção.']);
+            return;
+        }
+
+        $columns = array_keys($insertData);
+        $placeholders = array_map(static fn(string $column) => ':' . $column, $columns);
+        $sql = 'INSERT INTO fornecedores (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($insertData);
         http_response_code(201);
         echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }
