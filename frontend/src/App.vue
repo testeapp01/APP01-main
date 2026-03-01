@@ -403,9 +403,81 @@
                 {{ pageTitle }}
               </p>
             </div>
-            <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold border border-emerald-200">
-              ● Online
-            </span>
+            <div class="flex items-center gap-3">
+              <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold border border-emerald-200">
+                ● Online
+              </span>
+
+              <div class="relative">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  aria-label="Notificações"
+                  @click="toggleNotifications"
+                >
+                  🔔
+                  <span
+                    v-if="notifications.length"
+                    class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                  >
+                    {{ notifications.length > 9 ? '9+' : notifications.length }}
+                  </span>
+                </button>
+
+                <div
+                  v-if="notificationsOpen"
+                  class="absolute right-0 mt-2 w-[320px] rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-30"
+                >
+                  <p class="px-2 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Notificações
+                  </p>
+                  <div
+                    v-if="!notifications.length"
+                    class="px-2 py-3 text-sm text-slate-500"
+                  >
+                    Sem alertas de envio/entrega.
+                  </div>
+                  <button
+                    v-for="note in notifications"
+                    :key="note.key"
+                    type="button"
+                    class="w-full text-left px-2 py-2 rounded-lg hover:bg-slate-50"
+                    @click="goToNotification(note)"
+                  >
+                    <p class="text-sm font-semibold text-slate-800">{{ note.title }}</p>
+                    <p class="text-xs text-slate-500">{{ note.subtitle }}</p>
+                  </button>
+                </div>
+              </div>
+
+              <div class="relative">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  @click="toggleProfile"
+                >
+                  <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+                    {{ userInitials }}
+                  </span>
+                  Perfil
+                </button>
+
+                <div
+                  v-if="profileOpen"
+                  class="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-30"
+                >
+                  <p class="px-2 pt-1 text-sm font-semibold text-slate-800">{{ auth.user?.name || 'Usuário' }}</p>
+                  <p class="px-2 pb-2 text-xs text-slate-500">Sessão expira em 10 min sem interação.</p>
+                  <button
+                    type="button"
+                    class="w-full text-left px-2 py-2 rounded-lg text-red-600 hover:bg-red-50"
+                    @click="logoutNow"
+                  >
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </div>
           </section>
           <div class="app-surface flex-1 border border-sidebar-border md:border-l md:border-t rounded-xl md:rounded-2xl bg-background text-foreground p-4 sm:p-6 md:p-8">
             <router-view
@@ -439,6 +511,7 @@
 import { ref, onMounted, onUnmounted, getCurrentInstance, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
+import api from './services/api'
 
 export default {
   setup() {
@@ -447,7 +520,96 @@ export default {
     const sidebarOpen = ref(false)
     const pageTitle = ref('Dashboard')
     const isMobile = ref(false)
-    const isPublicView = computed(() => route.path === '/login')
+    const isPublicView = computed(() => route.path === '/login' || route.path === '/sessao-expirada')
+    const profileOpen = ref(false)
+    const notificationsOpen = ref(false)
+    const notifications = ref([])
+    const lastInteractionAt = ref(Date.now())
+    const idleLimitMs = 10 * 60 * 1000
+    let idleTimer = null
+    let notificationsTimer = null
+
+    const userInitials = computed(() => {
+      const name = auth.user?.name || 'Usuário'
+      return name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || 'US'
+    })
+
+    const formatDate = (value) => {
+      if (!value) return '-'
+      const [year, month, day] = String(value).slice(0, 10).split('-')
+      return year && month && day ? `${day}/${month}/${year}` : value
+    }
+
+    const daysUntil = (value) => {
+      if (!value) return Number.POSITIVE_INFINITY
+      const target = new Date(`${String(value).slice(0, 10)}T23:59:59`)
+      const now = new Date()
+      return Math.floor((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    }
+
+    const noteSubtitle = (label, date, days) => {
+      if (days < 0) return `${label} atrasado (${formatDate(date)})`
+      if (days === 0) return `${label} hoje (${formatDate(date)})`
+      return `${label} em ${days} dia(s) (${formatDate(date)})`
+    }
+
+    const markInteraction = () => {
+      lastInteractionAt.value = Date.now()
+    }
+
+    const buildNotifications = (items, kind) => {
+      const mapped = []
+      for (const row of items || []) {
+        if (!row?.id) continue
+        const envioDays = daysUntil(row.data_envio_prevista)
+        if (Number.isFinite(envioDays) && envioDays <= 2) {
+          mapped.push({
+            key: `${kind}-${row.id}-envio`,
+            route: kind === 'Compra' ? '/compras' : '/vendas',
+            title: `${kind} #${row.id} • Envio`,
+            subtitle: noteSubtitle('Envio previsto', row.data_envio_prevista, envioDays),
+            days: envioDays,
+          })
+        }
+
+        const entregaDays = daysUntil(row.data_entrega_prevista)
+        if (Number.isFinite(entregaDays) && entregaDays <= 2) {
+          mapped.push({
+            key: `${kind}-${row.id}-entrega`,
+            route: kind === 'Compra' ? '/compras' : '/vendas',
+            title: `${kind} #${row.id} • Entrega`,
+            subtitle: noteSubtitle('Entrega prevista', row.data_entrega_prevista, entregaDays),
+            days: entregaDays,
+          })
+        }
+      }
+      return mapped
+    }
+
+    const loadNotifications = async () => {
+      if (isPublicView.value || !auth.token) {
+        notifications.value = []
+        return
+      }
+      try {
+        const [comprasRes, vendasRes] = await Promise.all([
+          api.get('/api/v1/compras', { params: { page: 1, per_page: 100 } }),
+          api.get('/api/v1/vendas', { params: { page: 1, per_page: 100 } }),
+        ])
+        const compraItems = buildNotifications(comprasRes.data?.items || [], 'Compra')
+        const vendaItems = buildNotifications(vendasRes.data?.items || [], 'Venda')
+        notifications.value = [...compraItems, ...vendaItems]
+          .sort((a, b) => a.days - b.days)
+          .slice(0, 12)
+      } catch {
+        notifications.value = []
+      }
+    }
 
     function updateIsMobile() {
       isMobile.value = (typeof window !== 'undefined') && window.innerWidth < 768
@@ -456,9 +618,25 @@ export default {
     onMounted(() => {
       updateIsMobile()
       window.addEventListener('resize', updateIsMobile)
+      ;['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evt) => {
+        window.addEventListener(evt, markInteraction, { passive: true })
+      })
+      idleTimer = window.setInterval(() => {
+        if (isPublicView.value || !auth.token) return
+        if (Date.now() - lastInteractionAt.value >= idleLimitMs) {
+          auth.expireSession()
+        }
+      }, 30000)
+      loadNotifications()
+      notificationsTimer = window.setInterval(loadNotifications, 60000)
     })
     onUnmounted(() => {
       window.removeEventListener('resize', updateIsMobile)
+      ;['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evt) => {
+        window.removeEventListener(evt, markInteraction)
+      })
+      if (idleTimer) window.clearInterval(idleTimer)
+      if (notificationsTimer) window.clearInterval(notificationsTimer)
     })
 
     function toggleSidebar() {
@@ -471,10 +649,36 @@ export default {
       if (title) pageTitle.value = title
     }
 
+    function toggleProfile() {
+      profileOpen.value = !profileOpen.value
+      if (profileOpen.value) notificationsOpen.value = false
+    }
+
+    function toggleNotifications() {
+      notificationsOpen.value = !notificationsOpen.value
+      if (notificationsOpen.value) profileOpen.value = false
+    }
+
+    function logoutNow() {
+      auth.clear(true)
+    }
+
+    function goToNotification(note) {
+      profileOpen.value = false
+      notificationsOpen.value = false
+      if (note?.route) {
+        markInteraction()
+        window.location.assign(note.route)
+      }
+    }
+
     watch(
       () => route.fullPath,
       () => {
         closeOnMobile()
+        profileOpen.value = false
+        notificationsOpen.value = false
+        loadNotifications()
       }
     )
 
@@ -495,7 +699,26 @@ export default {
       theme.value = gp.current
     }
 
-    return { auth, sidebarOpen, toggleSidebar, closeOnMobile, pageTitle, updateTitle, isMobile, theme, toggleTheme, isPublicView }
+    return {
+      auth,
+      sidebarOpen,
+      toggleSidebar,
+      closeOnMobile,
+      pageTitle,
+      updateTitle,
+      isMobile,
+      theme,
+      toggleTheme,
+      isPublicView,
+      profileOpen,
+      notificationsOpen,
+      notifications,
+      userInitials,
+      toggleProfile,
+      toggleNotifications,
+      logoutNow,
+      goToNotification,
+    }
   },
 }
 </script>

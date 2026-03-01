@@ -31,7 +31,7 @@ class PurchaseController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT c.id, f.razao_social AS fornecedor, p.nome AS produto, c.quantidade, c.valor_unitario, c.status FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT c.id, f.razao_social AS fornecedor, p.nome AS produto, c.quantidade, c.valor_unitario, c.status, c.data_compra, c.data_envio_prevista, c.data_entrega_prevista FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -88,7 +88,7 @@ class PurchaseController
             if ($prod) $data['produto_id'] = $prod['id'];
         }
 
-        $stmt = $this->pdo->prepare('INSERT INTO compras (fornecedor_id, produto_id, motorista_id, quantidade, valor_unitario, tipo_comissao, valor_comissao, extra_por_saco, custo_total, comissao_total, custo_final_real, status, data_compra) VALUES (:fornecedor_id, :produto_id, :motorista_id, :quantidade, :valor_unitario, :tipo_comissao, :valor_comissao, :extra_por_saco, :custo_total, :comissao_total, :custo_final_real, :status, NOW())');
+        $stmt = $this->pdo->prepare('INSERT INTO compras (fornecedor_id, produto_id, motorista_id, quantidade, valor_unitario, tipo_comissao, valor_comissao, extra_por_saco, custo_total, comissao_total, custo_final_real, status, data_compra, data_envio_prevista, data_entrega_prevista) VALUES (:fornecedor_id, :produto_id, :motorista_id, :quantidade, :valor_unitario, :tipo_comissao, :valor_comissao, :extra_por_saco, :custo_total, :comissao_total, :custo_final_real, :status, NOW(), :data_envio_prevista, :data_entrega_prevista)');
 
         $stmt->execute([
             'fornecedor_id' => $data['fornecedor_id'],
@@ -103,6 +103,8 @@ class PurchaseController
             'comissao_total' => $calcs['comissao_total'],
             'custo_final_real' => $calcs['custo_final_real'],
             'status' => 'NEGOCIADA',
+            'data_envio_prevista' => !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null,
+            'data_entrega_prevista' => !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null,
         ]);
 
         $id = (int)$this->pdo->lastInsertId();

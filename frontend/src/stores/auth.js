@@ -13,14 +13,17 @@ export const useAuthStore = defineStore('auth', {
       if (typeof localStorage !== 'undefined') localStorage.setItem('hf_token', token)
       api.defaults.headers.common.Authorization = `Bearer ${token}`
     },
-    clear(redirect = true) {
+    clear(redirect = true, redirectPath = '/login') {
       this.token = null
       this.user = null
       if (typeof localStorage !== 'undefined') localStorage.removeItem('hf_token')
       delete api.defaults.headers.common.Authorization
       if (redirect && typeof window !== 'undefined') {
-        window.location.assign('/login')
+        window.location.assign(redirectPath)
       }
+    },
+    expireSession() {
+      this.clear(true, '/sessao-expirada')
     },
     async hydrateSession() {
       const storedToken = (typeof localStorage !== 'undefined') ? localStorage.getItem('hf_token') : null

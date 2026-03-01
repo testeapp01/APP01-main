@@ -11,6 +11,7 @@ const routes = [
   { path: '/relatorios', name: 'Relatorios', component: () => import('../pages/Relatorios.vue'), meta: { requiresAuth: true } },
   { path: '/configuracoes', name: 'Configuracoes', component: () => import('../pages/Configuracoes.vue'), meta: { requiresAuth: true } },
   { path: '/login', name: 'Login', component: () => import('../pages/Login.vue'), meta: { publicOnly: true } },
+  { path: '/sessao-expirada', name: 'SessaoExpirada', component: () => import('../pages/SessaoExpirada.vue'), meta: { publicOnly: true } },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 

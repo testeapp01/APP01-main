@@ -33,7 +33,7 @@ class SalesController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT v.id, c.nome AS cliente, p.nome AS produto, v.quantidade, v.valor_unitario, v.status FROM vendas v LEFT JOIN clientes c ON v.cliente_id = c.id LEFT JOIN produtos p ON v.produto_id = p.id {$where} ORDER BY v.id DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT v.id, c.nome AS cliente, p.nome AS produto, v.quantidade, v.valor_unitario, v.status, v.data_venda, v.data_envio_prevista, v.data_entrega_prevista FROM vendas v LEFT JOIN clientes c ON v.cliente_id = c.id LEFT JOIN produtos p ON v.produto_id = p.id {$where} ORDER BY v.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -65,6 +65,38 @@ class SalesController
                 return;
             }
 
+            $data['data_envio_prevista'] = !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null;
+            $data['data_entrega_prevista'] = !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null;
+
+            $createdIds = [];
+            if (!empty($data['items']) && is_array($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    if (empty($item['produto_id'])) {
+                        continue;
+                    }
+                    $saleData = [
+                        'cliente_id' => $data['cliente_id'],
+                        'produto_id' => (int)$item['produto_id'],
+                        'quantidade' => (float)($item['quantidade'] ?? 0),
+                        'valor_unitario' => (float)($item['valor_unitario'] ?? 0),
+                        'status' => $data['status'] ?? 'ORCAMENTO',
+                        'data_envio_prevista' => $data['data_envio_prevista'],
+                        'data_entrega_prevista' => $data['data_entrega_prevista'],
+                    ];
+                    $createdIds[] = $service->createSale($saleData);
+                }
+
+                if (empty($createdIds)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Adicione ao menos um item válido com produto_id']);
+                    return;
+                }
+
+                http_response_code(201);
+                echo json_encode(['id' => $createdIds[0], 'ids' => $createdIds]);
+                return;
+            }
+
             // Normalize produto_id: accept produto_id directly or try to resolve by name
             if (empty($data['produto_id'])) {
                 $prodName = $data['produto'] ?? ($data['nome_produto'] ?? null);
@@ -81,6 +113,7 @@ class SalesController
                 echo json_encode(['error' => 'produto_id ou nome_produto obrigatório']);
                 return;
             }
+
             $id = $service->createSale($data);
             // fetch created record
             $sale = (new SalesRepository($this->pdo))->findById((int)$id);

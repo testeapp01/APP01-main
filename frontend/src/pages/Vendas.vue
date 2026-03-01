@@ -87,8 +87,20 @@
           <template #status="{ row }">
             {{ row.status || '-' }}
           </template>
+          <template #data_envio_prevista="{ row }">
+            {{ formatDate(row.data_envio_prevista) }}
+          </template>
+          <template #data_entrega_prevista="{ row }">
+            {{ formatDate(row.data_entrega_prevista) }}
+          </template>
           <template #acoes="{ row }">
-            <div>
+            <div class="flex flex-wrap gap-2">
+              <BaseButton
+                variant="secondary"
+                @click="printOrder(row)"
+              >
+                Imprimir
+              </BaseButton>
               <BaseButton
                 v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')"
                 variant="primary"
@@ -273,6 +285,25 @@
             </BaseButton>
           </div>
         </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-gray-600">Data de Envio</label>
+            <input
+              v-model="novaVenda.data_envio_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Data de Entrega</label>
+            <input
+              v-model="novaVenda.data_entrega_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+        </div>
         <div class="drawer-actions flex justify-end gap-3 mt-4">
           <BaseButton
             type="button"
@@ -315,13 +346,15 @@ export default {
       vendas: [],
       loading: false,
       query: '',
-      novaVenda: { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
+      novaVenda: { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
       tableCols: [
         { key: 'cliente', label: 'Cliente' },
         { key: 'produto', label: 'Produto' },
         { key: 'quantidade', label: 'Quantidade' },
         { key: 'valor_unitario', label: 'Valor Unit.' },
         { key: 'status', label: 'Status' },
+        { key: 'data_envio_prevista', label: 'Envio Previsto' },
+        { key: 'data_entrega_prevista', label: 'Entrega Prevista' },
         { key: 'acoes', label: 'Ações' },
       ],
       totalCount: 0,
@@ -407,7 +440,7 @@ export default {
       const id = this.confirmPayload
       this.confirming = false
       try {
-        await api.patch(`/api/v1/vendas/${id}`, { status: 'entregue' })
+        await api.post('/api/v1/vendas/deliver', { venda_id: id })
         useToast().notify('Pedido marcado como entregue', { type: 'success' })
         this.loadVendas()
       } catch (e) {
@@ -424,11 +457,13 @@ export default {
         if (items.length === 0) throw new Error('Adicione pelo menos um produto')
         const payload = {
           cliente_id: this.novaVenda.cliente_id,
+          data_envio_prevista: this.novaVenda.data_envio_prevista || null,
+          data_entrega_prevista: this.novaVenda.data_entrega_prevista || null,
           items: items.map(it => ({ produto_id: it.produto_id, quantidade: it.quantidade || 1, valor_unitario: it.valor_unitario || 0 }))
         }
         await api.post('/api/v1/vendas', payload)
         this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
-        this.novaVenda = { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
+        this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
       } catch (e) {
@@ -448,11 +483,52 @@ export default {
       }
     },
     openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
-    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },
     refresh() { this.loadVendas() },
     onQuery() { clearTimeout(this.timer); this.timer = setTimeout(() => this.loadVendas(), 350) },
+    formatDate(value) {
+      if (!value) return '-'
+      const [year, month, day] = String(value).slice(0, 10).split('-')
+      return year && month && day ? `${day}/${month}/${year}` : value
+    },
+    printOrder(row) {
+      const html = `
+        <html>
+          <head>
+            <title>Ordem de Venda #${row.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+              h1 { margin-bottom: 6px; }
+              .muted { color: #64748b; margin-bottom: 18px; }
+              table { width: 100%; border-collapse: collapse; }
+              td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+              th { background: #f8fafc; width: 32%; }
+            </style>
+          </head>
+          <body>
+            <h1>Ordem de Venda #${row.id}</h1>
+            <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
+            <table>
+              <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
+              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
+              <tr><th>Quantidade</th><td>${row.quantidade ?? '-'}</td></tr>
+              <tr><th>Valor Unitário</th><td>R$ ${row.valor_unitario ?? '-'}</td></tr>
+              <tr><th>Status</th><td>${row.status || '-'}</td></tr>
+              <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
+              <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>
+            </table>
+          </body>
+        </html>
+      `
+      const printWindow = window.open('', '_blank', 'width=900,height=700')
+      if (!printWindow) return
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    },
   },
 }
 </script>

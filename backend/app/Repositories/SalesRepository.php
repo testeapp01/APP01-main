@@ -11,7 +11,7 @@ class SalesRepository
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare('INSERT INTO vendas (cliente_id, produto_id, quantidade, valor_unitario, receita_total, custo_proporcional, lucro_bruto, margem_percentual, status, data_venda) VALUES (:cliente_id, :produto_id, :quantidade, :valor_unitario, :receita_total, :custo_proporcional, :lucro_bruto, :margem_percentual, :status, CURRENT_TIMESTAMP)');
+        $stmt = $this->pdo->prepare('INSERT INTO vendas (cliente_id, produto_id, quantidade, valor_unitario, receita_total, custo_proporcional, lucro_bruto, margem_percentual, status, data_venda, data_envio_prevista, data_entrega_prevista) VALUES (:cliente_id, :produto_id, :quantidade, :valor_unitario, :receita_total, :custo_proporcional, :lucro_bruto, :margem_percentual, :status, CURRENT_TIMESTAMP, :data_envio_prevista, :data_entrega_prevista)');
         $stmt->execute([
             'cliente_id' => $data['cliente_id'],
             'produto_id' => $data['produto_id'],
@@ -22,6 +22,8 @@ class SalesRepository
             'lucro_bruto' => $data['lucro_bruto'],
             'margem_percentual' => $data['margem_percentual'],
             'status' => $data['status'] ?? 'ORCAMENTO',
+            'data_envio_prevista' => $data['data_envio_prevista'] ?? null,
+            'data_entrega_prevista' => $data['data_entrega_prevista'] ?? null,
         ]);
         return (int)$this->pdo->lastInsertId();
     }

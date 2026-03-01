@@ -11,7 +11,7 @@ final class SalesServiceTest extends TestCase
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec("CREATE TABLE produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, estoque_atual REAL DEFAULT 0, custo_medio REAL DEFAULT 0);");
-        $pdo->exec("CREATE TABLE vendas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, produto_id INTEGER, quantidade REAL, valor_unitario REAL, receita_total REAL, custo_proporcional REAL, lucro_bruto REAL, margem_percentual REAL, status TEXT, data_venda DATETIME);");
+        $pdo->exec("CREATE TABLE vendas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, produto_id INTEGER, quantidade REAL, valor_unitario REAL, receita_total REAL, custo_proporcional REAL, lucro_bruto REAL, margem_percentual REAL, status TEXT, data_venda DATETIME, data_envio_prevista DATE, data_entrega_prevista DATE);");
         return $pdo;
     }
 

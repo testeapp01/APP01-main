@@ -79,6 +79,20 @@
         <template #status="{ row }">
           {{ row.status || '-' }}
         </template>
+        <template #data_envio_prevista="{ row }">
+          {{ formatDate(row.data_envio_prevista) }}
+        </template>
+        <template #data_entrega_prevista="{ row }">
+          {{ formatDate(row.data_entrega_prevista) }}
+        </template>
+        <template #acoes="{ row }">
+          <BaseButton
+            variant="secondary"
+            @click="printOrder(row)"
+          >
+            Imprimir
+          </BaseButton>
+        </template>
       </BaseTable>
     </div>
     <ListState
@@ -282,6 +296,25 @@
             >
           </div>
         </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Envio</label>
+            <input
+              v-model="novaCompra.data_envio_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Entrega</label>
+            <input
+              v-model="novaCompra.data_entrega_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+        </div>
         <!-- Comissões centralizadas abaixo -->
         <div
           v-if="novaCompra.tipo === 'cliente'"
@@ -432,6 +465,8 @@ export default {
         comissao_motorista: null,
         comissao_intermediador_em_dinheiro: true,
         comissao_motorista_em_dinheiro: true,
+        data_envio_prevista: '',
+        data_entrega_prevista: '',
         quantidade: 0,
         valor_unitario: 0,
       },
@@ -450,7 +485,10 @@ export default {
       { key: 'produto', label: 'Produto' },
       { key: 'quantidade', label: 'Quantidade' },
       { key: 'valor_unitario', label: 'Valor Unit.' },
-      { key: 'status', label: 'Status' }
+      { key: 'status', label: 'Status' },
+      { key: 'data_envio_prevista', label: 'Envio Previsto' },
+      { key: 'data_entrega_prevista', label: 'Entrega Prevista' },
+      { key: 'acoes', label: 'Ações' }
     ] },
     visibleCompras() {
       return (this.compras || []).filter(c => {
@@ -496,6 +534,8 @@ export default {
           quantidade: this.novaCompra.quantidade,
           valor_unitario: this.novaCompra.valor_unitario,
           fornecedor_id: this.novaCompra.fornecedor_id,
+          data_envio_prevista: this.novaCompra.data_envio_prevista || null,
+          data_entrega_prevista: this.novaCompra.data_entrega_prevista || null,
         }
         if (this.novaCompra.tipo === 'cliente') {
           payload = {
@@ -510,7 +550,7 @@ export default {
         }
         await api.post('/api/v1/compras', payload)
         this.purchaseFeedback = { message: 'Compra criada com sucesso.', type: 'success' }
-        this.novaCompra = { tipo: 'revenda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, quantidade: 0, valor_unitario: 0 }
+        this.novaCompra = { tipo: 'revenda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadCompras()
       } catch (e) {
@@ -568,10 +608,51 @@ export default {
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },
-    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { fornecedor: '', produto: '', quantidade: 0, valor_unitario: 0 } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { tipo: 'revenda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 } },
     prevPage() { if (this.currentPage > 1) { this.currentPage--; this.loadCompras() } },
     nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.loadCompras() } },
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadCompras() },
+    formatDate(value) {
+      if (!value) return '-'
+      const [year, month, day] = String(value).slice(0, 10).split('-')
+      return year && month && day ? `${day}/${month}/${year}` : value
+    },
+    printOrder(row) {
+      const html = `
+        <html>
+          <head>
+            <title>Ordem de Compra #${row.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+              h1 { margin-bottom: 6px; }
+              .muted { color: #64748b; margin-bottom: 18px; }
+              table { width: 100%; border-collapse: collapse; }
+              td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+              th { background: #f8fafc; width: 32%; }
+            </style>
+          </head>
+          <body>
+            <h1>Ordem de Compra #${row.id}</h1>
+            <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
+            <table>
+              <tr><th>Fornecedor</th><td>${row.fornecedor || '-'}</td></tr>
+              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
+              <tr><th>Quantidade</th><td>${row.quantidade ?? '-'}</td></tr>
+              <tr><th>Valor Unitário</th><td>R$ ${row.valor_unitario ?? '-'}</td></tr>
+              <tr><th>Status</th><td>${row.status || '-'}</td></tr>
+              <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
+              <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>
+            </table>
+          </body>
+        </html>
+      `
+      const printWindow = window.open('', '_blank', 'width=900,height=700')
+      if (!printWindow) return
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    },
   },
 }
 </script>
