@@ -34,7 +34,7 @@ class FornecedorController
 
     public function index(): void
     {
-        $wanted = ['id', 'razao_social', 'endereco', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'cnpj', 'email', 'telefone', 'inscricao_estadual', 'status', 'uf'];
+        $wanted = ['id', 'razao_social', 'endereco', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'cnpj', 'email', 'telefone', 'status', 'uf'];
         $select = array_map(function (string $column): string {
             if ($this->hasFornecedorColumn($column)) {
                 return $column;
@@ -71,17 +71,24 @@ class FornecedorController
         $data['cep'] = $data['cep'] ?? null;
         $data['cidade'] = $data['cidade'] ?? null;
         require_once __DIR__.'/../Helpers/Validator.php';
-        if ($data['cnpj'] && !Validator::validateCNPJ($data['cnpj'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'CNPJ inválido']);
-            return;
+
+        if (!empty($data['cnpj'])) {
+            $cnpjDigits = preg_replace('/\D/', '', (string)$data['cnpj']);
+            if (strlen($cnpjDigits) !== 14 || !\Validator::validateCNPJ($cnpjDigits)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'CNPJ inválido']);
+                return;
+            }
+            $data['cnpj'] = $cnpjDigits;
         }
-        if ($data['telefone'] && !Validator::validateTelefone($data['telefone'])) {
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Telefone inválido']);
             return;
         }
-        if ($data['email'] && !Validator::validateEmail($data['email'])) {
+
+        if ($data['email'] && !\Validator::validateEmail($data['email'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Email inválido']);
             return;
@@ -97,7 +104,6 @@ class FornecedorController
             'cnpj' => $data['cnpj'] ?? null,
             'email' => $data['email'] ?? null,
             'telefone' => $data['telefone'] ?? null,
-            'inscricao_estadual' => $data['inscricao_estadual'] ?? null,
             'status' => $data['status'],
             'uf' => $data['uf'] ?? null,
         ];
@@ -117,8 +123,21 @@ class FornecedorController
         $columns = array_keys($insertData);
         $placeholders = array_map(static fn(string $column) => ':' . $column, $columns);
         $sql = 'INSERT INTO fornecedores (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($insertData);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($insertData);
+        } catch (\PDOException $e) {
+            if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+                http_response_code(409);
+                echo json_encode(['error' => 'CNPJ já cadastrado.']);
+                return;
+            }
+
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao salvar fornecedor.']);
+            return;
+        }
+
         http_response_code(201);
         echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }

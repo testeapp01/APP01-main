@@ -90,6 +90,11 @@ class PurchaseController
 
         $quantidade = (float)$data['quantidade'];
         $valorUnitario = (float)$data['valor_unitario'];
+        if ($quantidade <= 0 || $valorUnitario <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'quantidade e valor_unitario devem ser maiores que zero']);
+            return;
+        }
 
         $tipoComissao = $data['tipo_comissao'] ?? null; // 'percentual'|'fixa'|null
         $valorComissao = isset($data['valor_comissao']) ? (float)$data['valor_comissao'] : null;
@@ -144,8 +149,21 @@ class PurchaseController
             $valuesSql[] = 'NOW()';
         }
 
-        $stmt = $this->pdo->prepare('INSERT INTO compras (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $valuesSql) . ')');
-        $stmt->execute($params);
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO compras (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $valuesSql) . ')');
+            $stmt->execute($params);
+        } catch (\PDOException $e) {
+            $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
+            if ($mysqlCode === 1452) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Fornecedor, produto ou motorista inválido.']);
+                return;
+            }
+
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao salvar compra.']);
+            return;
+        }
 
         $id = (int)$this->pdo->lastInsertId();
         http_response_code(201);

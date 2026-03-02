@@ -290,7 +290,7 @@ export default {
         setTimeout(() => this.closeCreateModal(), 300)
         await this.load()
       } catch (e) {
-        this.driverFeedback = { message: 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
+        this.driverFeedback = { message: e?.response?.data?.error || 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
       } finally {
         this.submittingDriver = false
       }

@@ -18,8 +18,7 @@ ALTER TABLE fornecedores ADD COLUMN bairro VARCHAR(100) NULL AFTER complemento;
 ALTER TABLE fornecedores ADD COLUMN cep VARCHAR(20) NULL AFTER bairro;
 ALTER TABLE fornecedores ADD COLUMN cidade VARCHAR(100) NULL AFTER cep;
 ALTER TABLE fornecedores ADD COLUMN email VARCHAR(150) NULL AFTER cnpj;
-ALTER TABLE fornecedores ADD COLUMN inscricao_estadual VARCHAR(100) NULL AFTER telefone;
-ALTER TABLE fornecedores ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1 AFTER inscricao_estadual;
+ALTER TABLE fornecedores ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1 AFTER telefone;
 ALTER TABLE fornecedores ADD COLUMN uf VARCHAR(2) NULL AFTER status;
 
 ALTER TABLE motoristas ADD COLUMN placa VARCHAR(50) NULL AFTER nome;

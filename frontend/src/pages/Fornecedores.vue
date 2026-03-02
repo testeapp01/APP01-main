@@ -80,9 +80,6 @@
           <template #endereco="{ row }">
             {{ formatAddress(row) }}
           </template>
-          <template #inscricao_estadual="{ row }">
-            {{ row.inscricao_estadual || '-' }}
-          </template>
           <template #uf="{ row }">
             {{ row.uf || '-' }}
           </template>
@@ -214,11 +211,6 @@
           @input="onFornecedorCnpjInput"
         >
         <input
-          v-model="novoFornecedor.inscricao_estadual"
-          placeholder="Inscrição Estadual"
-          class="p-3 border border-gray-300 rounded-xl"
-        >
-        <input
           v-model="novoFornecedor.telefone"
           placeholder="Telefone"
           class="p-3 border border-gray-300 rounded-xl"
@@ -314,7 +306,7 @@ export default {
       showCreateFornecedor: false,
       submittingFornecedor: false,
       fornecedorFeedback: { message: '', type: 'info' },
-      novoFornecedor: { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true },
+      novoFornecedor: { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', telefone: '', email: '', uf: '', status: true },
       editingFornecedorIndex: null,
       confirmDeleteOpen: false,
       confirmDeleteMessage: '',
@@ -323,7 +315,7 @@ export default {
     }
   },
   computed: {
-    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'inscricao_estadual', label: 'Inscrição Estadual' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
+    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
     visibleFornecedores() { return (this.fornecedores||[]).filter(f=> f && (f.razao_social||f.cnpj||f.telefone||f.email)) },
     totalPagesFornecedores() { return Math.max(1, Math.ceil(this.visibleFornecedores.length / this.pageSize)) },
     paginatedFornecedores() { const s=(this.currentPageFornecedores-1)*this.pageSize; return this.visibleFornecedores.slice(s,s+this.pageSize) },
@@ -357,8 +349,8 @@ export default {
       this.currentPageFornecedores = 1
       await this.fetchFornecedores()
     },
-    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', inscricao_estadual: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
-    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',inscricao_estadual:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
+    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
+    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
     async createFornecedor(){
       this.submittingFornecedor = true
       this.fornecedorFeedback = { message: 'Salvando fornecedor...', type: 'info' }
@@ -372,7 +364,6 @@ export default {
           cep: this.onlyDigits(this.novoFornecedor.cep),
           cidade: this.novoFornecedor.cidade,
           cnpj: this.onlyDigits(this.novoFornecedor.cnpj),
-          inscricao_estadual: this.novoFornecedor.inscricao_estadual,
           telefone: this.novoFornecedor.telefone,
           email: this.novoFornecedor.email,
           uf: this.novoFornecedor.uf || null,
@@ -388,7 +379,8 @@ export default {
         setTimeout(() => this.closeCreateFornecedor(), 300)
       } catch (e) {
         console.error('Erro ao criar fornecedor', e)
-        this.fornecedorFeedback = { message: 'Falha ao salvar fornecedor. Tente novamente.', type: 'error' }
+        const backendError = e?.response?.data?.error
+        this.fornecedorFeedback = { message: backendError || 'Falha ao salvar fornecedor. Tente novamente.', type: 'error' }
       } finally {
         this.submittingFornecedor = false
       }

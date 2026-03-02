@@ -83,11 +83,28 @@ function isIgnorableSchemaError(Exception $e, string $statement): bool
         || stripos($message, 'Duplicate column name') !== false
         || stripos($message, '1060') !== false;
 
-    if (!$isDuplicateColumn) {
-        return false;
+    $isDuplicateKey = $errorInfoCode === 1061
+        || stripos($message, 'Duplicate key name') !== false
+        || stripos($message, '1061') !== false;
+
+    $isMissingColumnOnDrop = $errorInfoCode === 1091
+        || stripos($message, "Can't DROP") !== false
+        || stripos($message, 'check that column/key exists') !== false
+        || stripos($message, '1091') !== false;
+
+    if ($isDuplicateColumn) {
+        return (bool) preg_match('/\bALTER\s+TABLE\b[\s\S]*\bADD\s+COLUMN\b/i', $statement);
     }
 
-    return (bool) preg_match('/\bALTER\s+TABLE\b[\s\S]*\bADD\s+COLUMN\b/i', $statement);
+    if ($isDuplicateKey) {
+        return (bool) preg_match('/\b(ALTER\s+TABLE|CREATE\s+(UNIQUE\s+)?INDEX)\b[\s\S]*\b(UNIQUE|KEY|INDEX)\b/i', $statement);
+    }
+
+    if ($isMissingColumnOnDrop) {
+        return (bool) preg_match('/\bALTER\s+TABLE\b[\s\S]*\bDROP\s+COLUMN\b/i', $statement);
+    }
+
+    return false;
 }
 
 function executeMigrationSql(PDO $pdo, string $sql): void

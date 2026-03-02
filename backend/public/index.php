@@ -228,28 +228,5 @@ if ($uri === '/api/v1/relatorios/dashboard' && $method === 'GET') {
     exit;
 }
 
-// legacy alias routes for products (en)
-if ($uri === '/api/v1/products' && $method === 'GET') {
-    (new ProductController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/products' && $method === 'POST') {
-    (new ProductController($pdo))->create();
-    exit;
-}
-
-if (preg_match('#^/api/v1/products/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
-    (new ProductController($pdo))->update((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new ProductController($pdo))->delete((int)$matches[1]);
-    exit;
-}
-
-// duplicate vendas/deliver route removed (handled earlier)
-
 http_response_code(404);
 echo json_encode(['error' => 'Not found']);

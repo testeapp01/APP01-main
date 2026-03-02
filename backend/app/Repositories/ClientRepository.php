@@ -32,6 +32,11 @@ class ClientRepository
         return in_array($column, $this->clientesColumns(), true);
     }
 
+    private function onlyDigits(?string $value): string
+    {
+        return preg_replace('/\D/', '', (string)($value ?? '')) ?? '';
+    }
+
     public function all(): array
     {
         $wanted = ['id', 'nome', 'endereco', 'numero', 'complemento', 'bairro', 'cep', 'cpf_cnpj', 'telefone', 'email', 'uf', 'status', 'cidade'];
@@ -97,6 +102,25 @@ class ClientRepository
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($insertData);
         return (int)$this->pdo->lastInsertId();
+    }
+
+    public function hasCpfCnpj(string $documentoDigits): bool
+    {
+        if (!$this->hasColumn('cpf_cnpj')) {
+            return false;
+        }
+
+        $stmt = $this->pdo->query('SELECT cpf_cnpj FROM clientes WHERE cpf_cnpj IS NOT NULL AND cpf_cnpj <> ""');
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as $row) {
+            $current = $this->onlyDigits($row['cpf_cnpj'] ?? '');
+            if ($current !== '' && $current === $documentoDigits) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function delete(int $id): bool

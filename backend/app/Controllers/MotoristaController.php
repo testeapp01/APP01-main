@@ -34,12 +34,18 @@ class MotoristaController
         $data['telefone'] = $data['telefone'] ?? null;
         $data['TpCaminhao'] = $data['TpCaminhao'] ?? null;
         require_once __DIR__.'/../Helpers/Validator.php';
-        if ($data['cpf'] && !Validator::validateCPF($data['cpf'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'CPF inválido']);
-            return;
+
+        if (!empty($data['cpf'])) {
+            $cpfDigits = preg_replace('/\D/', '', (string)$data['cpf']);
+            if (strlen($cpfDigits) !== 11 || !\Validator::validateCPF($cpfDigits)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'CPF inválido']);
+                return;
+            }
+            $data['cpf'] = $cpfDigits;
         }
-        if ($data['telefone'] && !Validator::validateTelefone($data['telefone'])) {
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Telefone inválido']);
             return;
@@ -50,7 +56,21 @@ class MotoristaController
             $data['status'] = 1;
         }
         $repo = new MotoristaRepository($this->pdo);
-        $id = $repo->create($data);
+        try {
+            $id = $repo->create($data);
+        } catch (\PDOException $e) {
+            $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
+            if ($mysqlCode === 1452) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Tipo de caminhão inválido.']);
+                return;
+            }
+
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao salvar motorista.']);
+            return;
+        }
+
         http_response_code(201);
         echo json_encode(['id' => $id]);
     }
@@ -72,12 +92,18 @@ class MotoristaController
         $data['TpCaminhao'] = $data['TpCaminhao'] ?? null;
 
         require_once __DIR__.'/../Helpers/Validator.php';
-        if ($data['cpf'] && !Validator::validateCPF($data['cpf'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'CPF inválido']);
-            return;
+
+        if (!empty($data['cpf'])) {
+            $cpfDigits = preg_replace('/\D/', '', (string)$data['cpf']);
+            if (strlen($cpfDigits) !== 11 || !\Validator::validateCPF($cpfDigits)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'CPF inválido']);
+                return;
+            }
+            $data['cpf'] = $cpfDigits;
         }
-        if ($data['telefone'] && !Validator::validateTelefone($data['telefone'])) {
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Telefone inválido']);
             return;
@@ -93,7 +119,21 @@ class MotoristaController
             return;
         }
 
-        $repo->update($id, $data);
+        try {
+            $repo->update($id, $data);
+        } catch (\PDOException $e) {
+            $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
+            if ($mysqlCode === 1452) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Tipo de caminhão inválido.']);
+                return;
+            }
+
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao atualizar motorista.']);
+            return;
+        }
+
         echo json_encode(['id' => $id, 'message' => 'Motorista atualizado com sucesso']);
     }
 

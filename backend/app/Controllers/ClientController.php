@@ -41,6 +41,12 @@ class ClientController
 
         if ($data['cpf_cnpj']) {
             $cpfCnpjDigits = preg_replace('/\D/', '', (string)$data['cpf_cnpj']);
+            if (strlen($cpfCnpjDigits) !== 11 && strlen($cpfCnpjDigits) !== 14) {
+                http_response_code(400);
+                echo json_encode(['error' => 'CPF/CNPJ inválido']);
+                return;
+            }
+
             if (strlen($cpfCnpjDigits) === 11 && !\Validator::validateCPF($cpfCnpjDigits)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'CPF inválido']);
@@ -52,6 +58,19 @@ class ClientController
                 echo json_encode(['error' => 'CNPJ inválido']);
                 return;
             }
+
+            $repoCheck = new ClientRepository($this->pdo);
+            if ($repoCheck->hasCpfCnpj($cpfCnpjDigits)) {
+                http_response_code(409);
+                echo json_encode([
+                    'error' => strlen($cpfCnpjDigits) === 11
+                        ? 'CPF já cadastrado.'
+                        : 'CNPJ já cadastrado.'
+                ]);
+                return;
+            }
+
+            $data['cpf_cnpj'] = $cpfCnpjDigits;
         }
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {

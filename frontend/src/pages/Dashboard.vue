@@ -141,6 +141,7 @@ export default {
 
     let lineChart = null
     let pieChart = null
+    let autoRefreshTimer = null
 
     const lineTitle = computed(() => {
       if (metric.value === 'purchases') return 'Evolução de Compras'
@@ -159,9 +160,14 @@ export default {
       loading.value = true
       try {
         const response = await api.get('/relatorios/dashboard', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache'
+          },
           params: {
             period: period.value,
             metric: metric.value,
+            _ts: Date.now(),
           }
         })
 
@@ -269,14 +275,32 @@ export default {
       })
     }
 
+    const handleWindowFocus = () => {
+      loadDashboard()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadDashboard()
+      }
+    }
+
     onMounted(async () => {
       await nextTick()
-      loadDashboard()
+      await loadDashboard()
+      window.addEventListener('focus', handleWindowFocus)
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      autoRefreshTimer = window.setInterval(() => {
+        loadDashboard()
+      }, 30000)
     })
 
     onBeforeUnmount(() => {
       if (lineChart) lineChart.destroy()
       if (pieChart) pieChart.destroy()
+      window.removeEventListener('focus', handleWindowFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (autoRefreshTimer) window.clearInterval(autoRefreshTimer)
     })
 
     return {

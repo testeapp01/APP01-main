@@ -14,8 +14,14 @@ class AuthController
     public function login(): void
     {
         $data = Request::body();
-        $email = $data['email'] ?? '';
-        $password = $data['password'] ?? '';
+        $email = trim((string)($data['email'] ?? ''));
+        $password = (string)($data['password'] ?? '');
+
+        if ($email === '' || $password === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Email e senha são obrigatórios']);
+            return;
+        }
 
         try {
             $stmt = $this->pdo->prepare('SELECT id, password, name, role FROM users WHERE email = :email LIMIT 1');

@@ -518,7 +518,8 @@ export default {
         setTimeout(() => this.closeCreateClient(), 300)
       } catch (e) {
         console.error('Erro ao criar cliente', e)
-        this.clientFeedback = { message: 'Falha ao salvar cliente. Tente novamente.', type: 'error' }
+        const backendError = e?.response?.data?.error
+        this.clientFeedback = { message: backendError || 'Falha ao salvar cliente. Tente novamente.', type: 'error' }
       } finally {
         this.submittingClient = false
       }
@@ -560,7 +561,7 @@ export default {
         setTimeout(() => this.closeCreateDriver(), 300)
       } catch (e) {
         console.error('Erro ao criar motorista', e)
-        this.driverFeedback = { message: 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
+        this.driverFeedback = { message: e?.response?.data?.error || 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
       } finally {
         this.submittingDriver = false
       }

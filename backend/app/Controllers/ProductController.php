@@ -51,14 +51,29 @@ class ProductController
             return;
         }
 
+        $estoqueAtual = isset($data['estoque_atual']) ? (float)$data['estoque_atual'] : 0;
+        $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
+        if ($estoqueAtual < 0 || $custoMedio < 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'estoque_atual e custo_medio não podem ser negativos']);
+            return;
+        }
+
         $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, estoque_atual, custo_medio) VALUES (:nome, :tipo, :unidade, :estoque_atual, :custo_medio)');
-        $stmt->execute([
-            'nome' => $nome,
-            'tipo' => $data['tipo'] ?? null,
-            'unidade' => $data['unidade'] ?? 'saco',
-            'estoque_atual' => $data['estoque_atual'] ?? 0,
-            'custo_medio' => $data['custo_medio'] ?? 0,
-        ]);
+        try {
+            $stmt->execute([
+                'nome' => $nome,
+                'tipo' => $data['tipo'] ?? null,
+                'unidade' => $data['unidade'] ?? 'saco',
+                'estoque_atual' => $estoqueAtual,
+                'custo_medio' => $custoMedio,
+            ]);
+        } catch (\PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao salvar produto.']);
+            return;
+        }
+
         http_response_code(201);
         echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }
@@ -81,18 +96,32 @@ class ProductController
             return;
         }
 
+        $estoqueAtual = isset($data['estoque_atual']) ? (float)$data['estoque_atual'] : 0;
+        $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
+        if ($estoqueAtual < 0 || $custoMedio < 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'estoque_atual e custo_medio não podem ser negativos']);
+            return;
+        }
+
         $stmt = $this->pdo->prepare(
             'UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, estoque_atual = :estoque_atual, custo_medio = :custo_medio WHERE id = :id'
         );
 
-        $stmt->execute([
-            'id' => $id,
-            'nome' => $nome,
-            'tipo' => $data['tipo'] ?? null,
-            'unidade' => $data['unidade'] ?? 'saco',
-            'estoque_atual' => $data['estoque_atual'] ?? 0,
-            'custo_medio' => $data['custo_medio'] ?? 0,
-        ]);
+        try {
+            $stmt->execute([
+                'id' => $id,
+                'nome' => $nome,
+                'tipo' => $data['tipo'] ?? null,
+                'unidade' => $data['unidade'] ?? 'saco',
+                'estoque_atual' => $estoqueAtual,
+                'custo_medio' => $custoMedio,
+            ]);
+        } catch (\PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao atualizar produto.']);
+            return;
+        }
 
         echo json_encode(['success' => true]);
     }

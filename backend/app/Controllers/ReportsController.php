@@ -37,6 +37,10 @@ class ReportsController
 
     public function dashboard(): void
     {
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
         $period = $_GET['period'] ?? '30d';
         $metric = $_GET['metric'] ?? 'sales';
         $groupBy = $_GET['groupBy'] ?? '';
