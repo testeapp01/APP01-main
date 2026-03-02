@@ -17,11 +17,20 @@ class ReportsController
         $to = $_GET['to'] ?? null;
 
         // For demo, return simple aggregated numbers
-        $stmt = $this->pdo->query('SELECT IFNULL(SUM(receita_total),0) as faturamento FROM vendas');
-        $fat = $stmt->fetch(PDO::FETCH_ASSOC);
+        $fat = ['faturamento' => 0];
+        $com = ['total_comissao' => 0];
 
-        $stmt2 = $this->pdo->query('SELECT IFNULL(SUM(comissao_total),0) as total_comissao FROM compras');
-        $com = $stmt2->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->query('SELECT IFNULL(SUM(receita_total),0) as faturamento FROM vendas');
+            $fat = $stmt->fetch(PDO::FETCH_ASSOC) ?: $fat;
+        } catch (\Throwable $e) {
+        }
+
+        try {
+            $stmt2 = $this->pdo->query('SELECT IFNULL(SUM(comissao_total),0) as total_comissao FROM compras');
+            $com = $stmt2->fetch(PDO::FETCH_ASSOC) ?: $com;
+        } catch (\Throwable $e) {
+        }
 
         echo json_encode(['faturamento_total' => (float)$fat['faturamento'], 'comissao_total_paga' => (float)$com['total_comissao']]);
     }
@@ -54,29 +63,39 @@ class ReportsController
             $metric = 'sales';
         }
 
-        $salesStmt = $this->pdo->prepare(
-            'SELECT
-                COUNT(*) AS sales_count,
-                IFNULL(SUM(quantidade * valor_unitario), 0) AS sales_total,
-                IFNULL(AVG(quantidade * valor_unitario), 0) AS average_ticket
-             FROM vendas
-             WHERE data_venda >= :from_date'
-        );
-        $salesStmt->execute(['from_date' => $fromDate]);
-        $salesAgg = $salesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $salesAgg = [];
+        try {
+            $salesStmt = $this->pdo->prepare(
+                'SELECT
+                    COUNT(*) AS sales_count,
+                    IFNULL(SUM(quantidade * valor_unitario), 0) AS sales_total,
+                    IFNULL(AVG(quantidade * valor_unitario), 0) AS average_ticket
+                 FROM vendas
+                 WHERE data_venda >= :from_date'
+            );
+            $salesStmt->execute(['from_date' => $fromDate]);
+            $salesAgg = $salesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            $salesAgg = ['sales_count' => 0, 'sales_total' => 0, 'average_ticket' => 0];
+        }
 
-        $purchasesStmt = $this->pdo->prepare(
-            'SELECT
-                COUNT(*) AS purchases_count,
-                IFNULL(SUM((quantidade * valor_unitario) + IFNULL(comissao_total, 0)), 0) AS purchases_total
-             FROM compras
-             WHERE data_compra >= :from_date'
-        );
-        $purchasesStmt->execute(['from_date' => $fromDate]);
-        $purchasesAgg = $purchasesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $purchasesAgg = [];
+        try {
+            $purchasesStmt = $this->pdo->prepare(
+                'SELECT
+                    COUNT(*) AS purchases_count,
+                    IFNULL(SUM((quantidade * valor_unitario) + IFNULL(comissao_total, 0)), 0) AS purchases_total
+                 FROM compras
+                 WHERE data_compra >= :from_date'
+            );
+            $purchasesStmt->execute(['from_date' => $fromDate]);
+            $purchasesAgg = $purchasesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            $purchasesAgg = ['purchases_count' => 0, 'purchases_total' => 0];
+        }
 
-        $clientsTotal = (int)($this->pdo->query('SELECT COUNT(*) FROM clientes')->fetchColumn() ?: 0);
-        $productsTotal = (int)($this->pdo->query('SELECT COUNT(*) FROM produtos')->fetchColumn() ?: 0);
+        $clientsTotal = $this->safeCount('clientes');
+        $productsTotal = $this->safeCount('produtos');
 
         $salesTotal = (float)($salesAgg['sales_total'] ?? 0);
         $purchasesTotal = (float)($purchasesAgg['purchases_total'] ?? 0);
@@ -192,10 +211,13 @@ class ReportsController
                 GROUP BY bucket, label
                 ORDER BY bucket ASC";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['from_date' => $fromDate]);
-
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(['from_date' => $fromDate]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            return [];
+        }
         $series = [];
 
         foreach ($rows as $row) {
@@ -214,16 +236,20 @@ class ReportsController
 
     private function buildPieSeries(string $fromDate): array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT status, COUNT(*) AS total
-             FROM vendas
-             WHERE data_venda >= :from_date
-             GROUP BY status
-             ORDER BY total DESC'
-        );
-        $stmt->execute(['from_date' => $fromDate]);
+        try {
+            $stmt = $this->pdo->prepare(
+                'SELECT status, COUNT(*) AS total
+                 FROM vendas
+                 WHERE data_venda >= :from_date
+                 GROUP BY status
+                 ORDER BY total DESC'
+            );
+            $stmt->execute(['from_date' => $fromDate]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            $rows = [];
+        }
 
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (!$rows) {
             return [
                 'labels' => ['Sem dados'],
@@ -242,5 +268,14 @@ class ReportsController
             'labels' => $labels,
             'data' => $data,
         ];
+    }
+
+    private function safeCount(string $table): int
+    {
+        try {
+            return (int)($this->pdo->query("SELECT COUNT(*) FROM {$table}")->fetchColumn() ?: 0);
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 }

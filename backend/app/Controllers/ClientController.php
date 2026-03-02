@@ -38,24 +38,29 @@ class ClientController
         $data['uf'] = $data['uf'] ?? null;
         $data['cidade'] = $data['cidade'] ?? null;
         require_once __DIR__.'/../Helpers/Validator.php';
+
         if ($data['cpf_cnpj']) {
-            if (strlen($data['cpf_cnpj']) == 11 && !Validator::validateCPF($data['cpf_cnpj'])) {
+            $cpfCnpjDigits = preg_replace('/\D/', '', (string)$data['cpf_cnpj']);
+            if (strlen($cpfCnpjDigits) === 11 && !\Validator::validateCPF($cpfCnpjDigits)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'CPF inválido']);
                 return;
             }
-            if (strlen($data['cpf_cnpj']) == 14 && !Validator::validateCNPJ($data['cpf_cnpj'])) {
+
+            if (strlen($cpfCnpjDigits) === 14 && !\Validator::validateCNPJ($cpfCnpjDigits)) {
                 http_response_code(400);
                 echo json_encode(['error' => 'CNPJ inválido']);
                 return;
             }
         }
-        if ($data['telefone'] && !Validator::validateTelefone($data['telefone'])) {
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Telefone inválido']);
             return;
         }
-        if ($data['email'] && !Validator::validateEmail($data['email'])) {
+
+        if ($data['email'] && !\Validator::validateEmail($data['email'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Email inválido']);
             return;
