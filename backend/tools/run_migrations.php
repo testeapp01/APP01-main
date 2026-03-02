@@ -77,16 +77,17 @@ function isIgnorableSchemaError(Exception $e, string $statement): bool
         return false;
     }
 
-    if (!isset($e->errorInfo[1])) {
+    $errorInfoCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : null;
+    $message = $e->getMessage();
+    $isDuplicateColumn = $errorInfoCode === 1060
+        || stripos($message, 'Duplicate column name') !== false
+        || stripos($message, '1060') !== false;
+
+    if (!$isDuplicateColumn) {
         return false;
     }
 
-    $mysqlErrorCode = (int) $e->errorInfo[1];
-    if ($mysqlErrorCode !== 1060) {
-        return false;
-    }
-
-    return (bool) preg_match('/^\s*ALTER\s+TABLE\b.*\bADD\s+COLUMN\b/i', $statement);
+    return (bool) preg_match('/\bALTER\s+TABLE\b[\s\S]*\bADD\s+COLUMN\b/i', $statement);
 }
 
 function executeMigrationSql(PDO $pdo, string $sql): void
