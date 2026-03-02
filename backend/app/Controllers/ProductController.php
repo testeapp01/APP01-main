@@ -44,14 +44,16 @@ class ProductController
     public function create(): void
     {
         $data = \App\Helpers\Request::body();
-        if (empty($data['nome'])) {
+        $nome = isset($data['nome']) ? trim((string)$data['nome']) : '';
+        if ($nome === '') {
             http_response_code(400);
             echo json_encode(['error' => 'Nome obrigatório']);
             return;
         }
+
         $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, estoque_atual, custo_medio) VALUES (:nome, :tipo, :unidade, :estoque_atual, :custo_medio)');
         $stmt->execute([
-            'nome' => $data['nome'],
+            'nome' => $nome,
             'tipo' => $data['tipo'] ?? null,
             'unidade' => $data['unidade'] ?? 'saco',
             'estoque_atual' => $data['estoque_atual'] ?? 0,
@@ -61,18 +63,51 @@ class ProductController
         echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }
 
-    // Add update and delete stubs for full CRUD
     public function update(int $id): void
     {
-        // TODO: Implement update logic
-        http_response_code(501);
-        echo json_encode(['error' => 'Not implemented']);
+        $existsStmt = $this->pdo->prepare('SELECT id FROM produtos WHERE id = :id LIMIT 1');
+        $existsStmt->execute(['id' => $id]);
+        if (!$existsStmt->fetch(PDO::FETCH_ASSOC)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Produto não encontrado']);
+            return;
+        }
+
+        $data = \App\Helpers\Request::body();
+        $nome = isset($data['nome']) ? trim((string)$data['nome']) : '';
+        if ($nome === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Nome obrigatório']);
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, estoque_atual = :estoque_atual, custo_medio = :custo_medio WHERE id = :id'
+        );
+
+        $stmt->execute([
+            'id' => $id,
+            'nome' => $nome,
+            'tipo' => $data['tipo'] ?? null,
+            'unidade' => $data['unidade'] ?? 'saco',
+            'estoque_atual' => $data['estoque_atual'] ?? 0,
+            'custo_medio' => $data['custo_medio'] ?? 0,
+        ]);
+
+        echo json_encode(['success' => true]);
     }
 
     public function delete(int $id): void
     {
-        // TODO: Implement delete logic
-        http_response_code(501);
-        echo json_encode(['error' => 'Not implemented']);
+        $stmt = $this->pdo->prepare('DELETE FROM produtos WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        if ($stmt->rowCount() < 1) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Produto não encontrado']);
+            return;
+        }
+
+        http_response_code(204);
     }
 }

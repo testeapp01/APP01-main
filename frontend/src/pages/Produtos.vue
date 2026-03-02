@@ -65,10 +65,10 @@
         :rows="paginatedProdutos"
       >
         <template #codigo="{ row }">
-          {{ row.codigo || '-' }}
+          {{ row.tipo || '-' }}
         </template>
         <template #descricao="{ row }">
-          {{ row.descricao || '-' }}
+          {{ row.nome || '-' }}
         </template>
         <template #unidade="{ row }">
           {{ row.unidade || '-' }}
@@ -148,19 +148,19 @@
           :type="productFeedback.type"
         />
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Descrição</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nome</label>
           <input
-            v-model="produtoForm.descricao"
-            placeholder="Descrição"
+            v-model="produtoForm.nome"
+            placeholder="Nome do produto"
             class="p-3 border border-gray-300 rounded-xl w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150"
             required
           >
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Descrição Complementar</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo</label>
           <input
-            v-model="produtoForm.descricao_complementar"
-            placeholder="Descrição Complementar"
+            v-model="produtoForm.tipo"
+            placeholder="Tipo"
             class="p-3 border border-gray-300 rounded-xl w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-150"
           >
         </div>
@@ -238,15 +238,15 @@ export default {
     const currentPage = ref(1)
     const totalCount = ref(0)
 
-    const produtoForm = ref({ id: null, codigo: '', descricao: '', unidade: '', status: 'ativo' })
+    const produtoForm = ref({ id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' })
     const showCreateModal = ref(false)
     const editMode = ref(false)
     const submittingProduct = ref(false)
     const productFeedback = ref({ message: '', type: 'info' })
 
     const tableCols = [
-      { key: 'codigo', label: 'Código' },
-      { key: 'descricao', label: 'Descrição' },
+      { key: 'codigo', label: 'Tipo' },
+      { key: 'descricao', label: 'Nome' },
       { key: 'unidade', label: 'Unidade' },
       { key: 'acoes', label: 'Ações' }
     ]
@@ -254,9 +254,18 @@ export default {
     async function loadProdutos() {
       loading.value = true
       try {
-        const res = await api.get('/produtos', { params: { q: query.value, page: currentPage.value, per_page: pageSize } })
-        produtos.value = res.data.items || []
-        totalCount.value = res.data.total || 0
+        const res = await api.get('/api/v1/produtos', { params: { q: query.value, page: currentPage.value, per_page: pageSize } })
+        const items = Array.isArray(res.data?.items) ? res.data.items : []
+        produtos.value = items.map(item => ({
+          id: item.id ?? null,
+          nome: item.nome ?? '',
+          tipo: item.tipo ?? '',
+          unidade: item.unidade ?? '',
+          estoque_atual: Number(item.estoque_atual ?? 0),
+          custo_medio: Number(item.custo_medio ?? 0),
+        }))
+        const parsedTotal = Number(res.data?.total)
+        totalCount.value = Number.isFinite(parsedTotal) ? parsedTotal : produtos.value.length
       } catch (e) {
         produtos.value = []
         totalCount.value = 0
@@ -269,10 +278,10 @@ export default {
     const visibleProdutos = computed(() => {
       return (produtos.value || []).filter(p => {
         if (!p) return false
-        const hasCodigo = p.codigo && String(p.codigo).trim().length > 0
-        const hasDescricao = p.descricao && String(p.descricao).trim().length > 0
+        const hasCodigo = p.tipo && String(p.tipo).trim().length > 0
+        const hasDescricao = p.nome && String(p.nome).trim().length > 0
         const hasUnidade = p.unidade && String(p.unidade).trim().length > 0
-        const hasStatus = p.status && String(p.status).trim().length > 0
+        const hasStatus = p.id !== null && p.id !== undefined
         return hasCodigo || hasDescricao || hasUnidade || hasStatus
       })
     })
@@ -284,19 +293,19 @@ export default {
     function nextPage() { if (currentPage.value < totalPages.value) { currentPage.value++; loadProdutos() } }
     function prevPage() { if (currentPage.value > 1) { currentPage.value--; loadProdutos() } }
 
-    function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, codigo: '', descricao: '', unidade: '', status: 'ativo' }; showCreateModal.value = true }
+    function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' }; showCreateModal.value = true }
     function openEdit(row) { editMode.value = true; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { ...row }; showCreateModal.value = true }
-    function closeCreateModal() { showCreateModal.value = false; submittingProduct.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, codigo: '', descricao: '', unidade: '', status: 'ativo' } }
+    function closeCreateModal() { showCreateModal.value = false; submittingProduct.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' } }
 
     async function submitProduto() {
       submittingProduct.value = true
       productFeedback.value = { message: editMode.value ? 'Atualizando produto...' : 'Criando produto...', type: 'info' }
       try {
         if (editMode.value && produtoForm.value.id) {
-          await api.put(`/produtos/${produtoForm.value.id}`, produtoForm.value)
+          await api.put(`/api/v1/produtos/${produtoForm.value.id}`, produtoForm.value)
           useToast().notify('Produto atualizado', { type: 'success' })
         } else {
-          await api.post('/produtos', produtoForm.value)
+          await api.post('/api/v1/produtos', produtoForm.value)
           useToast().notify('Produto criado', { type: 'success' })
         }
         productFeedback.value = { message: 'Produto salvo com sucesso.', type: 'success' }

@@ -11,12 +11,17 @@ class Connection
     public static function getPdo(): PDO
     {
         if (self::$pdo === null) {
-
-            $host = getenv('DB_HOST') ?: 'db';
+            $host = getenv('DB_HOST') ?: '127.0.0.1';
             $port = getenv('DB_PORT') ?: '3306';
-            $db   = getenv('DB_NAME') ?: 'hortifrutnectar';
-            $user = getenv('DB_USER') ?: 'admin';
-            $pass = getenv('DB_PASS') ?: 'nautico2@';
+            $db   = getenv('DB_DATABASE') ?: (getenv('DB_NAME') ?: 'hortifrutnectar');
+            $user = getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: 'root');
+            $pass = getenv('DB_PASSWORD');
+            if ($pass === false) {
+                $pass = getenv('DB_PASS');
+            }
+            if ($pass === false) {
+                $pass = '';
+            }
 
             $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
 
@@ -32,13 +37,8 @@ class Connection
             try {
                 self::$pdo = new PDO($dsn, $user, $pass, $options);
             } catch (PDOException $e) {
-
-                // log interno container
                 error_log("DB ERROR: " . $e->getMessage());
-
-                // resposta limpa pro browser
-                http_response_code(500);
-                die("Erro interno de conexão com banco.");
+                throw new PDOException('Erro interno de conexão com banco.', (int)$e->getCode(), $e);
             }
         }
 

@@ -207,6 +207,16 @@ if ($uri === '/api/v1/produtos' && $method === 'POST') {
     exit;
 }
 
+if (preg_match('#^/api/v1/produtos/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
+    (new ProductController($pdo))->update((int)$matches[1]);
+    exit;
+}
+
+if (preg_match('#^/api/v1/produtos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new ProductController($pdo))->delete((int)$matches[1]);
+    exit;
+}
+
 // relatorios (placeholder)
 if ($uri === '/api/v1/relatorios' && $method === 'GET') {
     (new ReportsController($pdo))->index();
@@ -218,22 +228,24 @@ if ($uri === '/api/v1/relatorios/dashboard' && $method === 'GET') {
     exit;
 }
 
-// product routes
-if (str_starts_with($uri, '/api/v1/products')) {
-    $productController = new ProductController($pdo);
+// legacy alias routes for products (en)
+if ($uri === '/api/v1/products' && $method === 'GET') {
+    (new ProductController($pdo))->index();
+    exit;
+}
 
-    if ($uri === '/api/v1/products' && $method === 'GET') {
-        $productController->listProducts();
-    } elseif ($uri === '/api/v1/products' && $method === 'POST') {
-        $productController->addProduct();
-    } elseif (preg_match('/\/api\/v1\/products\/(\d+)/', $uri, $matches) && $method === 'PUT') {
-        $productController->editProduct((int)$matches[1]);
-    } elseif (preg_match('/\/api\/v1\/products\/(\d+)/', $uri, $matches) && $method === 'DELETE') {
-        $productController->deleteProduct((int)$matches[1]);
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'Route not found']);
-    }
+if ($uri === '/api/v1/products' && $method === 'POST') {
+    (new ProductController($pdo))->create();
+    exit;
+}
+
+if (preg_match('#^/api/v1/products/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
+    (new ProductController($pdo))->update((int)$matches[1]);
+    exit;
+}
+
+if (preg_match('#^/api/v1/products/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new ProductController($pdo))->delete((int)$matches[1]);
     exit;
 }
 
