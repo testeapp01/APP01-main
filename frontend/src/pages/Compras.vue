@@ -64,8 +64,17 @@
         :columns="tableCols"
         :rows="paginatedCompras"
       >
+        <template #tipo_operacao="{ row }">
+          {{ row.tipo_operacao || '-' }}
+        </template>
         <template #fornecedor="{ row }">
           {{ row.fornecedor || '-' }}
+        </template>
+        <template #cliente="{ row }">
+          {{ row.cliente || '-' }}
+        </template>
+        <template #motorista="{ row }">
+          {{ row.motorista || '-' }}
         </template>
         <template #produto="{ row }">
           {{ row.produto || '-' }}
@@ -163,17 +172,17 @@
           <div class="flex gap-3">
             <button
               type="button"
+              :class="['px-4 py-2 rounded-lg border', novaCompra.tipo === 'venda' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300']"
+              @click="novaCompra.tipo = 'venda'"
+            >
+              Venda
+            </button>
+            <button
+              type="button"
               :class="['px-4 py-2 rounded-lg border', novaCompra.tipo === 'revenda' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300']"
               @click="novaCompra.tipo = 'revenda'"
             >
               Revenda
-            </button>
-            <button
-              type="button"
-              :class="['px-4 py-2 rounded-lg border', novaCompra.tipo === 'cliente' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300']"
-              @click="novaCompra.tipo = 'cliente'"
-            >
-              Cliente
             </button>
           </div>
         </div>
@@ -201,7 +210,7 @@
           </select>
         </div>
 
-        <div v-if="novaCompra.tipo === 'cliente'">
+        <div v-if="novaCompra.tipo === 'venda'">
           <label class="block text-sm font-semibold text-gray-700 mb-1">Cliente</label>
           <select
             v-model.number="novaCompra.cliente_id"
@@ -248,7 +257,7 @@
           </select>
         </div>
 
-        <div v-if="novaCompra.tipo === 'cliente'">
+        <div v-if="novaCompra.tipo === 'venda'">
           <label class="text-sm text-gray-600 mb-1 block">Motorista</label>
           <select
             v-model.number="novaCompra.motorista_id"
@@ -317,7 +326,7 @@
         </div>
         <!-- Comissões centralizadas abaixo -->
         <div
-          v-if="novaCompra.tipo === 'cliente'"
+          v-if="novaCompra.tipo === 'venda'"
           class="flex flex-col lg:flex-row justify-center gap-4 lg:gap-6 w-full mb-2"
         >
           <div class="bg-gray-50 rounded-2xl p-4 border-2 border-blue-300 shadow-sm flex flex-col gap-2 w-full lg:max-w-[320px]">
@@ -456,7 +465,7 @@ export default {
       motoristas: [],
       clientes: [],
       novaCompra: {
-        tipo: 'revenda',
+        tipo: 'venda',
         fornecedor_id: null,
         cliente_id: null,
         produto_id: null,
@@ -481,7 +490,10 @@ export default {
   },
   computed: {
     tableCols() { return [
+      { key: 'tipo_operacao', label: 'Tipo' },
       { key: 'fornecedor', label: 'Fornecedor' },
+      { key: 'cliente', label: 'Cliente' },
+      { key: 'motorista', label: 'Motorista' },
       { key: 'produto', label: 'Produto' },
       { key: 'quantidade', label: 'Quantidade' },
       { key: 'valor_unitario', label: 'Valor Unit.' },
@@ -529,25 +541,31 @@ export default {
       this.submittingPurchase = true
       this.purchaseFeedback = { message: 'Salvando compra...', type: 'info' }
       try {
+        if (this.novaCompra.tipo === 'venda' && !this.novaCompra.cliente_id) {
+          this.purchaseFeedback = { message: 'Selecione um cliente para compras do tipo venda.', type: 'error' }
+          return
+        }
+
+        if (this.novaCompra.tipo === 'venda' && !this.novaCompra.motorista_id) {
+          this.purchaseFeedback = { message: 'Selecione um motorista para compras do tipo venda.', type: 'error' }
+          return
+        }
+
         let payload = {
+          tipo_operacao: this.novaCompra.tipo,
           produto_id: this.novaCompra.produto_id,
           quantidade: this.novaCompra.quantidade,
           valor_unitario: this.novaCompra.valor_unitario,
           fornecedor_id: this.novaCompra.fornecedor_id,
-          motorista_id: this.novaCompra.motorista_id,
+          motorista_id: this.novaCompra.tipo === 'venda' ? this.novaCompra.motorista_id : null,
+          cliente_id: this.novaCompra.tipo === 'venda' ? this.novaCompra.cliente_id : null,
           data_envio_prevista: this.novaCompra.data_envio_prevista || null,
           data_entrega_prevista: this.novaCompra.data_entrega_prevista || null,
         }
 
-        if (!payload.motorista_id) {
-          this.purchaseFeedback = { message: 'Selecione um motorista para continuar.', type: 'error' }
-          return
-        }
-
-        if (this.novaCompra.tipo === 'cliente') {
+        if (this.novaCompra.tipo === 'venda') {
           payload = {
             ...payload,
-            cliente_id: this.novaCompra.cliente_id,
             comissao_intermediador: this.novaCompra.comissao_intermediador,
             comissao_motorista: this.novaCompra.comissao_motorista,
             comissao_intermediador_em_dinheiro: this.novaCompra.comissao_intermediador_em_dinheiro,
@@ -556,7 +574,7 @@ export default {
         }
         await api.post('/api/v1/compras', payload)
         this.purchaseFeedback = { message: 'Compra criada com sucesso.', type: 'success' }
-        this.novaCompra = { tipo: 'revenda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 }
+        this.novaCompra = { tipo: 'venda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadCompras()
       } catch (e) {
@@ -614,7 +632,7 @@ export default {
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },
-    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { tipo: 'revenda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { tipo: 'venda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 } },
     prevPage() { if (this.currentPage > 1) { this.currentPage--; this.loadCompras() } },
     nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.loadCompras() } },
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadCompras() },
@@ -624,6 +642,9 @@ export default {
       return year && month && day ? `${day}/${month}/${year}` : value
     },
     printOrder(row) {
+      const quantidade = row.quantidade ?? 0
+      const valorUnitario = Number(row.valor_unitario ?? 0)
+      const valorTotal = quantidade * valorUnitario
       const html = `
         <html>
           <head>
@@ -632,7 +653,8 @@ export default {
               body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
               h1 { margin-bottom: 6px; }
               .muted { color: #64748b; margin-bottom: 18px; }
-              table { width: 100%; border-collapse: collapse; }
+              h2 { margin-top: 22px; margin-bottom: 8px; font-size: 18px; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
               td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
               th { background: #f8fafc; width: 32%; }
             </style>
@@ -640,14 +662,41 @@ export default {
           <body>
             <h1>Ordem de Compra #${row.id}</h1>
             <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
+
+            <h2>Cabeçalho da Cotação</h2>
             <table>
+              <tr><th>Tipo de Operação</th><td>${row.tipo_operacao || '-'}</td></tr>
               <tr><th>Fornecedor</th><td>${row.fornecedor || '-'}</td></tr>
-              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
-              <tr><th>Quantidade</th><td>${row.quantidade ?? '-'}</td></tr>
-              <tr><th>Valor Unitário</th><td>R$ ${row.valor_unitario ?? '-'}</td></tr>
+              <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
+              <tr><th>Motorista</th><td>${row.motorista || '-'}</td></tr>
               <tr><th>Status</th><td>${row.status || '-'}</td></tr>
               <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
               <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>
+            </table>
+
+            <h2>Itens da Cotação</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40%;">Produto</th>
+                  <th style="width: 15%;">Quantidade</th>
+                  <th style="width: 20%;">Valor Unitário</th>
+                  <th style="width: 25%;">Valor Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${row.produto || '-'}</td>
+                  <td>${quantidade || '-'}</td>
+                  <td>R$ ${Number.isFinite(valorUnitario) ? valorUnitario.toFixed(2) : '-'}</td>
+                  <td>R$ ${Number.isFinite(valorTotal) ? valorTotal.toFixed(2) : '-'}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table>
+              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
+              <tr><th>Total Geral</th><td>R$ ${Number.isFinite(valorTotal) ? valorTotal.toFixed(2) : '-'}</td></tr>
             </table>
           </body>
         </html>

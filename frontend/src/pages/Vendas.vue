@@ -75,9 +75,6 @@
           <template #numero_pedido="{ row }">
             #{{ row.id }}
           </template>
-          <template #tipo="{ row }">
-            {{ row.tipo === 'revenda' ? 'Revenda' : 'Venda' }}
-          </template>
           <template #cliente="{ row }">
             {{ row.cliente }}
           </template>
@@ -236,19 +233,6 @@
           </option>
         </select>
 
-        <label class="text-sm text-gray-600">Tipo da Operação</label>
-        <select
-          v-model="novaVenda.tipo"
-          class="p-3 border border-gray-300 rounded-xl estilo-select"
-        >
-          <option value="venda">
-            Venda
-          </option>
-          <option value="revenda">
-            Revenda
-          </option>
-        </select>
-
         <div class="space-y-2">
           <div
             v-for="(item, idx) in novaVenda.items"
@@ -368,10 +352,9 @@ export default {
       vendas: [],
       loading: false,
       query: '',
-      novaVenda: { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
+      novaVenda: { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
       tableCols: [
         { key: 'numero_pedido', label: 'Pedido' },
-        { key: 'tipo', label: 'Tipo' },
         { key: 'cliente', label: 'Cliente' },
         { key: 'itens_count', label: 'Itens' },
         { key: 'valor_total', label: 'Valor Total' },
@@ -404,11 +387,10 @@ export default {
       return (this.vendas || []).filter(v => {
         if (!v) return false
         const hasClient = v.cliente && String(v.cliente).trim().length > 0
-        const hasType = v.tipo && String(v.tipo).trim().length > 0
         const hasStatus = v.status && String(v.status).trim().length > 0
         const hasItens = v.itens_count !== undefined && v.itens_count !== null
         const hasValor = v.valor_total !== undefined && v.valor_total !== null
-        return hasClient || hasType || hasStatus || hasItens || hasValor
+        return hasClient || hasStatus || hasItens || hasValor
       })
     },
     totalPages() {
@@ -482,7 +464,6 @@ export default {
         const items = (this.novaVenda.items || []).filter(it => it && it.produto_id)
         if (items.length === 0) throw new Error('Adicione pelo menos um produto')
         const payload = {
-          tipo: this.novaVenda.tipo || 'venda',
           cliente_id: this.novaVenda.cliente_id,
           data_envio_prevista: this.novaVenda.data_envio_prevista || null,
           data_entrega_prevista: this.novaVenda.data_entrega_prevista || null,
@@ -490,7 +471,7 @@ export default {
         }
         await api.post('/api/v1/vendas', payload)
         this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
-        this.novaVenda = { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
+        this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
       } catch (e) {
@@ -509,8 +490,8 @@ export default {
         this.novaVenda.items[idx].valor_unitario = null
       }
     },
-    openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' }; if (!this.novaVenda.tipo) this.novaVenda.tipo = 'venda' },
-    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
+    openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },
     refresh() { this.loadVendas() },
@@ -538,7 +519,6 @@ export default {
             <h1>Pedido #${row.id}</h1>
             <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
             <table>
-              <tr><th>Tipo</th><td>${row.tipo === 'revenda' ? 'Revenda' : 'Venda'}</td></tr>
               <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
               <tr><th>Itens</th><td>${row.itens_count ?? '-'}</td></tr>
               <tr><th>Valor Total</th><td>R$ ${row.valor_total ?? '-'}</td></tr>

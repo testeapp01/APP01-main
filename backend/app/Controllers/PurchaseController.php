@@ -45,18 +45,20 @@ class PurchaseController
         $where = '';
         $params = [];
         if ($q !== '') {
-            $where = 'WHERE f.razao_social LIKE :q OR p.nome LIKE :q';
+            $where = 'WHERE f.razao_social LIKE :q OR p.nome LIKE :q OR cl.nome LIKE :q OR m.nome LIKE :q';
             $params[':q'] = "%{$q}%";
         }
 
-        $countSql = "SELECT COUNT(*) as total FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where}";
+        $countSql = "SELECT COUNT(*) as total FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id LEFT JOIN clientes cl ON c.cliente_id = cl.id LEFT JOIN motoristas m ON c.motorista_id = m.id {$where}";
         $stmt = $this->pdo->prepare($countSql);
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
         $envioCol = $this->hasComprasColumn('data_envio_prevista') ? 'c.data_envio_prevista' : 'NULL AS data_envio_prevista';
         $entregaCol = $this->hasComprasColumn('data_entrega_prevista') ? 'c.data_entrega_prevista' : 'NULL AS data_entrega_prevista';
-        $sql = "SELECT c.id, f.razao_social AS fornecedor, p.nome AS produto, c.quantidade, c.valor_unitario, c.status, c.data_compra, {$envioCol}, {$entregaCol} FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
+        $tipoOperacaoCol = $this->hasComprasColumn('tipo_operacao') ? 'c.tipo_operacao' : "'revenda' AS tipo_operacao";
+        $clienteCol = $this->hasComprasColumn('cliente_id') ? 'cl.nome AS cliente' : 'NULL AS cliente';
+        $sql = "SELECT c.id, f.razao_social AS fornecedor, {$clienteCol}, m.nome AS motorista, p.nome AS produto, {$tipoOperacaoCol}, c.quantidade, c.valor_unitario, c.status, c.data_compra, {$envioCol}, {$entregaCol} FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id LEFT JOIN clientes cl ON c.cliente_id = cl.id LEFT JOIN motoristas m ON c.motorista_id = m.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -81,10 +83,17 @@ class PurchaseController
             }
         }
 
-        // must have motorista
-        if (empty($data['motorista_id'])) {
+        $tipoOperacao = ($data['tipo_operacao'] ?? (($data['tipo'] ?? 'revenda') === 'venda' ? 'venda' : 'revenda'));
+
+        if ($tipoOperacao === 'venda' && empty($data['motorista_id'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Não é possível finalizar compra sem motorista definido']);
+            echo json_encode(['error' => 'Selecione um motorista para compras do tipo venda']);
+            return;
+        }
+
+        if ($tipoOperacao === 'venda' && empty($data['cliente_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Selecione um cliente para compras do tipo venda']);
             return;
         }
 
@@ -121,7 +130,9 @@ class PurchaseController
         $possible = [
             'fornecedor_id' => $data['fornecedor_id'],
             'produto_id' => $data['produto_id'],
-            'motorista_id' => $data['motorista_id'],
+            'motorista_id' => !empty($data['motorista_id']) ? (int)$data['motorista_id'] : null,
+            'tipo_operacao' => $tipoOperacao,
+            'cliente_id' => !empty($data['cliente_id']) ? (int)$data['cliente_id'] : null,
             'quantidade' => $quantidade,
             'valor_unitario' => $valorUnitario,
             'tipo_comissao' => $tipoComissao,

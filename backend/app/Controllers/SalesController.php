@@ -176,7 +176,7 @@ class SalesController
                 return;
             }
 
-            $tipoCabecalho = ($data['tipo'] ?? 'venda') === 'revenda' ? 'revenda' : 'venda';
+            $tipoCabecalho = 'venda';
 
             $data['data_envio_prevista'] = !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null;
             $data['data_entrega_prevista'] = !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null;

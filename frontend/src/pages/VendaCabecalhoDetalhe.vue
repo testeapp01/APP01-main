@@ -27,11 +27,6 @@
         <div class="saas-kpi-help">Relacionamento do pedido</div>
       </article>
       <article class="saas-kpi-card">
-        <div class="saas-kpi-label">Tipo</div>
-        <div class="saas-kpi-value">{{ header.tipo === 'revenda' ? 'Revenda' : 'Venda' }}</div>
-        <div class="saas-kpi-help">Classificação comercial</div>
-      </article>
-      <article class="saas-kpi-card">
         <div class="saas-kpi-label">Valor Total</div>
         <div class="saas-kpi-value">R$ {{ Number(header.valor_total || 0).toFixed(2) }}</div>
         <div class="saas-kpi-help">Soma dos itens</div>
