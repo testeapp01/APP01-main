@@ -46,6 +46,7 @@ class SalesRepository
     public function create(array $data): int
     {
         $possible = [
+            'venda_cabecalho_id' => $data['venda_cabecalho_id'] ?? null,
             'cliente_id' => $data['cliente_id'],
             'produto_id' => $data['produto_id'],
             'quantidade' => $data['quantidade'],

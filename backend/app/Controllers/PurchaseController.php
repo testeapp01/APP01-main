@@ -72,7 +72,7 @@ class PurchaseController
         $data = Request::body();
 
         // basic validation
-        $required = ['fornecedor_id', 'produto_id', 'motorista_id', 'quantidade', 'valor_unitario'];
+        $required = ['fornecedor_id', 'produto_id', 'quantidade', 'valor_unitario'];
         foreach ($required as $f) {
             if (empty($data[$f]) && $data[$f] !== 0) {
                 http_response_code(400);

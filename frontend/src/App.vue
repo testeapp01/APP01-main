@@ -57,6 +57,9 @@
 
           <nav class="flex-1">
             <ul class="space-y-3">
+              <li class="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Geral
+              </li>
               <li>
                 <router-link
                   to="/"
@@ -87,6 +90,11 @@
                   </span>
                   <span class="nav-label">Dashboard</span>
                 </router-link>
+              </li>
+
+              <li class="my-1 border-t border-slate-200" />
+              <li class="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Operações
               </li>
               <li>
                 <router-link
@@ -185,6 +193,11 @@
                   </span>
                   <span class="nav-label">Produtos</span>
                 </router-link>
+              </li>
+
+              <li class="my-1 border-t border-slate-200" />
+              <li class="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Cadastros
               </li>
 
               <li>
@@ -290,7 +303,11 @@
                   <span class="nav-label">Motoristas</span>
                 </router-link>
               </li>
-              
+
+              <li class="my-1 border-t border-slate-200" />
+              <li class="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Gestão
+              </li>
               <li>
                 <router-link
                   to="/relatorios"

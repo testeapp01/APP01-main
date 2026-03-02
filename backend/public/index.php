@@ -138,6 +138,11 @@ if ($uri === '/api/v1/vendas' && $method === 'GET') {
     exit;
 }
 
+if (preg_match('#^/api/v1/vendas/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    (new SalesController($pdo))->showHeader((int)$matches[1]);
+    exit;
+}
+
 // clientes
 if ($uri === '/api/v1/clientes' && $method === 'GET') {
     (new ClientController($pdo))->index();

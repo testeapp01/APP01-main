@@ -72,17 +72,20 @@
           :columns="tableCols"
           :rows="paginatedVendas"
         >
+          <template #numero_pedido="{ row }">
+            #{{ row.id }}
+          </template>
+          <template #tipo="{ row }">
+            {{ row.tipo === 'revenda' ? 'Revenda' : 'Venda' }}
+          </template>
           <template #cliente="{ row }">
             {{ row.cliente }}
           </template>
-          <template #produto="{ row }">
-            {{ row.produto }}
+          <template #itens_count="{ row }">
+            {{ row.itens_count ?? 0 }}
           </template>
-          <template #quantidade="{ row }">
-            {{ row.quantidade }}
-          </template>
-          <template #valor_unitario="{ row }">
-            {{ row.valor_unitario !== undefined && row.valor_unitario !== null ? ('R$ ' + row.valor_unitario) : '-' }}
+          <template #valor_total="{ row }">
+            {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
           </template>
           <template #status="{ row }">
             {{ row.status || '-' }}
@@ -95,6 +98,12 @@
           </template>
           <template #acoes="{ row }">
             <div class="flex flex-wrap gap-2">
+              <BaseButton
+                variant="ghost"
+                @click="openItems(row.id)"
+              >
+                Itens
+              </BaseButton>
               <BaseButton
                 variant="secondary"
                 @click="printOrder(row)"
@@ -227,6 +236,19 @@
           </option>
         </select>
 
+        <label class="text-sm text-gray-600">Tipo da Operação</label>
+        <select
+          v-model="novaVenda.tipo"
+          class="p-3 border border-gray-300 rounded-xl estilo-select"
+        >
+          <option value="venda">
+            Venda
+          </option>
+          <option value="revenda">
+            Revenda
+          </option>
+        </select>
+
         <div class="space-y-2">
           <div
             v-for="(item, idx) in novaVenda.items"
@@ -346,12 +368,13 @@ export default {
       vendas: [],
       loading: false,
       query: '',
-      novaVenda: { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
+      novaVenda: { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
       tableCols: [
+        { key: 'numero_pedido', label: 'Pedido' },
+        { key: 'tipo', label: 'Tipo' },
         { key: 'cliente', label: 'Cliente' },
-        { key: 'produto', label: 'Produto' },
-        { key: 'quantidade', label: 'Quantidade' },
-        { key: 'valor_unitario', label: 'Valor Unit.' },
+        { key: 'itens_count', label: 'Itens' },
+        { key: 'valor_total', label: 'Valor Total' },
         { key: 'status', label: 'Status' },
         { key: 'data_envio_prevista', label: 'Envio Previsto' },
         { key: 'data_entrega_prevista', label: 'Entrega Prevista' },
@@ -381,11 +404,11 @@ export default {
       return (this.vendas || []).filter(v => {
         if (!v) return false
         const hasClient = v.cliente && String(v.cliente).trim().length > 0
-        const hasProduct = v.produto && String(v.produto).trim().length > 0
+        const hasType = v.tipo && String(v.tipo).trim().length > 0
         const hasStatus = v.status && String(v.status).trim().length > 0
-        const hasQuantidade = v.quantidade !== undefined && v.quantidade !== null
-        const hasValor = v.valor_unitario !== undefined && v.valor_unitario !== null
-        return hasClient || hasProduct || hasStatus || hasQuantidade || hasValor
+        const hasItens = v.itens_count !== undefined && v.itens_count !== null
+        const hasValor = v.valor_total !== undefined && v.valor_total !== null
+        return hasClient || hasType || hasStatus || hasItens || hasValor
       })
     },
     totalPages() {
@@ -440,13 +463,16 @@ export default {
       const id = this.confirmPayload
       this.confirming = false
       try {
-        await api.post('/api/v1/vendas/deliver', { venda_id: id })
+        await api.post('/api/v1/vendas/deliver', { venda_cabecalho_id: id })
         useToast().notify('Pedido marcado como entregue', { type: 'success' })
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao atualizar status:', e)
         useToast().notify('Falha ao atualizar status', { type: 'error' })
       }
+    },
+    openItems(id) {
+      this.$router.push(`/vendas/cabecalho/${id}`)
     },
     async createSale() {
       this.submittingSale = true
@@ -456,6 +482,7 @@ export default {
         const items = (this.novaVenda.items || []).filter(it => it && it.produto_id)
         if (items.length === 0) throw new Error('Adicione pelo menos um produto')
         const payload = {
+          tipo: this.novaVenda.tipo || 'venda',
           cliente_id: this.novaVenda.cliente_id,
           data_envio_prevista: this.novaVenda.data_envio_prevista || null,
           data_entrega_prevista: this.novaVenda.data_entrega_prevista || null,
@@ -463,7 +490,7 @@ export default {
         }
         await api.post('/api/v1/vendas', payload)
         this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
-        this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
+        this.novaVenda = { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
       } catch (e) {
@@ -482,8 +509,8 @@ export default {
         this.novaVenda.items[idx].valor_unitario = null
       }
     },
-    openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
-    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
+    openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' }; if (!this.novaVenda.tipo) this.novaVenda.tipo = 'venda' },
+    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { tipo: 'venda', cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },
     refresh() { this.loadVendas() },
@@ -508,13 +535,13 @@ export default {
             </style>
           </head>
           <body>
-            <h1>Ordem de Venda #${row.id}</h1>
+            <h1>Pedido #${row.id}</h1>
             <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
             <table>
+              <tr><th>Tipo</th><td>${row.tipo === 'revenda' ? 'Revenda' : 'Venda'}</td></tr>
               <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
-              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
-              <tr><th>Quantidade</th><td>${row.quantidade ?? '-'}</td></tr>
-              <tr><th>Valor Unitário</th><td>R$ ${row.valor_unitario ?? '-'}</td></tr>
+              <tr><th>Itens</th><td>${row.itens_count ?? '-'}</td></tr>
+              <tr><th>Valor Total</th><td>R$ ${row.valor_total ?? '-'}</td></tr>
               <tr><th>Status</th><td>${row.status || '-'}</td></tr>
               <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
               <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>

@@ -534,14 +534,20 @@ export default {
           quantidade: this.novaCompra.quantidade,
           valor_unitario: this.novaCompra.valor_unitario,
           fornecedor_id: this.novaCompra.fornecedor_id,
+          motorista_id: this.novaCompra.motorista_id,
           data_envio_prevista: this.novaCompra.data_envio_prevista || null,
           data_entrega_prevista: this.novaCompra.data_entrega_prevista || null,
         }
+
+        if (!payload.motorista_id) {
+          this.purchaseFeedback = { message: 'Selecione um motorista para continuar.', type: 'error' }
+          return
+        }
+
         if (this.novaCompra.tipo === 'cliente') {
           payload = {
             ...payload,
             cliente_id: this.novaCompra.cliente_id,
-            motorista_id: this.novaCompra.motorista_id,
             comissao_intermediador: this.novaCompra.comissao_intermediador,
             comissao_motorista: this.novaCompra.comissao_motorista,
             comissao_intermediador_em_dinheiro: this.novaCompra.comissao_intermediador_em_dinheiro,
@@ -555,7 +561,7 @@ export default {
         this.loadCompras()
       } catch (e) {
         console.error('Erro ao criar compra:', e)
-        this.purchaseFeedback = { message: 'Não foi possível salvar a compra. Revise os dados e tente novamente.', type: 'error' }
+        this.purchaseFeedback = { message: e?.response?.data?.error || 'Não foi possível salvar a compra. Revise os dados e tente novamente.', type: 'error' }
       } finally {
         this.submittingPurchase = false
       }

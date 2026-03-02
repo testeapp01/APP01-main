@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   { path: '/', name: 'Dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true } },
   { path: '/vendas', name: 'Vendas', component: () => import('../pages/Vendas.vue'), meta: { requiresAuth: true } },
+  { path: '/vendas/cabecalho/:id', name: 'VendasCabecalhoDetalhe', component: () => import('../pages/VendaCabecalhoDetalhe.vue'), meta: { requiresAuth: true } },
   { path: '/clientes', name: 'Clientes', component: () => import('../pages/ClientesMotoristas.vue'), meta: { requiresAuth: true } },
   { path: '/motoristas', name: 'Motoristas', component: () => import('../pages/Motoristas.vue'), meta: { requiresAuth: true } },
   { path: '/compras', name: 'Compras', component: () => import('../pages/Compras.vue'), meta: { requiresAuth: true } },
