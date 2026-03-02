@@ -7,8 +7,31 @@ use App\Helpers\Request;
 
 class PurchaseController
 {
+    private ?array $comprasColumnsCache = null;
+
     public function __construct(private PDO $pdo)
     {
+    }
+
+    private function comprasColumns(): array
+    {
+        if ($this->comprasColumnsCache !== null) {
+            return $this->comprasColumnsCache;
+        }
+
+        $stmt = $this->pdo->query('SHOW COLUMNS FROM compras');
+        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->comprasColumnsCache = array_values(array_filter(array_map(
+            static fn(array $row) => $row['Field'] ?? null,
+            $cols
+        )));
+
+        return $this->comprasColumnsCache;
+    }
+
+    private function hasComprasColumn(string $column): bool
+    {
+        return in_array($column, $this->comprasColumns(), true);
     }
 
     public function index(): void
@@ -31,7 +54,9 @@ class PurchaseController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT c.id, f.razao_social AS fornecedor, p.nome AS produto, c.quantidade, c.valor_unitario, c.status, c.data_compra, c.data_envio_prevista, c.data_entrega_prevista FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
+        $envioCol = $this->hasComprasColumn('data_envio_prevista') ? 'c.data_envio_prevista' : 'NULL AS data_envio_prevista';
+        $entregaCol = $this->hasComprasColumn('data_entrega_prevista') ? 'c.data_entrega_prevista' : 'NULL AS data_entrega_prevista';
+        $sql = "SELECT c.id, f.razao_social AS fornecedor, p.nome AS produto, c.quantidade, c.valor_unitario, c.status, c.data_compra, {$envioCol}, {$entregaCol} FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -88,9 +113,7 @@ class PurchaseController
             if ($prod) $data['produto_id'] = $prod['id'];
         }
 
-        $stmt = $this->pdo->prepare('INSERT INTO compras (fornecedor_id, produto_id, motorista_id, quantidade, valor_unitario, tipo_comissao, valor_comissao, extra_por_saco, custo_total, comissao_total, custo_final_real, status, data_compra, data_envio_prevista, data_entrega_prevista) VALUES (:fornecedor_id, :produto_id, :motorista_id, :quantidade, :valor_unitario, :tipo_comissao, :valor_comissao, :extra_por_saco, :custo_total, :comissao_total, :custo_final_real, :status, NOW(), :data_envio_prevista, :data_entrega_prevista)');
-
-        $stmt->execute([
+        $possible = [
             'fornecedor_id' => $data['fornecedor_id'],
             'produto_id' => $data['produto_id'],
             'motorista_id' => $data['motorista_id'],
@@ -105,7 +128,24 @@ class PurchaseController
             'status' => 'NEGOCIADA',
             'data_envio_prevista' => !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null,
             'data_entrega_prevista' => !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null,
-        ]);
+        ];
+
+        $columns = array_values(array_filter(array_keys($possible), fn(string $column) => $this->hasComprasColumn($column)));
+        $valuesSql = [];
+        $params = [];
+
+        foreach ($columns as $column) {
+            $valuesSql[] = ':' . $column;
+            $params[$column] = $possible[$column];
+        }
+
+        if ($this->hasComprasColumn('data_compra')) {
+            $columns[] = 'data_compra';
+            $valuesSql[] = 'NOW()';
+        }
+
+        $stmt = $this->pdo->prepare('INSERT INTO compras (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $valuesSql) . ')');
+        $stmt->execute($params);
 
         $id = (int)$this->pdo->lastInsertId();
         http_response_code(201);

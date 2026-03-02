@@ -1,8 +1,8 @@
 <template>
   <div class="page-shell">
     <PageHero
-      title="Clientes & Motoristas"
-      subtitle="Gerencie dados de relacionamento e operação logística no mesmo ambiente."
+      title="Clientes"
+      subtitle="Gerencie dados de relacionamento dos clientes em um único ambiente."
     >
       <template #actions>
         <BaseButton

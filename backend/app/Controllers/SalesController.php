@@ -8,8 +8,31 @@ use PDO;
 
 class SalesController
 {
+    private ?array $vendasColumnsCache = null;
+
     public function __construct(private PDO $pdo)
     {
+    }
+
+    private function vendasColumns(): array
+    {
+        if ($this->vendasColumnsCache !== null) {
+            return $this->vendasColumnsCache;
+        }
+
+        $stmt = $this->pdo->query('SHOW COLUMNS FROM vendas');
+        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->vendasColumnsCache = array_values(array_filter(array_map(
+            static fn(array $row) => $row['Field'] ?? null,
+            $cols
+        )));
+
+        return $this->vendasColumnsCache;
+    }
+
+    private function hasVendasColumn(string $column): bool
+    {
+        return in_array($column, $this->vendasColumns(), true);
     }
 
     public function index(): void
@@ -33,7 +56,9 @@ class SalesController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT v.id, c.nome AS cliente, p.nome AS produto, v.quantidade, v.valor_unitario, v.status, v.data_venda, v.data_envio_prevista, v.data_entrega_prevista FROM vendas v LEFT JOIN clientes c ON v.cliente_id = c.id LEFT JOIN produtos p ON v.produto_id = p.id {$where} ORDER BY v.id DESC LIMIT :limit OFFSET :offset";
+        $envioCol = $this->hasVendasColumn('data_envio_prevista') ? 'v.data_envio_prevista' : 'NULL AS data_envio_prevista';
+        $entregaCol = $this->hasVendasColumn('data_entrega_prevista') ? 'v.data_entrega_prevista' : 'NULL AS data_entrega_prevista';
+        $sql = "SELECT v.id, c.nome AS cliente, p.nome AS produto, v.quantidade, v.valor_unitario, v.status, v.data_venda, {$envioCol}, {$entregaCol} FROM vendas v LEFT JOIN clientes c ON v.cliente_id = c.id LEFT JOIN produtos p ON v.produto_id = p.id {$where} ORDER BY v.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -121,7 +146,8 @@ class SalesController
             echo json_encode(['id' => $id, 'sale' => $sale]);
         } catch (\Throwable $e) {
             http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
+            error_log('[SalesController::create] ' . $e->getMessage());
+            echo json_encode(['error' => 'Não foi possível processar a venda.']);
         }
     }
 
@@ -143,7 +169,8 @@ class SalesController
             echo json_encode($res);
         } catch (\Throwable $e) {
             http_response_code(400);
-            echo json_encode(['error' => $e->getMessage()]);
+            error_log('[SalesController::deliver] ' . $e->getMessage());
+            echo json_encode(['error' => 'Não foi possível confirmar a entrega.']);
         }
     }
 }

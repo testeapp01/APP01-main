@@ -56,7 +56,7 @@ class AuthController
             return;
         }
 
-        $stmt = $this->pdo->prepare('SELECT id, name, role, email FROM users WHERE id = :id LIMIT 1');
+        $stmt = $this->pdo->prepare('SELECT id, name, role FROM users WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 

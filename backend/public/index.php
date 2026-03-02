@@ -3,6 +3,24 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
+set_exception_handler(static function (\Throwable $e): void {
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+    error_log('[UNCAUGHT] ' . $e::class . ': ' . $e->getMessage());
+    echo json_encode(['error' => 'Erro interno. Tente novamente.']);
+});
+
+set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+    error_log("[PHP ERROR][$severity] $message in $file:$line");
+    return false;
+});
+
 use Dotenv\Dotenv;
 use App\Database\Connection;
 use App\Middlewares\AuthMiddleware;
