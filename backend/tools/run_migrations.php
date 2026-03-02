@@ -15,6 +15,99 @@ function parseEnv($path)
     return $data;
 }
 
+function splitSqlStatements(string $sql): array
+{
+    $parts = preg_split('/;\s*(?:\r?\n|$)/', $sql);
+    if (!is_array($parts)) {
+        return [];
+    }
+
+    $statements = [];
+    foreach ($parts as $part) {
+        $stmt = trim($part);
+        if ($stmt !== '') {
+            $statements[] = $stmt;
+        }
+    }
+
+    return $statements;
+}
+
+function expandAddColumnIfNotExists(string $sql): string
+{
+    return preg_replace_callback(
+        '/ALTER\s+TABLE\s+`?([a-zA-Z0-9_]+)`?\s+(.*?);/is',
+        function ($matches) {
+            $table = $matches[1];
+            $body = trim($matches[2]);
+
+            if (stripos($body, 'ADD COLUMN IF NOT EXISTS') === false) {
+                return $matches[0];
+            }
+
+            $clauses = preg_split('/,\s*(?=ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\b)/i', $body);
+            if (!is_array($clauses) || count($clauses) === 0) {
+                return $matches[0];
+            }
+
+            $expandedStatements = [];
+            foreach ($clauses as $clause) {
+                $normalizedClause = preg_replace(
+                    '/^\s*ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+/i',
+                    'ADD COLUMN ',
+                    trim($clause)
+                );
+
+                if (!is_string($normalizedClause) || trim($normalizedClause) === '') {
+                    continue;
+                }
+
+                $expandedStatements[] = "ALTER TABLE `{$table}` {$normalizedClause};";
+            }
+
+            return implode("\n", $expandedStatements);
+        },
+        $sql
+    ) ?? $sql;
+}
+
+function isIgnorableSchemaError(Exception $e): bool
+{
+    if (!($e instanceof PDOException)) {
+        return false;
+    }
+
+    if (!isset($e->errorInfo[1])) {
+        return false;
+    }
+
+    $mysqlErrorCode = (int) $e->errorInfo[1];
+    return $mysqlErrorCode === 1060;
+}
+
+function executeMigrationSql(PDO $pdo, string $sql): void
+{
+    if (stripos($sql, 'ADD COLUMN IF NOT EXISTS') === false) {
+        $pdo->exec($sql);
+        return;
+    }
+
+    $compatSql = expandAddColumnIfNotExists($sql);
+    $statements = splitSqlStatements($compatSql);
+
+    foreach ($statements as $statement) {
+        try {
+            $pdo->exec($statement);
+        } catch (Exception $e) {
+            if (isIgnorableSchemaError($e)) {
+                continue;
+            }
+
+            throw $e;
+        }
+    }
+}
+
 $env = parseEnv(__DIR__ . '/../.env');
 $isContainer = file_exists('/.dockerenv') || getenv('COOLIFY_RESOURCE_UUID') || getenv('KUBERNETES_SERVICE_HOST');
 
@@ -81,7 +174,7 @@ foreach ($migrationFiles as $migration) {
     $sanitized = preg_replace('/^\s*USE\s+`?[^`\s;]+`?\s*;\s*$/im', '', $sanitized);
 
     try {
-        $pdo->exec($sanitized);
+        executeMigrationSql($pdo, $sanitized);
         echo "Applied: " . basename($migration) . "\n";
     } catch (Exception $e) {
         echo "Migration error in " . basename($migration) . ": " . $e->getMessage() . PHP_EOL;
