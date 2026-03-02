@@ -71,7 +71,7 @@ function expandAddColumnIfNotExists(string $sql): string
     ) ?? $sql;
 }
 
-function isIgnorableSchemaError(Exception $e): bool
+function isIgnorableSchemaError(Exception $e, string $statement): bool
 {
     if (!($e instanceof PDOException)) {
         return false;
@@ -82,24 +82,25 @@ function isIgnorableSchemaError(Exception $e): bool
     }
 
     $mysqlErrorCode = (int) $e->errorInfo[1];
-    return $mysqlErrorCode === 1060;
+    if ($mysqlErrorCode !== 1060) {
+        return false;
+    }
+
+    return (bool) preg_match('/^\s*ALTER\s+TABLE\b.*\bADD\s+COLUMN\b/i', $statement);
 }
 
 function executeMigrationSql(PDO $pdo, string $sql): void
 {
-    if (stripos($sql, 'ADD COLUMN IF NOT EXISTS') === false) {
-        $pdo->exec($sql);
-        return;
-    }
-
-    $compatSql = expandAddColumnIfNotExists($sql);
+    $compatSql = stripos($sql, 'ADD COLUMN IF NOT EXISTS') === false
+        ? $sql
+        : expandAddColumnIfNotExists($sql);
     $statements = splitSqlStatements($compatSql);
 
     foreach ($statements as $statement) {
         try {
             $pdo->exec($statement);
         } catch (Exception $e) {
-            if (isIgnorableSchemaError($e)) {
+            if (isIgnorableSchemaError($e, $statement)) {
                 continue;
             }
 
