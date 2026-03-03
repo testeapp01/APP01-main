@@ -5,6 +5,9 @@
         v-for="(row, idx) in rows"
         :key="`mobile-${row.id || idx}`"
         class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        :class="{ 'cursor-pointer hover:border-emerald-300 hover:shadow-md transition': rowClickable }"
+        :title="rowClickable ? 'Clique para abrir os itens' : ''"
+        @click="handleRowClick(row)"
       >
         <div
           v-for="col in columns"
@@ -42,6 +45,9 @@
             v-for="(row, idx) in rows"
             :key="row.id || idx"
             class="hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            :class="{ 'cursor-pointer row-clickable-row': rowClickable }"
+            :title="rowClickable ? 'Clique para abrir os itens' : ''"
+            @click="handleRowClick(row)"
           >
             <td
               v-for="col in columns"
@@ -65,13 +71,29 @@
 <script>
 export default {
   name: 'BaseTable',
+  emits: ['row-click'],
   props: {
     columns: { type: Array, default: () => [] },
-    rows: { type: Array, default: () => [] }
+    rows: { type: Array, default: () => [] },
+    rowClickable: { type: Boolean, default: false }
+  },
+  methods: {
+    handleRowClick(row) {
+      if (!this.rowClickable) return
+      this.$emit('row-click', row)
+    }
   }
 }
 </script>
 
 <style scoped>
 table { border-collapse: collapse }
+
+.row-clickable-row td {
+  transition: background-color .14s ease, box-shadow .14s ease;
+}
+
+.row-clickable-row:hover td {
+  background-color: rgba(16, 185, 129, 0.06);
+}
 </style>

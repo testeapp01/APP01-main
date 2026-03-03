@@ -25,7 +25,7 @@
         <div class="saas-kpi-label">
           Cliente
         </div>
-        <div class="saas-kpi-value">
+        <div class="saas-kpi-text">
           {{ header.cliente || '-' }}
         </div>
         <div class="saas-kpi-help">
@@ -37,7 +37,7 @@
           Valor Total
         </div>
         <div class="saas-kpi-value">
-          R$ {{ Number(header.valor_total || 0).toFixed(2) }}
+          {{ formatCurrency(header.valor_total) }}
         </div>
         <div class="saas-kpi-help">
           Soma dos itens
@@ -57,10 +57,10 @@
           {{ row.produto || '-' }}
         </template>
         <template #quantidade="{ row }">
-          {{ row.quantidade ?? '-' }}
+          {{ formatQuantidade(row.quantidade) }}
         </template>
         <template #valor_unitario="{ row }">
-          R$ {{ Number(row.valor_unitario || 0).toFixed(2) }}
+          {{ formatCurrency(row.valor_unitario) }}
         </template>
         <template #status="{ row }">
           {{ normalizeVendaStatus(row.status) }}
@@ -176,6 +176,15 @@ export default {
       const status = String(value || '').trim().toUpperCase()
       if (status === 'ENTREGUE') return 'ENTREGUE'
       return 'AGUARDANDO'
+    },
+    formatCurrency(value) {
+      const number = Number(value || 0)
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(number)
+    },
+    formatQuantidade(value) {
+      const number = Number(value)
+      if (Number.isNaN(number)) return '-'
+      return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 }).format(number)
     },
     formatHistoryUser(row) {
       const id = row?.usuario_id

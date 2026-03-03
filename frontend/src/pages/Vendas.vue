@@ -90,6 +90,8 @@
         <BaseTable
           :columns="tableCols"
           :rows="paginatedVendas"
+          :row-clickable="true"
+          @row-click="openItemsFromRow"
         >
           <template #numero_pedido="{ row }">
             #{{ row.id }}
@@ -113,11 +115,13 @@
             {{ formatDate(row.data_entrega_prevista) }}
           </template>
           <template #acoes="{ row }">
-            <ActionDropdown
-              :items="getRowActions(row)"
-              :menu-height="220"
-              @select="handleRowAction($event, row)"
-            />
+            <div @click.stop>
+              <ActionDropdown
+                :items="getRowActions(row)"
+                :menu-height="220"
+                @select="handleRowAction($event, row)"
+              />
+            </div>
           </template>
         </BaseTable>
       </div>
@@ -431,6 +435,10 @@ export default {
       if (action === 'imprimir') this.printOrder(row)
       if (action === 'confirmar') this.openConfirm(row.id)
       if (action === 'excluir') this.deleteSale(row)
+    },
+    openItemsFromRow(row) {
+      if (!row?.id) return
+      this.openItems(row.id)
     },
     async loadVendas() {
       this.loading = true

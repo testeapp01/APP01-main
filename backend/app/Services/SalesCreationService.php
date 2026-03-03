@@ -55,7 +55,7 @@ class SalesCreationService
 
             $cabecalhoId = null;
             if ($this->hasVendasCabecalhoTable() && $this->hasVendasColumn('venda_cabecalho_id')) {
-                $cabecalhoId = $this->createHeader(
+                $cabecalhoId = $this->tryCreateHeader(
                     (int)$data['cliente_id'],
                     $tipoCabecalho,
                     $valorTotalCabecalho,
@@ -111,7 +111,7 @@ class SalesCreationService
 
         $cabecalhoId = null;
         if ($this->hasVendasCabecalhoTable() && $this->hasVendasColumn('venda_cabecalho_id')) {
-            $cabecalhoId = $this->createHeader(
+            $cabecalhoId = $this->tryCreateHeader(
                 (int)$data['cliente_id'],
                 $tipoCabecalho,
                 (float)($data['quantidade'] ?? 0) * (float)($data['valor_unitario'] ?? 0),
@@ -169,6 +169,22 @@ class SalesCreationService
         $stmt->execute($params);
 
         return (int)$this->pdo->lastInsertId();
+    }
+
+    private function tryCreateHeader(
+        int $clienteId,
+        string $tipo,
+        float $valorTotal,
+        ?string $dataInicio,
+        ?string $dataFim,
+        string $status
+    ): ?int {
+        try {
+            return $this->createHeader($clienteId, $tipo, $valorTotal, $dataInicio, $dataFim, $status);
+        } catch (\Throwable $e) {
+            error_log('[SalesCreationService::tryCreateHeader] fallback sem cabeçalho: ' . $e->getMessage());
+            return null;
+        }
     }
 
     private function normalizeVendaHeaderStatusForSchema(string $status): string

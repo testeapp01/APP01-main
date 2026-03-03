@@ -25,7 +25,7 @@
         <div class="saas-kpi-label">
           Fornecedor
         </div>
-        <div class="saas-kpi-value">
+        <div class="saas-kpi-text">
           {{ header.fornecedor || '-' }}
         </div>
         <div class="saas-kpi-help">
@@ -36,8 +36,8 @@
         <div class="saas-kpi-label">
           Tipo
         </div>
-        <div class="saas-kpi-value">
-          {{ header.tipo_operacao || '-' }}
+        <div class="saas-kpi-text">
+          {{ formatTipoOperacao(header.tipo_operacao) }}
         </div>
         <div class="saas-kpi-help">
           Classificação operacional
@@ -48,7 +48,7 @@
           Valor Total
         </div>
         <div class="saas-kpi-value">
-          R$ {{ Number(header.valor_total || 0).toFixed(2) }}
+          {{ formatCurrency(header.valor_total) }}
         </div>
         <div class="saas-kpi-help">
           Soma dos itens
@@ -68,10 +68,10 @@
           {{ row.produto || '-' }}
         </template>
         <template #quantidade="{ row }">
-          {{ row.quantidade ?? '-' }}
+          {{ formatQuantidade(row.quantidade) }}
         </template>
         <template #valor_unitario="{ row }">
-          R$ {{ Number(row.valor_unitario || 0).toFixed(2) }}
+          {{ formatCurrency(row.valor_unitario) }}
         </template>
         <template #status="{ row }">
           {{ normalizeCompraStatus(row.status) }}
@@ -187,6 +187,20 @@ export default {
       const status = String(value || '').trim().toUpperCase()
       if (status === 'RECEBIDA') return 'RECEBIDA'
       return 'AGUARDANDO'
+    },
+    formatCurrency(value) {
+      const number = Number(value || 0)
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(number)
+    },
+    formatQuantidade(value) {
+      const number = Number(value)
+      if (Number.isNaN(number)) return '-'
+      return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 }).format(number)
+    },
+    formatTipoOperacao(value) {
+      const tipo = String(value || '').trim().toLowerCase()
+      if (!tipo) return '-'
+      return tipo.charAt(0).toUpperCase() + tipo.slice(1)
     },
     formatHistoryUser(row) {
       const id = row?.usuario_id
