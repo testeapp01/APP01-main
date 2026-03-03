@@ -141,21 +141,6 @@ if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)/confirmar-entrega$#', $uri, $
     exit;
 }
 
-if (preg_match('#^/api/v1/compras/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
-    (new PurchaseController($pdo))->updateItem((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/compras/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new PurchaseController($pdo))->deleteItem((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/compras/(\d+)/confirmar-entrega$#', $uri, $matches) && $method === 'POST') {
-    (new PurchaseController($pdo))->confirmItemDelivery((int)$matches[1]);
-    exit;
-}
-
 // vendas (placeholder)
 if ($uri === '/api/v1/vendas' && $method === 'POST') {
     (new SalesController($pdo))->create();

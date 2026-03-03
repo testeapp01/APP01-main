@@ -61,42 +61,13 @@ class PurchaseController
 
     public function index(): void
     {
-        if ($this->hasComprasCabecalhoTable() && $this->hasComprasColumn('compra_cabecalho_id')) {
-            $this->indexHeaders();
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
             return;
         }
 
-        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $per = isset($_GET['per_page']) ? max(1, (int)$_GET['per_page']) : 25;
-        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
-
-        $offset = ($page - 1) * $per;
-
-        $where = '';
-        $params = [];
-        if ($q !== '') {
-            $where = 'WHERE f.razao_social LIKE :q OR p.nome LIKE :q OR cl.nome LIKE :q OR m.nome LIKE :q';
-            $params[':q'] = "%{$q}%";
-        }
-
-        $countSql = "SELECT COUNT(*) as total FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id LEFT JOIN clientes cl ON c.cliente_id = cl.id LEFT JOIN motoristas m ON c.motorista_id = m.id {$where}";
-        $stmt = $this->pdo->prepare($countSql);
-        $stmt->execute($params);
-        $total = (int)$stmt->fetchColumn();
-
-        $envioCol = $this->hasComprasColumn('data_envio_prevista') ? 'c.data_envio_prevista' : 'NULL AS data_envio_prevista';
-        $entregaCol = $this->hasComprasColumn('data_entrega_prevista') ? 'c.data_entrega_prevista' : 'NULL AS data_entrega_prevista';
-        $tipoOperacaoCol = $this->hasComprasColumn('tipo_operacao') ? 'c.tipo_operacao' : "'revenda' AS tipo_operacao";
-        $clienteCol = $this->hasComprasColumn('cliente_id') ? 'cl.nome AS cliente' : 'NULL AS cliente';
-        $sql = "SELECT c.id, f.razao_social AS fornecedor, {$clienteCol}, m.nome AS motorista, p.nome AS produto, {$tipoOperacaoCol}, c.quantidade, c.valor_unitario, c.status, c.data_compra, {$envioCol}, {$entregaCol} FROM compras c LEFT JOIN fornecedores f ON c.fornecedor_id = f.id LEFT JOIN produtos p ON c.produto_id = p.id LEFT JOIN clientes cl ON c.cliente_id = cl.id LEFT JOIN motoristas m ON c.motorista_id = m.id {$where} ORDER BY c.id DESC LIMIT :limit OFFSET :offset";
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode(['items' => $items, 'total' => $total]);
+        $this->indexHeaders();
     }
 
     private function indexHeaders(): void
@@ -164,117 +135,19 @@ class PurchaseController
     {
         $data = Request::body();
 
-        if (!empty($data['items']) && is_array($data['items']) && $this->hasComprasCabecalhoTable() && $this->hasComprasColumn('compra_cabecalho_id')) {
-            $this->createWithHeader($data);
-            return;
-        }
-
-        // basic validation
-        $required = ['fornecedor_id', 'produto_id', 'quantidade', 'valor_unitario'];
-        foreach ($required as $f) {
-            if (empty($data[$f]) && $data[$f] !== 0) {
-                http_response_code(400);
-                echo json_encode(['error' => "Campo {$f} obrigatório"]);
-                return;
-            }
-        }
-
-        $tipoOperacao = ($data['tipo_operacao'] ?? (($data['tipo'] ?? 'revenda') === 'venda' ? 'venda' : 'revenda'));
-
-        if ($tipoOperacao === 'venda' && empty($data['motorista_id'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Selecione um motorista para compras do tipo venda']);
-            return;
-        }
-
-        if ($tipoOperacao === 'venda' && empty($data['cliente_id'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Selecione um cliente para compras do tipo venda']);
-            return;
-        }
-
-        $quantidade = (float)$data['quantidade'];
-        $valorUnitario = (float)$data['valor_unitario'];
-        if ($quantidade <= 0 || $valorUnitario <= 0) {
-            http_response_code(400);
-            echo json_encode(['error' => 'quantidade e valor_unitario devem ser maiores que zero']);
-            return;
-        }
-
-        $tipoComissao = $data['tipo_comissao'] ?? null; // 'percentual'|'fixa'|null
-        $valorComissao = isset($data['valor_comissao']) ? (float)$data['valor_comissao'] : null;
-        $extraPorSaco = isset($data['extra_por_saco']) ? (float)$data['extra_por_saco'] : 0.0;
-
-        $calcs = CommissionService::calculate($quantidade, $valorUnitario, $tipoComissao, $valorComissao, $extraPorSaco);
-
-        // If frontend posted fornecedor_id / produto_id already, use them directly.
-        // Otherwise, attempt to resolve from provided names (razao_social / nome_produto) — optional.
-        if (empty($data['fornecedor_id']) && !empty($data['razao_social'])) {
-            $stmt = $this->pdo->prepare('SELECT id FROM fornecedores WHERE razao_social = :razao LIMIT 1');
-            $stmt->execute([':razao' => $data['razao_social']]);
-            $forn = $stmt->fetch();
-            if ($forn) $data['fornecedor_id'] = $forn['id'];
-        }
-
-        if (empty($data['produto_id']) && !empty($data['nome_produto'])) {
-            $stmt = $this->pdo->prepare('SELECT id FROM produtos WHERE nome = :nome LIMIT 1');
-            $stmt->execute([':nome' => $data['nome_produto']]);
-            $prod = $stmt->fetch();
-            if ($prod) $data['produto_id'] = $prod['id'];
-        }
-
-        $possible = [
-            'fornecedor_id' => $data['fornecedor_id'],
-            'produto_id' => $data['produto_id'],
-            'motorista_id' => !empty($data['motorista_id']) ? (int)$data['motorista_id'] : null,
-            'tipo_operacao' => $tipoOperacao,
-            'cliente_id' => !empty($data['cliente_id']) ? (int)$data['cliente_id'] : null,
-            'quantidade' => $quantidade,
-            'valor_unitario' => $valorUnitario,
-            'tipo_comissao' => $tipoComissao,
-            'valor_comissao' => $valorComissao,
-            'extra_por_saco' => $extraPorSaco,
-            'custo_total' => $calcs['valor_total'],
-            'comissao_total' => $calcs['comissao_total'],
-            'custo_final_real' => $calcs['custo_final_real'],
-            'status' => 'NEGOCIADA',
-            'data_envio_prevista' => !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null,
-            'data_entrega_prevista' => !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null,
-        ];
-
-        $columns = array_values(array_filter(array_keys($possible), fn(string $column) => $this->hasComprasColumn($column)));
-        $valuesSql = [];
-        $params = [];
-
-        foreach ($columns as $column) {
-            $valuesSql[] = ':' . $column;
-            $params[$column] = $possible[$column];
-        }
-
-        if ($this->hasComprasColumn('data_compra')) {
-            $columns[] = 'data_compra';
-            $valuesSql[] = 'NOW()';
-        }
-
-        try {
-            $stmt = $this->pdo->prepare('INSERT INTO compras (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $valuesSql) . ')');
-            $stmt->execute($params);
-        } catch (\PDOException $e) {
-            $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
-            if ($mysqlCode === 1452) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Fornecedor, produto ou motorista inválido.']);
-                return;
-            }
-
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
             http_response_code(500);
-            echo json_encode(['error' => 'Falha ao salvar compra.']);
+            echo json_encode(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
             return;
         }
 
-        $id = (int)$this->pdo->lastInsertId();
-        http_response_code(201);
-        echo json_encode(['id' => $id, 'status' => 'NEGOCIADA', 'calcs' => $calcs]);
+        if (empty($data['items']) || !is_array($data['items'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'items obrigatório']);
+            return;
+        }
+
+        $this->createWithHeader($data);
     }
 
     private function createWithHeader(array $data): void
@@ -441,13 +314,13 @@ class PurchaseController
     public function showHeader(int $id): void
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Cabeçalho de compra não disponível neste ambiente.']);
+            http_response_code(500);
+            echo json_encode(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
             return;
         }
 
         $headerStmt = $this->pdo->prepare(
-            'SELECT h.id, h.tipo_operacao, h.valor_total, h.status, h.data_envio_prevista, h.data_entrega_prevista,
+                'SELECT h.id, h.tipo_operacao, h.fornecedor_id, h.cliente_id, h.motorista_id, h.valor_total, h.status, h.data_envio_prevista, h.data_entrega_prevista,
                     f.razao_social AS fornecedor, cl.nome AS cliente, m.nome AS motorista
              FROM compras_cabecalho h
              LEFT JOIN fornecedores f ON f.id = h.fornecedor_id

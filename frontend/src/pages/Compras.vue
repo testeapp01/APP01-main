@@ -822,37 +822,17 @@ export default {
       if (!value) return ''
       return String(value).slice(0, 10)
     },
-    async resolveFornecedorIdByName(nome) {
-      if (!nome) return null
-      const found = (this.fornecedores || []).find(f => f.razao_social === nome)
-      return found ? Number(found.id) : null
-    },
-    async resolveClienteIdByName(nome) {
-      if (!nome) return null
-      const found = (this.clientes || []).find(c => c.nome === nome)
-      return found ? Number(found.id) : null
-    },
-    async resolveMotoristaIdByName(nome) {
-      if (!nome) return null
-      const found = (this.motoristas || []).find(m => m.nome === nome)
-      return found ? Number(found.id) : null
-    },
     async openEditModal(row) {
       this.editFeedback = { message: '', type: 'info' }
-      let header = row
-
-      try {
-        const res = await api.get(`/api/v1/compras/cabecalhos/${row.id}`)
-        header = res.data?.header || row
-      } catch (e) {
-      }
+      const res = await api.get(`/api/v1/compras/cabecalhos/${row.id}`)
+      const header = res.data?.header || {}
 
       this.editCompra = {
         id: row.id,
         tipo_operacao: header.tipo_operacao || 'revenda',
-        fornecedor_id: await this.resolveFornecedorIdByName(header.fornecedor),
-        cliente_id: await this.resolveClienteIdByName(header.cliente),
-        motorista_id: await this.resolveMotoristaIdByName(header.motorista),
+        fornecedor_id: header.fornecedor_id ? Number(header.fornecedor_id) : null,
+        cliente_id: header.cliente_id ? Number(header.cliente_id) : null,
+        motorista_id: header.motorista_id ? Number(header.motorista_id) : null,
         data_envio_prevista: this.toInputDate(header.data_envio_prevista),
         data_entrega_prevista: this.toInputDate(header.data_entrega_prevista),
         status: header.status || 'NEGOCIADA',
@@ -894,15 +874,8 @@ export default {
         this.editFeedback = { message: 'Compra atualizada com sucesso.', type: 'success' }
         setTimeout(() => { this.showEditModal = false }, 300)
         this.loadCompras()
-      } catch (e) {
-        try {
-          await api.patch(`/api/v1/compras/${this.editCompra.id}`, payload)
-          this.editFeedback = { message: 'Compra atualizada com sucesso.', type: 'success' }
-          setTimeout(() => { this.showEditModal = false }, 300)
-          this.loadCompras()
-        } catch (err) {
-          this.editFeedback = { message: err?.response?.data?.error || 'Não foi possível atualizar a compra.', type: 'error' }
-        }
+      } catch (err) {
+        this.editFeedback = { message: err?.response?.data?.error || 'Não foi possível atualizar a compra.', type: 'error' }
       } finally {
         this.submittingEdit = false
       }
@@ -914,13 +887,8 @@ export default {
       try {
         await api.delete(`/api/v1/compras/cabecalhos/${row.id}`)
         this.loadCompras()
-      } catch (e) {
-        try {
-          await api.delete(`/api/v1/compras/${row.id}`)
-          this.loadCompras()
-        } catch (err) {
-          alert(err?.response?.data?.error || 'Não foi possível excluir a compra.')
-        }
+      } catch (err) {
+        alert(err?.response?.data?.error || 'Não foi possível excluir a compra.')
       }
     },
     async confirmDelivery(row) {
@@ -930,13 +898,8 @@ export default {
       try {
         await api.post(`/api/v1/compras/cabecalhos/${row.id}/confirmar-entrega`, {})
         this.loadCompras()
-      } catch (e) {
-        try {
-          await api.post(`/api/v1/compras/${row.id}/confirmar-entrega`, {})
-          this.loadCompras()
-        } catch (err) {
-          alert(err?.response?.data?.error || 'Não foi possível confirmar a entrega.')
-        }
+      } catch (err) {
+        alert(err?.response?.data?.error || 'Não foi possível confirmar a entrega.')
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },
