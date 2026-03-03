@@ -7,6 +7,7 @@ class PurchaseCreationService
 {
     private ?array $comprasColumnsCache = null;
     private ?array $comprasCabecalhoColumnsCache = null;
+    private ?array $comprasStatusEnumValuesCache = null;
     private ?bool $hasComprasCabecalhoCache = null;
     private ?bool $hasStatusCompraCache = null;
 
@@ -60,6 +61,7 @@ class PurchaseCreationService
         }
 
         $status = $this->normalizeStatusCompraLabel($data['status'] ?? null);
+        $itemStatus = $this->normalizeCompraItemStatusForSchema($status);
         $dataEnvio = !empty($data['data_envio_prevista']) ? $data['data_envio_prevista'] : null;
         $dataEntrega = !empty($data['data_entrega_prevista']) ? $data['data_entrega_prevista'] : null;
 
@@ -99,7 +101,7 @@ class PurchaseCreationService
                 'custo_total' => $calcs['valor_total'],
                 'comissao_total' => $calcs['comissao_total'],
                 'custo_final_real' => $calcs['custo_final_real'],
-                'status' => $status,
+                'status' => $itemStatus,
                 'data_envio_prevista' => $dataEnvio,
                 'data_entrega_prevista' => $dataEntrega,
             ];
@@ -187,6 +189,60 @@ class PurchaseCreationService
     {
         $value = strtoupper(trim((string)$status));
         return $value === 'RECEBIDA' ? 'RECEBIDA' : 'AGUARDANDO';
+    }
+
+    private function normalizeCompraItemStatusForSchema(string $status): string
+    {
+        if ($status === 'RECEBIDA') {
+            return 'RECEBIDA';
+        }
+
+        $allowed = $this->comprasStatusEnumValues();
+        if (empty($allowed)) {
+            return 'AGUARDANDO';
+        }
+
+        if (in_array('AGUARDANDO', $allowed, true)) {
+            return 'AGUARDANDO';
+        }
+
+        if (in_array('NEGOCIADA', $allowed, true)) {
+            return 'NEGOCIADA';
+        }
+
+        return $allowed[0] ?? 'AGUARDANDO';
+    }
+
+    private function comprasStatusEnumValues(): array
+    {
+        if ($this->comprasStatusEnumValuesCache !== null) {
+            return $this->comprasStatusEnumValuesCache;
+        }
+
+        $this->comprasStatusEnumValuesCache = [];
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            return $this->comprasStatusEnumValuesCache;
+        }
+
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM compras LIKE 'status'");
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $type = (string)($row['Type'] ?? '');
+            if (preg_match("/^enum\\((.+)\\)$/i", $type, $m) !== 1) {
+                return $this->comprasStatusEnumValuesCache;
+            }
+
+            $parts = str_getcsv($m[1], ',', "'", "\\");
+            $this->comprasStatusEnumValuesCache = array_values(array_filter(array_map(
+                static fn(string $value): string => strtoupper(trim($value)),
+                $parts
+            )));
+        } catch (\Throwable $e) {
+            $this->comprasStatusEnumValuesCache = [];
+        }
+
+        return $this->comprasStatusEnumValuesCache;
     }
 
     private function statusCompraIdByNome(string $nome): ?int
