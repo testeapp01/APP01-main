@@ -5,6 +5,14 @@
       subtitle="Controle entradas, parceiros e comissões em um fluxo operacional único."
     >
       <template #actions>
+        <select
+          v-model="statusFilter"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto"
+        >
+          <option value="">Todos status</option>
+          <option value="AGUARDANDO">AGUARDANDO</option>
+          <option value="RECEBIDA">RECEBIDA</option>
+        </select>
         <BaseButton
           class="btn-secondary w-full sm:w-auto"
           @click="loadCompras"
@@ -26,7 +34,7 @@
           Total de Compras
         </div>
         <div class="saas-kpi-value">
-          {{ totalCount }}
+          {{ filteredCompras.length }}
         </div>
         <div class="saas-kpi-help">
           Registros no período atual
@@ -54,10 +62,21 @@
           Escala de visualização
         </div>
       </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Filtro de Status
+        </div>
+        <div class="saas-kpi-value">
+          {{ statusFilter || 'TODOS' }}
+        </div>
+        <div class="saas-kpi-help">
+          Visão operacional
+        </div>
+      </article>
     </section>
 
     <div
-      v-if="visibleCompras.length > 0"
+      v-if="filteredCompras.length > 0"
       class="panel-inner"
     >
       <BaseTable
@@ -86,7 +105,7 @@
           {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
         </template>
         <template #status="{ row }">
-          {{ row.status || '-' }}
+          {{ normalizeCompraStatus(row.status) }}
         </template>
         <template #data_envio_prevista="{ row }">
           {{ formatDate(row.data_envio_prevista) }}
@@ -95,70 +114,17 @@
           {{ formatDate(row.data_entrega_prevista) }}
         </template>
         <template #acoes="{ row }">
-          <div
-            class="relative inline-block text-left"
-            @click.stop
-          >
-            <button
-              type="button"
-              class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              aria-label="Abrir ações"
-              @click.stop="toggleActionsMenu(row.id, $event)"
-            >
-              ⋯
-            </button>
-
-            <div
-              v-if="openActionsMenuId === row.id"
-              :class="[
-                'absolute right-0 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg',
-                openActionsMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-              ]"
-            >
-              <button
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                @click="openItems(row.id); closeActionsMenu()"
-              >
-                Itens
-              </button>
-              <button
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                @click="openEditModal(row); closeActionsMenu()"
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                @click="printOrder(row); closeActionsMenu()"
-              >
-                Imprimir
-              </button>
-              <button
-                v-if="!(row.status && String(row.status).toLowerCase() === 'recebida')"
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                @click="confirmDelivery(row); closeActionsMenu()"
-              >
-                Confirmar entrega
-              </button>
-              <button
-                type="button"
-                class="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                @click="deletePurchase(row); closeActionsMenu()"
-              >
-                Excluir
-              </button>
-            </div>
-          </div>
+          <ActionDropdown
+            :items="getRowActions(row)"
+            :menu-height="240"
+            @select="handleRowAction($event, row)"
+          />
         </template>
       </BaseTable>
     </div>
     <ListState
       :loading="loading"
-      :has-data="visibleCompras.length > 0"
+      :has-data="filteredCompras.length > 0"
       loading-text="Carregando compras..."
       empty-title="Nenhuma compra encontrada."
       empty-message="Adicione compras para começar a registrar entradas."
@@ -167,12 +133,12 @@
     />
 
     <div
-      v-if="visibleCompras.length > 0"
+      v-if="filteredCompras.length > 0"
       class="mt-4"
     >
       <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="text-sm muted">
-          Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}
+          Mostrando {{ filteredCompras.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredCompras.length) }} de {{ filteredCompras.length }}
         </div>
         <div class="page-pagination">
           <BaseButton
@@ -611,7 +577,7 @@
             v-model="editCompra.status"
             class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
           >
-            <option value="NEGOCIADA">NEGOCIADA</option>
+            <option value="AGUARDANDO">AGUARDANDO</option>
             <option value="RECEBIDA">RECEBIDA</option>
           </select>
         </div>
@@ -646,9 +612,10 @@ import SideDrawer from '../components/ui/SideDrawer.vue'
 import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
+import ActionDropdown from '../components/ui/ActionDropdown.vue'
 
 export default {
-  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback },
+  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback, ActionDropdown },
   data() {
     return {
       compras: [],
@@ -676,6 +643,7 @@ export default {
       showEditModal: false,
       submittingPurchase: false,
       submittingEdit: false,
+      statusFilter: '',
       purchaseFeedback: { message: '', type: 'info' },
       editFeedback: { message: '', type: 'info' },
       editCompra: {
@@ -686,10 +654,8 @@ export default {
         motorista_id: null,
         data_envio_prevista: '',
         data_entrega_prevista: '',
-        status: 'NEGOCIADA',
+        status: 'AGUARDANDO',
       },
-      openActionsMenuId: null,
-      openActionsMenuDirection: 'down',
       pageSize: 25,
       currentPage: 1,
       totalCount: 0,
@@ -718,8 +684,12 @@ export default {
         return hasFornecedor || hasItens || hasValor
       })
     },
-    totalPages() { return Math.max(1, Math.ceil(this.totalCount / this.pageSize)) },
-    paginatedCompras() { return this.visibleCompras },
+    filteredCompras() {
+      if (!this.statusFilter) return this.visibleCompras
+      return this.visibleCompras.filter(c => this.normalizeCompraStatus(c.status) === this.statusFilter)
+    },
+    totalPages() { return Math.max(1, Math.ceil(this.filteredCompras.length / this.pageSize)) },
+    paginatedCompras() { return this.filteredCompras },
   },
   mounted() {
     this.loadCompras()
@@ -727,39 +697,30 @@ export default {
     this.loadProdutos()
     this.loadMotoristas()
     this.loadClientes()
-    document.addEventListener('click', this.handleDocumentClick)
-  },
-  beforeUnmount() {
-    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
-    toggleActionsMenu(id, event) {
-      if (this.openActionsMenuId === id) {
-        this.openActionsMenuId = null
-        return
-      }
-
-      this.openActionsMenuId = id
-      this.$nextTick(() => {
-        const trigger = event?.currentTarget
-        if (!trigger) {
-          this.openActionsMenuDirection = 'down'
-          return
-        }
-
-        const rect = trigger.getBoundingClientRect()
-        const menuHeight = 240
-        const spaceBelow = window.innerHeight - rect.bottom
-        const spaceAbove = rect.top
-
-        this.openActionsMenuDirection = (spaceBelow < menuHeight && spaceAbove > spaceBelow) ? 'up' : 'down'
-      })
+    getRowActions(row) {
+      return [
+        { key: 'itens', label: 'Itens' },
+        { key: 'historico', label: 'Histórico status' },
+        { key: 'editar', label: 'Editar' },
+        { key: 'imprimir', label: 'Imprimir' },
+        { key: 'confirmar', label: 'Confirmar entrega', hidden: this.normalizeCompraStatus(row.status) === 'RECEBIDA' },
+        { key: 'excluir', label: 'Excluir', danger: true },
+      ]
     },
-    closeActionsMenu() {
-      this.openActionsMenuId = null
+    normalizeCompraStatus(value) {
+      const status = String(value || '').trim().toUpperCase()
+      if (status === 'RECEBIDA') return 'RECEBIDA'
+      return 'AGUARDANDO'
     },
-    handleDocumentClick() {
-      this.closeActionsMenu()
+    handleRowAction(action, row) {
+      if (action === 'itens') this.openItems(row.id)
+      if (action === 'historico') this.openHistory(row.id)
+      if (action === 'editar') this.openEditModal(row)
+      if (action === 'imprimir') this.printOrder(row)
+      if (action === 'confirmar') this.confirmDelivery(row)
+      if (action === 'excluir') this.deletePurchase(row)
     },
     async loadCompras() {
       this.loading = true
@@ -893,7 +854,7 @@ export default {
         motorista_id: header.motorista_id ? Number(header.motorista_id) : null,
         data_envio_prevista: this.toInputDate(header.data_envio_prevista),
         data_entrega_prevista: this.toInputDate(header.data_entrega_prevista),
-        status: header.status || 'NEGOCIADA',
+        status: this.normalizeCompraStatus(header.status),
       }
       this.showEditModal = true
     },
@@ -909,7 +870,7 @@ export default {
         motorista_id: null,
         data_envio_prevista: '',
         data_entrega_prevista: '',
-        status: 'NEGOCIADA',
+        status: 'AGUARDANDO',
       }
     },
     async saveEditPurchase() {
@@ -924,7 +885,7 @@ export default {
         motorista_id: this.editCompra.tipo_operacao === 'venda' ? this.editCompra.motorista_id : null,
         data_envio_prevista: this.editCompra.data_envio_prevista || null,
         data_entrega_prevista: this.editCompra.data_entrega_prevista || null,
-        status: this.editCompra.status || 'NEGOCIADA',
+        status: this.normalizeCompraStatus(this.editCompra.status),
       }
 
       try {
@@ -967,6 +928,9 @@ export default {
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadCompras() },
     openItems(id) {
       this.$router.push(`/compras/cabecalho/${id}`)
+    },
+    openHistory(id) {
+      this.$router.push(`/compras/cabecalho/${id}#historico-status`)
     },
     formatDate(value) {
       if (!value) return '-'

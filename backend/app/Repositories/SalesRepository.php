@@ -55,7 +55,7 @@ class SalesRepository
             'custo_proporcional' => $data['custo_proporcional'],
             'lucro_bruto' => $data['lucro_bruto'],
             'margem_percentual' => $data['margem_percentual'],
-            'status' => $data['status'] ?? 'ORCAMENTO',
+            'status' => $data['status'] ?? 'AGUARDANDO',
             'data_envio_prevista' => $data['data_envio_prevista'] ?? null,
             'data_entrega_prevista' => $data['data_entrega_prevista'] ?? null,
         ];

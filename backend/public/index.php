@@ -96,6 +96,7 @@ if (str_starts_with($uri, '/api/v1/')) {
     $isPublic = ($uri === '/api/v1/auth/login' && $method === 'POST');
     if (!$isPublic) {
         $authUser = AuthMiddleware::authenticate();
+        $GLOBALS['AUTH_USER'] = $authUser;
     }
 }
 
@@ -160,6 +161,11 @@ if ($uri === '/api/v1/vendas' && $method === 'GET') {
 
 if (preg_match('#^/api/v1/vendas/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'GET') {
     (new SalesController($pdo))->showHeader((int)$matches[1]);
+    exit;
+}
+
+if (preg_match('#^/api/v1/vendas/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
+    (new SalesController($pdo))->deleteHeader((int)$matches[1]);
     exit;
 }
 

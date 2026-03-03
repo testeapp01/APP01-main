@@ -1,8 +1,11 @@
 <?php
-// Simple end-to-end test against local API (http://127.0.0.1:8000)
+// End-to-end test against API. Set E2E_API_BASE to override default URL.
+$apiBase = rtrim(getenv('E2E_API_BASE') ?: 'http://127.0.0.1:8000', '/');
+
 function req($method, $path, $token = null, $body = null)
 {
-    $url = 'http://127.0.0.1:8000' . $path;
+    global $apiBase;
+    $url = $apiBase . $path;
     $ch = curl_init($url);
     $headers = ['Accept: application/json'];
     if ($token) $headers[] = 'Authorization: Bearer ' . $token;
@@ -15,28 +18,58 @@ function req($method, $path, $token = null, $body = null)
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     $resp = curl_exec($ch);
+    $curlError = curl_error($ch);
     $info = curl_getinfo($ch);
     curl_close($ch);
     $data = null;
     if ($resp) {
         $data = json_decode($resp, true) ?: $resp;
     }
-    return ['code' => $info['http_code'] ?? 0, 'body' => $data, 'raw' => $resp];
+    return ['code' => $info['http_code'] ?? 0, 'body' => $data, 'raw' => $resp, 'curl_error' => $curlError];
 }
 
-echo "E2E: starting against http://127.0.0.1:8000\n";
+echo "E2E: starting against {$apiBase}\n";
+
+$preflight = req('GET', '/api/v1/nao-existe');
+if ($preflight['code'] === 0) {
+    echo "API indisponível em {$apiBase}.\n";
+    if (!empty($preflight['curl_error'])) {
+        echo "cURL: {$preflight['curl_error']}\n";
+    }
+    echo "Sugestão rápida:\n";
+    echo "1) Suba a API: php -S 127.0.0.1:8000 -t backend/public\n";
+    echo "2) Garanta DB ativo e rode: php backend/tools/create_db.php; php backend/tools/run_migrations.php; php backend/tools/seed.php\n";
+    exit(1);
+}
 
 // 1) login
 $login = req('POST', '/api/v1/auth/login', null, ['email' => 'admin@example.com', 'password' => 'secret']);
 if ($login['code'] !== 200 || empty($login['body']['token'])) {
     echo "LOGIN failed (code={$login['code']}): " . ($login['raw'] ?? json_encode($login['body'])) . PHP_EOL;
+    if (!empty($login['curl_error'])) {
+        echo "cURL: {$login['curl_error']}\n";
+    }
     exit(1);
 }
 $token = $login['body']['token'];
 echo "LOGIN OK, token length=" . strlen($token) . "\n";
 
 // 2) create purchase
-$purchasePayload = ['fornecedor_id' => 1, 'produto_id' => 1, 'motorista_id' => 1, 'quantidade' => 5, 'valor_unitario' => 4.0, 'tipo_comissao' => 'percentual', 'valor_comissao' => 5.0, 'extra_por_saco' => 0];
+$purchasePayload = [
+    'fornecedor_id' => 1,
+    'motorista_id' => 1,
+    'tipo_operacao' => 'revenda',
+    'tipo_comissao' => 'percentual',
+    'valor_comissao' => 5.0,
+    'extra_por_saco' => 0,
+    'items' => [
+        [
+            'produto_id' => 1,
+            'quantidade' => 5,
+            'valor_unitario' => 4.0,
+        ],
+    ],
+];
 $c = req('POST', '/api/v1/compras', $token, $purchasePayload);
 if ($c['code'] !== 201) { echo "CREATE PURCHASE failed: "; var_export($c); exit(1); }
 $compraId = $c['body']['id'];

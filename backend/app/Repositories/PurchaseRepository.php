@@ -32,7 +32,7 @@ class PurchaseRepository
             'custo_total' => $data['custo_total'],
             'comissao_total' => $data['comissao_total'],
             'custo_final_real' => $data['custo_final_real'],
-            'status' => $data['status'] ?? 'NEGOCIADA',
+            'status' => $data['status'] ?? 'AGUARDANDO',
         ]);
         return (int)$this->pdo->lastInsertId();
     }

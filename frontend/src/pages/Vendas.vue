@@ -11,6 +11,14 @@
           class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px]"
           @input="onQuery"
         >
+        <select
+          v-model="statusFilter"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto"
+        >
+          <option value="">Todos status</option>
+          <option value="AGUARDANDO">AGUARDANDO</option>
+          <option value="ENTREGUE">ENTREGUE</option>
+        </select>
         <BaseButton
           class="btn-secondary w-full sm:w-auto"
           @click="refresh"
@@ -32,7 +40,7 @@
           Total de Vendas
         </div>
         <div class="saas-kpi-value">
-          {{ totalCount }}
+          {{ filteredVendas.length }}
         </div>
         <div class="saas-kpi-help">
           Pedidos rastreados
@@ -60,12 +68,23 @@
           Navegação ativa
         </div>
       </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
+          Filtro de Status
+        </div>
+        <div class="saas-kpi-value">
+          {{ statusFilter || 'TODOS' }}
+        </div>
+        <div class="saas-kpi-help">
+          Visão operacional
+        </div>
+      </article>
     </section>
 
     <!-- Table or empty state -->
     <div>
       <div
-        v-if="visibleVendas.length > 0"
+        v-if="filteredVendas.length > 0"
         class="panel-inner"
       >
         <BaseTable
@@ -85,7 +104,7 @@
             {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
           </template>
           <template #status="{ row }">
-            {{ row.status || '-' }}
+            {{ normalizeVendaStatus(row.status) }}
           </template>
           <template #data_envio_prevista="{ row }">
             {{ formatDate(row.data_envio_prevista) }}
@@ -94,57 +113,18 @@
             {{ formatDate(row.data_entrega_prevista) }}
           </template>
           <template #acoes="{ row }">
-            <div
-              class="relative inline-block text-left"
-              @click.stop
-            >
-              <button
-                type="button"
-                class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                aria-label="Abrir ações"
-                @click.stop="toggleActionsMenu(row.id, $event)"
-              >
-                ⋯
-              </button>
-
-              <div
-                v-if="openActionsMenuId === row.id"
-                :class="[
-                  'absolute right-0 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg',
-                  openActionsMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-                ]"
-              >
-                <button
-                  type="button"
-                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                  @click="openItems(row.id); closeActionsMenu()"
-                >
-                  Itens
-                </button>
-                <button
-                  type="button"
-                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                  @click="printOrder(row); closeActionsMenu()"
-                >
-                  Imprimir
-                </button>
-                <button
-                  v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')"
-                  type="button"
-                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                  @click="openConfirm(row.id); closeActionsMenu()"
-                >
-                  Confirmar entrega
-                </button>
-              </div>
-            </div>
+            <ActionDropdown
+              :items="getRowActions(row)"
+              :menu-height="220"
+              @select="handleRowAction($event, row)"
+            />
           </template>
         </BaseTable>
       </div>
 
       <ListState
         :loading="loading"
-        :has-data="visibleVendas.length > 0"
+        :has-data="filteredVendas.length > 0"
         loading-text="Carregando vendas..."
         empty-title="Nenhuma venda encontrada."
         empty-message="Você ainda não registrou vendas. Clique abaixo para adicionar a primeira venda."
@@ -154,12 +134,12 @@
     </div>
     <!-- Pagination controls -->
     <div
-      v-if="visibleVendas.length > 0"
+      v-if="filteredVendas.length > 0"
       class="mt-4"
     >
       <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="text-sm muted">
-          Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}
+          Mostrando {{ filteredVendas.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredVendas.length) }} de {{ filteredVendas.length }}
         </div>
         <div class="page-pagination">
           <BaseButton
@@ -362,15 +342,17 @@ import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
 import CustomSelect from '../components/ui/CustomSelect.vue'
+import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import { useToast } from '../composables/useToast'
 
 export default {
-  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, CustomSelect },
+  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, CustomSelect, ActionDropdown },
   data() {
     return {
       vendas: [],
       loading: false,
       query: '',
+      statusFilter: '',
       novaVenda: { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
       tableCols: [
         { key: 'numero_pedido', label: 'Pedido' },
@@ -390,8 +372,6 @@ export default {
       saleFeedback: { message: '', type: 'info' },
       confirmPayload: null,
       confirming: false,
-      openActionsMenuId: null,
-      openActionsMenuDirection: 'down',
       pageSize: 25,
       currentPage: 1,
       timer: null,
@@ -415,49 +395,42 @@ export default {
       })
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.totalCount / this.pageSize))
+      return Math.max(1, Math.ceil(this.filteredVendas.length / this.pageSize))
     },
     paginatedVendas() {
-      return this.visibleVendas
+      return this.filteredVendas
+    },
+    filteredVendas() {
+      if (!this.statusFilter) return this.visibleVendas
+      return this.visibleVendas.filter(v => this.normalizeVendaStatus(v.status) === this.statusFilter)
     },
   },
   mounted() {
     this.loadClients();
     this.loadProducts();
     this.loadVendas();
-    document.addEventListener('click', this.handleDocumentClick)
-  },
-  beforeUnmount() {
-    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
-    toggleActionsMenu(id, event) {
-      if (this.openActionsMenuId === id) {
-        this.openActionsMenuId = null
-        return
-      }
-
-      this.openActionsMenuId = id
-      this.$nextTick(() => {
-        const trigger = event?.currentTarget
-        if (!trigger) {
-          this.openActionsMenuDirection = 'down'
-          return
-        }
-
-        const rect = trigger.getBoundingClientRect()
-        const menuHeight = 220
-        const spaceBelow = window.innerHeight - rect.bottom
-        const spaceAbove = rect.top
-
-        this.openActionsMenuDirection = (spaceBelow < menuHeight && spaceAbove > spaceBelow) ? 'up' : 'down'
-      })
+    getRowActions(row) {
+      return [
+        { key: 'itens', label: 'Itens' },
+        { key: 'historico', label: 'Histórico status' },
+        { key: 'imprimir', label: 'Imprimir' },
+        { key: 'confirmar', label: 'Confirmar entrega', hidden: this.normalizeVendaStatus(row.status) === 'ENTREGUE' },
+        { key: 'excluir', label: 'Excluir', danger: true },
+      ]
     },
-    closeActionsMenu() {
-      this.openActionsMenuId = null
+    normalizeVendaStatus(value) {
+      const status = String(value || '').trim().toUpperCase()
+      if (status === 'ENTREGUE') return 'ENTREGUE'
+      return 'AGUARDANDO'
     },
-    handleDocumentClick() {
-      this.closeActionsMenu()
+    handleRowAction(action, row) {
+      if (action === 'itens') this.openItems(row.id)
+      if (action === 'historico') this.openHistory(row.id)
+      if (action === 'imprimir') this.printOrder(row)
+      if (action === 'confirmar') this.openConfirm(row.id)
+      if (action === 'excluir') this.deleteSale(row)
     },
     async loadVendas() {
       this.loading = true
@@ -506,8 +479,23 @@ export default {
         useToast().notify('Falha ao atualizar status', { type: 'error' })
       }
     },
+    async deleteSale(row) {
+      const ok = window.confirm(`Deseja realmente excluir o pedido #${row.id}?`)
+      if (!ok) return
+
+      try {
+        await api.delete(`/api/v1/vendas/cabecalhos/${row.id}`)
+        useToast().notify('Pedido excluído com sucesso', { type: 'success' })
+        this.loadVendas()
+      } catch (e) {
+        useToast().notify(e?.response?.data?.error || 'Não foi possível excluir o pedido', { type: 'error' })
+      }
+    },
     openItems(id) {
       this.$router.push(`/vendas/cabecalho/${id}`)
+    },
+    openHistory(id) {
+      this.$router.push(`/vendas/cabecalho/${id}#historico-status`)
     },
     async createSale() {
       this.submittingSale = true

@@ -33,7 +33,7 @@ class SalesService
             'custo_proporcional' => $custoProporcional,
             'lucro_bruto' => $lucroBruto,
             'margem_percentual' => $margem,
-            'status' => $data['status'] ?? 'ORCAMENTO'
+            'status' => $data['status'] ?? 'AGUARDANDO'
         ]);
 
         $id = $this->salesRepo->create($payload);
