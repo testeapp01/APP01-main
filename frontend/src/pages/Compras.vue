@@ -95,39 +95,60 @@
           {{ formatDate(row.data_entrega_prevista) }}
         </template>
         <template #acoes="{ row }">
-          <div class="flex flex-wrap gap-2">
-            <BaseButton
-              variant="ghost"
-              @click="openItems(row.id)"
+          <div
+            class="relative inline-block text-left"
+            @click.stop
+          >
+            <button
+              type="button"
+              class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              aria-label="Abrir ações"
+              @click.stop="toggleActionsMenu(row.id)"
             >
-              Itens
-            </BaseButton>
-            <BaseButton
-              variant="secondary"
-              @click="openEditModal(row)"
+              ⋯
+            </button>
+
+            <div
+              v-if="openActionsMenuId === row.id"
+              class="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
             >
-              Editar
-            </BaseButton>
-            <BaseButton
-              variant="secondary"
-              @click="printOrder(row)"
-            >
-              Imprimir
-            </BaseButton>
-            <BaseButton
-              v-if="!(row.status && String(row.status).toLowerCase() === 'recebida')"
-              variant="primary"
-              @click="confirmDelivery(row)"
-            >
-              Confirmar entrega
-            </BaseButton>
-            <BaseButton
-              variant="danger"
-              class="bg-red-600 text-white hover:bg-red-700"
-              @click="deletePurchase(row)"
-            >
-              Excluir
-            </BaseButton>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                @click="openItems(row.id); closeActionsMenu()"
+              >
+                Itens
+              </button>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                @click="openEditModal(row); closeActionsMenu()"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                @click="printOrder(row); closeActionsMenu()"
+              >
+                Imprimir
+              </button>
+              <button
+                v-if="!(row.status && String(row.status).toLowerCase() === 'recebida')"
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                @click="confirmDelivery(row); closeActionsMenu()"
+              >
+                Confirmar entrega
+              </button>
+              <button
+                type="button"
+                class="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                @click="deletePurchase(row); closeActionsMenu()"
+              >
+                Excluir
+              </button>
+            </div>
           </div>
         </template>
       </BaseTable>
@@ -664,6 +685,7 @@ export default {
         data_entrega_prevista: '',
         status: 'NEGOCIADA',
       },
+      openActionsMenuId: null,
       pageSize: 25,
       currentPage: 1,
       totalCount: 0,
@@ -701,8 +723,21 @@ export default {
     this.loadProdutos()
     this.loadMotoristas()
     this.loadClientes()
+    document.addEventListener('click', this.handleDocumentClick)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
+    toggleActionsMenu(id) {
+      this.openActionsMenuId = this.openActionsMenuId === id ? null : id
+    },
+    closeActionsMenu() {
+      this.openActionsMenuId = null
+    },
+    handleDocumentClick() {
+      this.closeActionsMenu()
+    },
     async loadCompras() {
       this.loading = true
       try {
