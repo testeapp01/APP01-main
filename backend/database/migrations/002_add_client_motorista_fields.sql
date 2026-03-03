@@ -1,6 +1,4 @@
 -- Migration: add extra columns for clients and drivers
-USE hortifrut;
-
 ALTER TABLE clientes ADD COLUMN cpf_cnpj VARCHAR(50) NULL AFTER nome;
 ALTER TABLE clientes ADD COLUMN email VARCHAR(150) NULL AFTER telefone;
 ALTER TABLE clientes ADD COLUMN uf VARCHAR(2) NULL AFTER email;

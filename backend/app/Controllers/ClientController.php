@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Repositories\ClientRepository;
+use App\Helpers\SchemaValidator;
 use PDO;
 
 class ClientController
@@ -21,6 +22,22 @@ class ClientController
     public function create(): void
     {
         $data = \App\Helpers\Request::body();
+        $errors = SchemaValidator::validate($data, [
+            'required' => ['nome'],
+            'properties' => [
+                'nome' => ['type' => 'string', 'minLength' => 2, 'maxLength' => 120],
+                'telefone' => ['type' => 'string', 'minLength' => 10, 'maxLength' => 20],
+                'email' => ['type' => 'string', 'format' => 'email', 'maxLength' => 120],
+                'cidade' => ['type' => 'string', 'maxLength' => 120],
+                'uf' => ['type' => 'string', 'maxLength' => 2],
+            ],
+        ]);
+        if (!empty($errors)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Payload inválido', 'details' => $errors]);
+            return;
+        }
+
         if (empty($data['nome'])) {
             http_response_code(400);
             echo json_encode(['error' => 'Nome obrigatório']);

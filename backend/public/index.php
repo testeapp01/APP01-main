@@ -3,30 +3,16 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
-error_reporting(E_ALL);
-
-set_exception_handler(static function (\Throwable $e): void {
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=utf-8');
-        http_response_code(500);
-    }
-    error_log('[UNCAUGHT] ' . $e::class . ': ' . $e->getMessage());
-    echo json_encode(['error' => 'Erro interno. Tente novamente.']);
-});
-
-set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
-    error_log("[PHP ERROR][$severity] $message in $file:$line");
-    return false;
-});
-
 use Dotenv\Dotenv;
 use App\Database\Connection;
+use App\Logger\Logger;
+use App\Observability\Metrics;
+use App\Routing\Router;
 use App\Middlewares\AuthMiddleware;
 use App\Middlewares\InputSanitizer;
 use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\SecureHeadersMiddleware;
+use App\Middlewares\CorrelationIdMiddleware;
 use App\Controllers\AuthController;
 use App\Controllers\PurchaseController;
 use App\Controllers\SalesController;
@@ -36,17 +22,47 @@ use App\Controllers\MotoristaController;
 use App\Controllers\ProductController;
 use App\Controllers\FornecedorController;
 
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
 
-// Load environment variables (compatible with modern vlucas/phpdotenv)
-Dotenv::createImmutable(__DIR__ . '/..')->load();
+Metrics::boot();
+
+set_exception_handler(static function (\Throwable $e): void {
+    Metrics::increment('http_errors_total');
+    Metrics::increment('http_5xx_total');
+    Logger::get()->error('uncaught_exception', [
+        'exception' => $e::class,
+        'message' => $e->getMessage(),
+    ]);
+
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+
+    echo json_encode(['error' => 'Erro interno. Tente novamente.']);
+});
+
+set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+    Logger::get()->error('php_error', [
+        'severity' => $severity,
+        'message' => $message,
+        'file' => $file,
+        'line' => $line,
+    ]);
+
+    return false;
+});
+
+Dotenv::createImmutable(__DIR__ . '/..')->safeLoad();
 
 $pdo = Connection::getPdo();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$method = $_SERVER['REQUEST_METHOD'];
-$authUser = null;
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOriginsRaw = getenv('CORS_ALLOWED_ORIGINS') ?: '';
@@ -61,203 +77,209 @@ if ($origin !== '') {
 }
 
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, X-Requested-With, X-Correlation-ID');
 
 if ($method === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// apply secure headers first
 SecureHeadersMiddleware::apply();
-
-// rate limit (global)
+CorrelationIdMiddleware::apply();
 RateLimitMiddleware::check(120, 60);
 
-// sanitize input body JSON if present
 $raw = file_get_contents('php://input');
 if ($raw) {
     $decoded = json_decode($raw, true);
     if (is_array($decoded)) {
-        $_SANITIZED = InputSanitizer::sanitizeArray($decoded);
-        // replace php://input usage - controllers read php://input, so set a global
-        $GLOBALS['SANITIZED_INPUT'] = $_SANITIZED;
+        $GLOBALS['SANITIZED_INPUT'] = InputSanitizer::sanitizeArray($decoded);
     }
 }
 
-// public routes
-if ($uri === '/api/v1/auth/login' && $method === 'POST') {
-    (new AuthController($pdo))->login();
-    exit;
-}
+Metrics::increment('http_requests_total');
 
-// protect all API routes except login
-if (str_starts_with($uri, '/api/v1/')) {
-    $isPublic = ($uri === '/api/v1/auth/login' && $method === 'POST');
-    if (!$isPublic) {
+$router = new Router();
+
+$publicRoute = static function () use ($uri, $method): bool {
+    return ($uri === '/api/v1/auth/login' && $method === 'POST')
+        || ($uri === '/api/v1/health' && $method === 'GET')
+        || ($uri === '/api/v1/metrics' && $method === 'GET');
+};
+
+$ensureAuth = static function () use ($publicRoute): ?array {
+    if (!$publicRoute()) {
         $authUser = AuthMiddleware::authenticate();
         $GLOBALS['AUTH_USER'] = $authUser;
+        return $authUser;
     }
-}
 
-if ($uri === '/api/v1/auth/me' && $method === 'GET') {
-    (new AuthController($pdo))->me((array) $authUser);
-    exit;
-}
+    return null;
+};
 
-// compras
-if ($uri === '/api/v1/compras' && $method === 'POST') {
+$router->map('GET', '/api/v1/health', static function () use ($pdo): void {
+    $started = microtime(true);
+    $dbOk = true;
+    $dbError = null;
+    try {
+        $pdo->query('SELECT 1');
+    } catch (\Throwable $e) {
+        $dbOk = false;
+        $dbError = $e->getMessage();
+    }
+
+    $status = $dbOk ? 'ok' : 'degraded';
+    http_response_code($dbOk ? 200 : 503);
+    echo json_encode([
+        'status' => $status,
+        'correlation_id' => $GLOBALS['CORRELATION_ID'] ?? null,
+        'latency_ms' => (int)((microtime(true) - $started) * 1000),
+        'checks' => [
+            'database' => [
+                'ok' => $dbOk,
+                'error' => $dbError,
+            ],
+        ],
+    ]);
+});
+
+$router->map('GET', '/api/v1/metrics', static function (): void {
+    echo json_encode(Metrics::snapshot());
+});
+
+$router->map('POST', '/api/v1/auth/login', static function () use ($pdo): void {
+    (new AuthController($pdo))->login();
+});
+
+$router->map('GET', '/api/v1/auth/me', static function () use ($pdo, $ensureAuth): void {
+    $authUser = $ensureAuth() ?? [];
+    (new AuthController($pdo))->me((array)$authUser);
+});
+
+$router->map('POST', '/api/v1/compras', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new PurchaseController($pdo))->create();
-    exit;
-}
-
-if ($uri === '/api/v1/compras/receive' && $method === 'POST') {
+});
+$router->map('POST', '/api/v1/compras/receive', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new PurchaseController($pdo))->receive();
-    exit;
-}
-
-// list compras (GET) - supports query params ?page=&per_page=&q=
-if ($uri === '/api/v1/compras' && $method === 'GET') {
+});
+$router->map('GET', '/api/v1/compras', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new PurchaseController($pdo))->index();
-    exit;
-}
+});
+$router->map('GET', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new PurchaseController($pdo))->showHeader((int)($params['id'] ?? 0));
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new PurchaseController($pdo))->updateHeader((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new PurchaseController($pdo))->deleteHeader((int)($params['id'] ?? 0));
+});
+$router->map('POST', '/api/v1/compras/cabecalhos/{id}/confirmar-entrega', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new PurchaseController($pdo))->confirmHeaderDelivery((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'GET') {
-    (new PurchaseController($pdo))->showHeader((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
-    (new PurchaseController($pdo))->updateHeader((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new PurchaseController($pdo))->deleteHeader((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)/confirmar-entrega$#', $uri, $matches) && $method === 'POST') {
-    (new PurchaseController($pdo))->confirmHeaderDelivery((int)$matches[1]);
-    exit;
-}
-
-// vendas (placeholder)
-if ($uri === '/api/v1/vendas' && $method === 'POST') {
+$router->map('POST', '/api/v1/vendas', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new SalesController($pdo))->create();
-    exit;
-}
-
-if ($uri === '/api/v1/vendas/deliver' && $method === 'POST') {
+});
+$router->map('POST', '/api/v1/vendas/deliver', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new SalesController($pdo))->deliver();
-    exit;
-}
-
-// list vendas (GET) - supports query params ?page=&per_page=&q=
-if ($uri === '/api/v1/vendas' && $method === 'GET') {
+});
+$router->map('GET', '/api/v1/vendas', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new SalesController($pdo))->index();
-    exit;
-}
+});
+$router->map('GET', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new SalesController($pdo))->showHeader((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new SalesController($pdo))->deleteHeader((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/vendas/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'GET') {
-    (new SalesController($pdo))->showHeader((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/vendas/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new SalesController($pdo))->deleteHeader((int)$matches[1]);
-    exit;
-}
-
-// clientes
-if ($uri === '/api/v1/clientes' && $method === 'GET') {
+$router->map('GET', '/api/v1/clientes', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ClientController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/clientes' && $method === 'POST') {
+});
+$router->map('POST', '/api/v1/clientes', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ClientController($pdo))->create();
-    exit;
-}
+});
+$router->map('DELETE', '/api/v1/clientes/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ClientController($pdo))->delete((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/clientes/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new ClientController($pdo))->delete((int)$matches[1]);
-    exit;
-}
-
-// motoristas
-if ($uri === '/api/v1/motoristas' && $method === 'GET') {
+$router->map('GET', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new MotoristaController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/tipos-caminhao' && $method === 'GET') {
+});
+$router->map('GET', '/api/v1/tipos-caminhao', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new MotoristaController($pdo))->listTiposCaminhao();
-    exit;
-}
-
-// fornecedores
-if ($uri === '/api/v1/fornecedores' && $method === 'GET') {
-    (new FornecedorController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/fornecedores' && $method === 'POST') {
-    (new FornecedorController($pdo))->create();
-    exit;
-}
-
-if (preg_match('#^/api/v1/fornecedores/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new FornecedorController($pdo))->delete((int)$matches[1]);
-    exit;
-}
-
-if ($uri === '/api/v1/motoristas' && $method === 'POST') {
+});
+$router->map('POST', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new MotoristaController($pdo))->create();
-    exit;
-}
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new MotoristaController($pdo))->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new MotoristaController($pdo))->delete((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/motoristas/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
-    (new MotoristaController($pdo))->update((int)$matches[1]);
-    exit;
-}
+$router->map('GET', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new FornecedorController($pdo))->index();
+});
+$router->map('POST', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new FornecedorController($pdo))->create();
+});
+$router->map('DELETE', '/api/v1/fornecedores/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new FornecedorController($pdo))->delete((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/motoristas/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new MotoristaController($pdo))->delete((int)$matches[1]);
-    exit;
-}
-
-// produtos
-if ($uri === '/api/v1/produtos' && $method === 'GET') {
+$router->map('GET', '/api/v1/produtos', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ProductController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/produtos' && $method === 'POST') {
+});
+$router->map('POST', '/api/v1/produtos', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ProductController($pdo))->create();
-    exit;
-}
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ProductController($pdo))->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ProductController($pdo))->delete((int)($params['id'] ?? 0));
+});
 
-if (preg_match('#^/api/v1/produtos/(\d+)$#', $uri, $matches) && in_array($method, ['PUT', 'PATCH'], true)) {
-    (new ProductController($pdo))->update((int)$matches[1]);
-    exit;
-}
-
-if (preg_match('#^/api/v1/produtos/(\d+)$#', $uri, $matches) && $method === 'DELETE') {
-    (new ProductController($pdo))->delete((int)$matches[1]);
-    exit;
-}
-
-// relatorios (placeholder)
-if ($uri === '/api/v1/relatorios' && $method === 'GET') {
+$router->map('GET', '/api/v1/relatorios', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ReportsController($pdo))->index();
-    exit;
-}
-
-if ($uri === '/api/v1/relatorios/dashboard' && $method === 'GET') {
+});
+$router->map('GET', '/api/v1/relatorios/dashboard', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
     (new ReportsController($pdo))->dashboard();
-    exit;
-}
+});
 
-http_response_code(404);
-echo json_encode(['error' => 'Not found']);
+if (!$router->dispatch($method, $uri)) {
+    Metrics::increment('http_errors_total');
+    http_response_code(404);
+    echo json_encode(['error' => 'Not found']);
+}

@@ -1,6 +1,7 @@
 <?php
 // End-to-end test against API. Set E2E_API_BASE to override default URL.
 $apiBase = rtrim(getenv('E2E_API_BASE') ?: 'http://127.0.0.1:8000', '/');
+$e2eClientPhone = getenv('E2E_CLIENT_PHONE') ?: '11999999999';
 
 function req($method, $path, $token = null, $body = null)
 {
@@ -81,7 +82,7 @@ if ($r['code'] !== 200) { echo "RECEIVE failed: "; var_export($r); exit(1); }
 echo "Purchase received: produto_id={$r['body']['produto_id']}, novo_estoque={$r['body']['novo_estoque']}\n";
 
 // 4) create cliente for sale
-$cli = req('POST', '/api/v1/clientes', $token, ['nome' => 'E2E Cliente', 'telefone' => '9999', 'cidade' => 'Cidade']);
+$cli = req('POST', '/api/v1/clientes', $token, ['nome' => 'E2E Cliente', 'telefone' => $e2eClientPhone, 'cidade' => 'Cidade']);
 if ($cli['code'] !== 200 && $cli['code'] !== 201) { echo "CREATE CLIENT failed: "; var_export($cli); exit(1); }
 $clienteId = $cli['body']['id'] ?? ($cli['body'][0]['id'] ?? null) ?? 1;
 echo "Cliente id={$clienteId}\n";

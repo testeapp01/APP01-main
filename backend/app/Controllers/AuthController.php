@@ -4,6 +4,7 @@ namespace App\Controllers;
 use PDO;
 use Firebase\JWT\JWT;
 use App\Helpers\Request;
+use App\Helpers\SchemaValidator;
 
 class AuthController
 {
@@ -14,6 +15,19 @@ class AuthController
     public function login(): void
     {
         $data = Request::body();
+        $errors = SchemaValidator::validate($data, [
+            'required' => ['email', 'password'],
+            'properties' => [
+                'email' => ['type' => 'string', 'format' => 'email', 'maxLength' => 255],
+                'password' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 255],
+            ],
+        ]);
+        if (!empty($errors)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Payload inválido', 'details' => $errors]);
+            return;
+        }
+
         $email = trim((string)($data['email'] ?? ''));
         $password = (string)($data['password'] ?? '');
 

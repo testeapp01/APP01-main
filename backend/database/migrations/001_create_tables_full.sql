@@ -18,8 +18,6 @@ INSERT IGNORE INTO tipos_caminhao (nome) VALUES
 
 -- Migration: create base schema for hortifrut box management
 CREATE DATABASE IF NOT EXISTS hortifrut CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE hortifrut;
-
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,

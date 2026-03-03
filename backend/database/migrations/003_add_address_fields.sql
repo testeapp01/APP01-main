@@ -1,6 +1,4 @@
 -- Migration: add address fields for clients and suppliers
-USE hortifrut;
-
 ALTER TABLE clientes ADD COLUMN endereco VARCHAR(255) NULL AFTER nome;
 ALTER TABLE clientes ADD COLUMN numero VARCHAR(20) NULL AFTER endereco;
 ALTER TABLE clientes ADD COLUMN complemento VARCHAR(100) NULL AFTER numero;

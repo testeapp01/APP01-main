@@ -1,6 +1,4 @@
 -- Migration: create sales header table and link sales items
-USE hortifrut;
-
 CREATE TABLE IF NOT EXISTS vendas_cabecalho (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tipo ENUM('venda','revenda') NOT NULL DEFAULT 'venda',
