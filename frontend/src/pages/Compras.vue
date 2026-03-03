@@ -104,9 +104,29 @@
             </BaseButton>
             <BaseButton
               variant="secondary"
+              @click="openEditModal(row)"
+            >
+              Editar
+            </BaseButton>
+            <BaseButton
+              variant="secondary"
               @click="printOrder(row)"
             >
               Imprimir
+            </BaseButton>
+            <BaseButton
+              v-if="!(row.status && String(row.status).toLowerCase() === 'recebida')"
+              variant="primary"
+              @click="confirmDelivery(row)"
+            >
+              Confirmar entrega
+            </BaseButton>
+            <BaseButton
+              variant="danger"
+              class="bg-red-600 text-white hover:bg-red-700"
+              @click="deletePurchase(row)"
+            >
+              Excluir
             </BaseButton>
           </div>
         </template>
@@ -451,6 +471,146 @@
         </div>
       </form>
     </SideDrawer>
+
+    <SideDrawer
+      :open="showEditModal"
+      title="Editar Compra"
+      @close="closeEditModal"
+    >
+      <form
+        class="drawer-form space-y-4"
+        @submit.prevent="saveEditPurchase"
+      >
+        <FormFeedback
+          :message="editFeedback.message"
+          :type="editFeedback.type"
+        />
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Compra</label>
+          <select
+            v-model="editCompra.tipo_operacao"
+            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
+            required
+          >
+            <option value="venda">Venda</option>
+            <option value="revenda">Revenda</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Fornecedor</label>
+          <select
+            v-model.number="editCompra.fornecedor_id"
+            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
+            required
+          >
+            <option
+              :value="null"
+              disabled
+            >
+              Escolha um fornecedor
+            </option>
+            <option
+              v-for="f in fornecedores"
+              :key="f.id"
+              :value="f.id"
+            >
+              {{ f.razao_social }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="editCompra.tipo_operacao === 'venda'">
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Cliente</label>
+          <select
+            v-model.number="editCompra.cliente_id"
+            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
+          >
+            <option
+              :value="null"
+            >
+              Sem cliente
+            </option>
+            <option
+              v-for="c in clientes"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.nome }}
+            </option>
+          </select>
+        </div>
+
+        <div v-if="editCompra.tipo_operacao === 'venda'">
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Motorista</label>
+          <select
+            v-model.number="editCompra.motorista_id"
+            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
+          >
+            <option
+              :value="null"
+            >
+              Sem motorista
+            </option>
+            <option
+              v-for="m in motoristas"
+              :key="m.id"
+              :value="m.id"
+            >
+              {{ m.nome }}
+            </option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Envio</label>
+            <input
+              v-model="editCompra.data_envio_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Data de Entrega</label>
+            <input
+              v-model="editCompra.data_entrega_prevista"
+              type="date"
+              class="p-3 border border-gray-300 rounded-xl w-full"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+          <select
+            v-model="editCompra.status"
+            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
+          >
+            <option value="NEGOCIADA">NEGOCIADA</option>
+            <option value="RECEBIDA">RECEBIDA</option>
+          </select>
+        </div>
+
+        <div class="drawer-actions flex justify-end gap-3 mt-6">
+          <BaseButton
+            type="button"
+            class="btn-secondary"
+            @click="closeEditModal"
+          >
+            Cancelar
+          </BaseButton>
+          <BaseButton
+            type="submit"
+            class="btn-primary"
+            :disabled="submittingEdit"
+            :loading="submittingEdit"
+          >
+            {{ submittingEdit ? 'Salvando...' : 'Salvar Edição' }}
+          </BaseButton>
+        </div>
+      </form>
+    </SideDrawer>
   </div>
 </template>
 
@@ -489,8 +649,21 @@ export default {
       },
       loading: false,
       showCreateModal: false,
+      showEditModal: false,
       submittingPurchase: false,
+      submittingEdit: false,
       purchaseFeedback: { message: '', type: 'info' },
+      editFeedback: { message: '', type: 'info' },
+      editCompra: {
+        id: null,
+        tipo_operacao: 'revenda',
+        fornecedor_id: null,
+        cliente_id: null,
+        motorista_id: null,
+        data_envio_prevista: '',
+        data_entrega_prevista: '',
+        status: 'NEGOCIADA',
+      },
       pageSize: 25,
       currentPage: 1,
       totalCount: 0,
@@ -643,6 +816,127 @@ export default {
       const prod = this.produtos.find(p => p.id === pid)
       if (prod && prod.custo_medio !== undefined) {
         this.novaCompra.valor_unitario = parseFloat(prod.custo_medio)
+      }
+    },
+    toInputDate(value) {
+      if (!value) return ''
+      return String(value).slice(0, 10)
+    },
+    async resolveFornecedorIdByName(nome) {
+      if (!nome) return null
+      const found = (this.fornecedores || []).find(f => f.razao_social === nome)
+      return found ? Number(found.id) : null
+    },
+    async resolveClienteIdByName(nome) {
+      if (!nome) return null
+      const found = (this.clientes || []).find(c => c.nome === nome)
+      return found ? Number(found.id) : null
+    },
+    async resolveMotoristaIdByName(nome) {
+      if (!nome) return null
+      const found = (this.motoristas || []).find(m => m.nome === nome)
+      return found ? Number(found.id) : null
+    },
+    async openEditModal(row) {
+      this.editFeedback = { message: '', type: 'info' }
+      let header = row
+
+      try {
+        const res = await api.get(`/api/v1/compras/cabecalhos/${row.id}`)
+        header = res.data?.header || row
+      } catch (e) {
+      }
+
+      this.editCompra = {
+        id: row.id,
+        tipo_operacao: header.tipo_operacao || 'revenda',
+        fornecedor_id: await this.resolveFornecedorIdByName(header.fornecedor),
+        cliente_id: await this.resolveClienteIdByName(header.cliente),
+        motorista_id: await this.resolveMotoristaIdByName(header.motorista),
+        data_envio_prevista: this.toInputDate(header.data_envio_prevista),
+        data_entrega_prevista: this.toInputDate(header.data_entrega_prevista),
+        status: header.status || 'NEGOCIADA',
+      }
+      this.showEditModal = true
+    },
+    closeEditModal() {
+      this.showEditModal = false
+      this.submittingEdit = false
+      this.editFeedback = { message: '', type: 'info' }
+      this.editCompra = {
+        id: null,
+        tipo_operacao: 'revenda',
+        fornecedor_id: null,
+        cliente_id: null,
+        motorista_id: null,
+        data_envio_prevista: '',
+        data_entrega_prevista: '',
+        status: 'NEGOCIADA',
+      }
+    },
+    async saveEditPurchase() {
+      if (!this.editCompra.id) return
+      this.submittingEdit = true
+      this.editFeedback = { message: 'Salvando edição...', type: 'info' }
+
+      const payload = {
+        tipo_operacao: this.editCompra.tipo_operacao,
+        fornecedor_id: this.editCompra.fornecedor_id,
+        cliente_id: this.editCompra.tipo_operacao === 'venda' ? this.editCompra.cliente_id : null,
+        motorista_id: this.editCompra.tipo_operacao === 'venda' ? this.editCompra.motorista_id : null,
+        data_envio_prevista: this.editCompra.data_envio_prevista || null,
+        data_entrega_prevista: this.editCompra.data_entrega_prevista || null,
+        status: this.editCompra.status || 'NEGOCIADA',
+      }
+
+      try {
+        await api.patch(`/api/v1/compras/cabecalhos/${this.editCompra.id}`, payload)
+        this.editFeedback = { message: 'Compra atualizada com sucesso.', type: 'success' }
+        setTimeout(() => { this.showEditModal = false }, 300)
+        this.loadCompras()
+      } catch (e) {
+        try {
+          await api.patch(`/api/v1/compras/${this.editCompra.id}`, payload)
+          this.editFeedback = { message: 'Compra atualizada com sucesso.', type: 'success' }
+          setTimeout(() => { this.showEditModal = false }, 300)
+          this.loadCompras()
+        } catch (err) {
+          this.editFeedback = { message: err?.response?.data?.error || 'Não foi possível atualizar a compra.', type: 'error' }
+        }
+      } finally {
+        this.submittingEdit = false
+      }
+    },
+    async deletePurchase(row) {
+      const ok = window.confirm(`Deseja realmente excluir a compra #${row.id}?`)
+      if (!ok) return
+
+      try {
+        await api.delete(`/api/v1/compras/cabecalhos/${row.id}`)
+        this.loadCompras()
+      } catch (e) {
+        try {
+          await api.delete(`/api/v1/compras/${row.id}`)
+          this.loadCompras()
+        } catch (err) {
+          alert(err?.response?.data?.error || 'Não foi possível excluir a compra.')
+        }
+      }
+    },
+    async confirmDelivery(row) {
+      const ok = window.confirm(`Confirmar entrega da compra #${row.id}?`)
+      if (!ok) return
+
+      try {
+        await api.post(`/api/v1/compras/cabecalhos/${row.id}/confirmar-entrega`, {})
+        this.loadCompras()
+      } catch (e) {
+        try {
+          await api.post(`/api/v1/compras/${row.id}/confirmar-entrega`, {})
+          this.loadCompras()
+        } catch (err) {
+          alert(err?.response?.data?.error || 'Não foi possível confirmar a entrega.')
+        }
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },

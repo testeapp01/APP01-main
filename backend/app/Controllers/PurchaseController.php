@@ -481,6 +481,260 @@ class PurchaseController
         ]);
     }
 
+    public function updateHeader(int $id): void
+    {
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Edição por cabeçalho não disponível neste ambiente.']);
+            return;
+        }
+
+        $data = Request::body();
+        $allowed = ['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'data_envio_prevista', 'data_entrega_prevista', 'status'];
+        $set = [];
+        $params = ['id' => $id];
+
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data)) {
+                $set[] = $field . ' = :' . $field;
+                $params[$field] = $data[$field];
+            }
+        }
+
+        if (empty($set)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Nenhum campo válido para atualização']);
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('UPDATE compras_cabecalho SET ' . implode(', ', $set) . ' WHERE id = :id');
+        $stmt->execute($params);
+
+        $syncParts = [];
+        $syncParams = ['id' => $id];
+        foreach (['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'data_envio_prevista', 'data_entrega_prevista', 'status'] as $field) {
+            if (array_key_exists($field, $data) && $this->hasComprasColumn($field)) {
+                $syncParts[] = 'c.' . $field . ' = :s_' . $field;
+                $syncParams['s_' . $field] = $data[$field];
+            }
+        }
+
+        if (!empty($syncParts)) {
+            $sqlSync = 'UPDATE compras c SET ' . implode(', ', $syncParts) . ' WHERE c.compra_cabecalho_id = :id';
+            $syncStmt = $this->pdo->prepare($sqlSync);
+            $syncStmt->execute($syncParams);
+        }
+
+        echo json_encode(['message' => 'Cabeçalho de compra atualizado']);
+    }
+
+    public function updateItem(int $id): void
+    {
+        $data = Request::body();
+        $allowed = ['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'produto_id', 'quantidade', 'valor_unitario', 'data_envio_prevista', 'data_entrega_prevista', 'status'];
+        $set = [];
+        $params = ['id' => $id];
+
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data) && $this->hasComprasColumn($field)) {
+                $set[] = $field . ' = :' . $field;
+                $params[$field] = $data[$field];
+            }
+        }
+
+        if (empty($set)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Nenhum campo válido para atualização']);
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('UPDATE compras SET ' . implode(', ', $set) . ' WHERE id = :id');
+        $stmt->execute($params);
+
+        if ($this->hasComprasColumn('compra_cabecalho_id')) {
+            $hStmt = $this->pdo->prepare('SELECT compra_cabecalho_id FROM compras WHERE id = :id LIMIT 1');
+            $hStmt->execute(['id' => $id]);
+            $row = $hStmt->fetch(PDO::FETCH_ASSOC);
+            $headerId = (int)($row['compra_cabecalho_id'] ?? 0);
+            if ($headerId > 0 && $this->hasComprasCabecalhoTable()) {
+                $this->recalculateHeaderTotal($headerId);
+            }
+        }
+
+        echo json_encode(['message' => 'Item de compra atualizado']);
+    }
+
+    public function deleteHeader(int $id): void
+    {
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Exclusão por cabeçalho não disponível neste ambiente.']);
+            return;
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+            $delItems = $this->pdo->prepare('DELETE FROM compras WHERE compra_cabecalho_id = :id');
+            $delItems->execute(['id' => $id]);
+
+            $delHeader = $this->pdo->prepare('DELETE FROM compras_cabecalho WHERE id = :id');
+            $delHeader->execute(['id' => $id]);
+
+            $this->pdo->commit();
+            echo json_encode(['message' => 'Compra excluída com sucesso']);
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao excluir compra']);
+        }
+    }
+
+    public function deleteItem(int $id): void
+    {
+        $headerId = 0;
+        if ($this->hasComprasColumn('compra_cabecalho_id')) {
+            $hStmt = $this->pdo->prepare('SELECT compra_cabecalho_id FROM compras WHERE id = :id LIMIT 1');
+            $hStmt->execute(['id' => $id]);
+            $row = $hStmt->fetch(PDO::FETCH_ASSOC);
+            $headerId = (int)($row['compra_cabecalho_id'] ?? 0);
+        }
+
+        $stmt = $this->pdo->prepare('DELETE FROM compras WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        if ($headerId > 0 && $this->hasComprasCabecalhoTable()) {
+            $countStmt = $this->pdo->prepare('SELECT COUNT(*) FROM compras WHERE compra_cabecalho_id = :id');
+            $countStmt->execute(['id' => $headerId]);
+            $left = (int)$countStmt->fetchColumn();
+            if ($left === 0) {
+                $delHeader = $this->pdo->prepare('DELETE FROM compras_cabecalho WHERE id = :id');
+                $delHeader->execute(['id' => $headerId]);
+            } else {
+                $this->recalculateHeaderTotal($headerId);
+            }
+        }
+
+        echo json_encode(['message' => 'Item de compra excluído']);
+    }
+
+    public function confirmHeaderDelivery(int $id): void
+    {
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Confirmação por cabeçalho não disponível neste ambiente.']);
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('SELECT id FROM compras WHERE compra_cabecalho_id = :id AND status <> :status');
+        $stmt->execute(['id' => $id, 'status' => 'RECEBIDA']);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!$rows) {
+            echo json_encode(['message' => 'Compra já confirmada como recebida']);
+            return;
+        }
+
+        $novoEstoque = null;
+        foreach ($rows as $row) {
+            $res = $this->confirmItemReceiveById((int)$row['id']);
+            $novoEstoque = $res['novo_estoque'] ?? $novoEstoque;
+        }
+
+        $up = $this->pdo->prepare('UPDATE compras_cabecalho SET status = :status WHERE id = :id');
+        $up->execute(['status' => 'RECEBIDA', 'id' => $id]);
+
+        echo json_encode(['message' => 'Entrega confirmada com sucesso', 'novo_estoque' => $novoEstoque]);
+    }
+
+    public function confirmItemDelivery(int $id): void
+    {
+        try {
+            $res = $this->confirmItemReceiveById($id);
+            if ($this->hasComprasColumn('compra_cabecalho_id') && $this->hasComprasCabecalhoTable()) {
+                $hs = $this->pdo->prepare('SELECT compra_cabecalho_id FROM compras WHERE id = :id LIMIT 1');
+                $hs->execute(['id' => $id]);
+                $headerRef = $hs->fetch(PDO::FETCH_ASSOC);
+                $hid = isset($headerRef['compra_cabecalho_id']) ? (int)$headerRef['compra_cabecalho_id'] : 0;
+                if ($hid > 0) {
+                    $pendingStmt = $this->pdo->prepare('SELECT COUNT(*) FROM compras WHERE compra_cabecalho_id = :id AND status <> :status');
+                    $pendingStmt->execute(['id' => $hid, 'status' => 'RECEBIDA']);
+                    $pending = (int)$pendingStmt->fetchColumn();
+                    if ($pending === 0) {
+                        $up = $this->pdo->prepare('UPDATE compras_cabecalho SET status = :status WHERE id = :id');
+                        $up->execute(['status' => 'RECEBIDA', 'id' => $hid]);
+                    }
+                }
+            }
+
+            echo json_encode(['message' => 'Entrega confirmada com sucesso', 'novo_estoque' => $res['novo_estoque'] ?? null]);
+        } catch (\RuntimeException $e) {
+            $code = (int)$e->getCode();
+            http_response_code($code >= 400 ? $code : 400);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+    }
+
+    private function recalculateHeaderTotal(int $headerId): void
+    {
+        if (!$this->hasComprasCabecalhoTable()) {
+            return;
+        }
+
+        $sumStmt = $this->pdo->prepare('SELECT IFNULL(SUM(quantidade * valor_unitario), 0) FROM compras WHERE compra_cabecalho_id = :id');
+        $sumStmt->execute(['id' => $headerId]);
+        $total = (float)$sumStmt->fetchColumn();
+
+        $up = $this->pdo->prepare('UPDATE compras_cabecalho SET valor_total = :valor_total WHERE id = :id');
+        $up->execute(['valor_total' => $total, 'id' => $headerId]);
+    }
+
+    private function confirmItemReceiveById(int $id): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM compras WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        $compra = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$compra) {
+            throw new \RuntimeException('Compra não encontrada', 404);
+        }
+
+        if (($compra['status'] ?? '') === 'RECEBIDA') {
+            return ['message' => 'Compra já recebida'];
+        }
+
+        $u = $this->pdo->prepare('UPDATE compras SET status = :status WHERE id = :id');
+        $u->execute(['status' => 'RECEBIDA', 'id' => $id]);
+
+        $produtoId = (int)$compra['produto_id'];
+        $quantidade = (float)$compra['quantidade'];
+        $valorUnitario = (float)$compra['valor_unitario'];
+        $comissaoTotal = (float)($compra['comissao_total'] ?? 0);
+
+        $s = $this->pdo->prepare('SELECT estoque_atual, custo_medio FROM produtos WHERE id = :id LIMIT 1');
+        $s->execute(['id' => $produtoId]);
+        $prod = $s->fetch(PDO::FETCH_ASSOC);
+
+        $oldQty = $prod ? (float)$prod['estoque_atual'] : 0.0;
+        $oldCost = $prod ? (float)$prod['custo_medio'] : 0.0;
+
+        $valorTotalCompra = ($quantidade * $valorUnitario) + $comissaoTotal;
+        $newQty = $oldQty + $quantidade;
+        $newCost = 0.0;
+        if ($newQty > 0) {
+            $newCost = (($oldQty * $oldCost) + $valorTotalCompra) / $newQty;
+        }
+
+        $up = $this->pdo->prepare('UPDATE produtos SET estoque_atual = :estoque, custo_medio = :custo WHERE id = :id');
+        $up->execute(['estoque' => $newQty, 'custo' => $newCost, 'id' => $produtoId]);
+
+        return [
+            'produto_id' => $produtoId,
+            'novo_estoque' => $newQty,
+            'novo_custo_medio' => $newCost,
+        ];
+    }
+
     public function receive(): void
     {
         $data = Request::body();
@@ -491,50 +745,13 @@ class PurchaseController
             return;
         }
 
-        // fetch compra
-        $stmt = $this->pdo->prepare('SELECT * FROM compras WHERE id = :id LIMIT 1');
-        $stmt->execute(['id' => $id]);
-        $compra = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$compra) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Compra não encontrada']);
-            return;
+        try {
+            $res = $this->confirmItemReceiveById((int)$id);
+            echo json_encode(['message' => 'Compra marcada como RECEBIDA e estoque atualizado'] + $res);
+        } catch (\RuntimeException $e) {
+            $code = (int)$e->getCode();
+            http_response_code($code >= 400 ? $code : 400);
+            echo json_encode(['error' => $e->getMessage()]);
         }
-
-        if ($compra['status'] === 'RECEBIDA') {
-            echo json_encode(['message' => 'Compra já recebida']);
-            return;
-        }
-
-        // update compra status
-        $u = $this->pdo->prepare('UPDATE compras SET status = :status WHERE id = :id');
-        $u->execute(['status' => 'RECEBIDA', 'id' => $id]);
-
-        // update estoque and custo médio ponderado
-        $produtoId = $compra['produto_id'];
-        $quantidade = (float)$compra['quantidade'];
-        $valorUnitario = (float)$compra['valor_unitario'];
-        $comissaoTotal = (float)$compra['comissao_total'];
-
-        // get current stock
-        $s = $this->pdo->prepare('SELECT estoque_atual, custo_medio FROM produtos WHERE id = :id LIMIT 1');
-        $s->execute(['id' => $produtoId]);
-        $prod = $s->fetch(PDO::FETCH_ASSOC);
-
-        $oldQty = $prod ? (float)$prod['estoque_atual'] : 0.0;
-        $oldCost = $prod ? (float)$prod['custo_medio'] : 0.0;
-
-        $valorTotalCompra = ($quantidade * $valorUnitario) + $comissaoTotal;
-
-        $newQty = $oldQty + $quantidade;
-        $newCost = 0.0;
-        if ($newQty > 0) {
-            $newCost = (($oldQty * $oldCost) + $valorTotalCompra) / $newQty;
-        }
-
-        $up = $this->pdo->prepare('UPDATE produtos SET estoque_atual = :estoque, custo_medio = :custo WHERE id = :id');
-        $up->execute(['estoque' => $newQty, 'custo' => $newCost, 'id' => $produtoId]);
-
-        echo json_encode(['message' => 'Compra marcada como RECEBIDA e estoque atualizado', 'produto_id' => $produtoId, 'novo_estoque' => $newQty, 'novo_custo_medio' => $newCost]);
     }
 }
