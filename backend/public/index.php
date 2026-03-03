@@ -277,6 +277,14 @@ $router->map('GET', '/api/v1/relatorios/dashboard', static function () use ($pdo
     $ensureAuth();
     (new ReportsController($pdo))->dashboard();
 });
+$router->map('GET', '/api/v1/relatorios/compras', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ReportsController($pdo))->strategicPurchases();
+});
+$router->map('GET', '/api/v1/relatorios/compras/export', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ReportsController($pdo))->exportStrategicPurchases();
+});
 
 if (!$router->dispatch($method, $uri)) {
     Metrics::increment('http_errors_total');

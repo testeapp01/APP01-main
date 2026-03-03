@@ -1,6 +1,8 @@
 <?php
 namespace App\Controllers;
 
+use App\Repositories\PurchaseReportRepository;
+use App\Services\PurchaseReportService;
 use PDO;
 
 class ReportsController
@@ -129,6 +131,41 @@ class ReportsController
             'line' => $line,
             'pie' => $pie,
         ]);
+    }
+
+    public function strategicPurchases(): void
+    {
+        try {
+            $service = new PurchaseReportService(new PurchaseReportRepository($this->pdo));
+            $payload = $service->strategic($_GET);
+            echo json_encode($payload);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível montar o relatório estratégico de compras.']);
+        }
+    }
+
+    public function exportStrategicPurchases(): void
+    {
+        $format = strtolower((string)($_GET['format'] ?? 'csv'));
+        if (!in_array($format, ['csv', 'xlsx'], true)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Formato de exportação inválido.']);
+            return;
+        }
+
+        try {
+            $service = new PurchaseReportService(new PurchaseReportRepository($this->pdo));
+            $export = $service->export($format, $_GET);
+
+            header('Content-Type: ' . $export['contentType']);
+            header('Content-Disposition: attachment; filename="' . $export['fileName'] . '"');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            echo $export['body'];
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível exportar o relatório estratégico de compras.']);
+        }
     }
 
     private function buildLineSeries(string $fromDate, string $groupBy, string $metric): array
