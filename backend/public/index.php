@@ -171,6 +171,10 @@ $router->map('GET', '/api/v1/compras/cabecalhos/{id}', static function (array $p
     $ensureAuth();
     (new PurchaseController($pdo))->showHeader((int)($params['id'] ?? 0));
 });
+$router->map('GET', '/api/v1/compras/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new PurchaseController($pdo))->printHeaderPdf((int)($params['id'] ?? 0));
+});
 $router->map(['PUT', 'PATCH'], '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
     $ensureAuth();
     (new PurchaseController($pdo))->updateHeader((int)($params['id'] ?? 0));
@@ -199,6 +203,10 @@ $router->map('GET', '/api/v1/vendas', static function () use ($pdo, $ensureAuth)
 $router->map('GET', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
     $ensureAuth();
     (new SalesController($pdo))->showHeader((int)($params['id'] ?? 0));
+});
+$router->map('GET', '/api/v1/vendas/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new SalesController($pdo))->printHeaderPdf((int)($params['id'] ?? 0));
 });
 $router->map('DELETE', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
     $ensureAuth();

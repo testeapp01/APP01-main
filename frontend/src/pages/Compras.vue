@@ -946,88 +946,21 @@ export default {
       return year && month && day ? `${day}/${month}/${year}` : value
     },
     async printOrder(row) {
-      let header = row
-      let items = []
-
       try {
-        const res = await api.get(`/api/v1/compras/cabecalhos/${row.id}`)
-        header = res.data?.header || row
-        items = Array.isArray(res.data?.items) ? res.data.items : []
-      } catch (e) {
-        items = []
+        const response = await api.get(`/api/v1/compras/cabecalhos/${row.id}/pdf`, {
+          responseType: 'blob',
+        })
+        const blob = new Blob([response.data], { type: 'application/pdf' })
+        const url = window.URL.createObjectURL(blob)
+        const printWindow = window.open(url, '_blank')
+        if (!printWindow) {
+          window.URL.revokeObjectURL(url)
+          return
+        }
+        setTimeout(() => window.URL.revokeObjectURL(url), 8000)
+      } catch (err) {
+        alert(err?.response?.data?.error || 'Não foi possível gerar o PDF de compra.')
       }
-
-      const renderedItems = items.length
-        ? items.map((item) => {
-          const quantidade = Number(item.quantidade ?? 0)
-          const valorUnitario = Number(item.valor_unitario ?? 0)
-          const valorTotalItem = quantidade * valorUnitario
-          return `<tr>
-                    <td>${item.produto || '-'}</td>
-                    <td>${quantidade || '-'}</td>
-                    <td>R$ ${Number.isFinite(valorUnitario) ? valorUnitario.toFixed(2) : '-'}</td>
-                    <td>R$ ${Number.isFinite(valorTotalItem) ? valorTotalItem.toFixed(2) : '-'}</td>
-                  </tr>`
-        }).join('')
-        : `<tr><td colspan="4">Nenhum item encontrado.</td></tr>`
-
-      const html = `
-        <html>
-          <head>
-            <title>Ordem de Compra #${row.id}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
-              h1 { margin-bottom: 6px; }
-              .muted { color: #64748b; margin-bottom: 18px; }
-              h2 { margin-top: 22px; margin-bottom: 8px; font-size: 18px; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-              td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-              th { background: #f8fafc; width: 32%; }
-            </style>
-          </head>
-          <body>
-            <h1>Ordem de Compra #${header.id || row.id}</h1>
-            <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
-
-            <h2>Cabeçalho da Cotação</h2>
-            <table>
-              <tr><th>Tipo de Operação</th><td>${header.tipo_operacao || '-'}</td></tr>
-              <tr><th>Fornecedor</th><td>${header.fornecedor || '-'}</td></tr>
-              <tr><th>Cliente</th><td>${header.cliente || '-'}</td></tr>
-              <tr><th>Motorista</th><td>${header.motorista || '-'}</td></tr>
-              <tr><th>Status</th><td>${header.status || '-'}</td></tr>
-              <tr><th>Data de Envio</th><td>${this.formatDate(header.data_envio_prevista)}</td></tr>
-              <tr><th>Data de Entrega</th><td>${this.formatDate(header.data_entrega_prevista)}</td></tr>
-            </table>
-
-            <h2>Itens da Cotação</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 40%;">Produto</th>
-                  <th style="width: 15%;">Quantidade</th>
-                  <th style="width: 20%;">Valor Unitário</th>
-                  <th style="width: 25%;">Valor Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${renderedItems}
-              </tbody>
-            </table>
-
-            <table>
-              <tr><th>Itens</th><td>${items.length || header.itens_count || '-'}</td></tr>
-              <tr><th>Total Geral</th><td>R$ ${Number(header.valor_total || row.valor_total || 0).toFixed(2)}</td></tr>
-            </table>
-          </body>
-        </html>
-      `
-      const printWindow = window.open('', '_blank', 'width=900,height=700')
-      if (!printWindow) return
-      printWindow.document.write(html)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.print()
     },
   },
 }

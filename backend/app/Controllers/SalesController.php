@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Services\SalesCreationService;
 use App\Services\SalesHeaderService;
+use App\Services\OrderPdfService;
 use PDO;
 
 class SalesController
@@ -377,6 +378,33 @@ class SalesController
             'items' => $items,
             'historico_statuspedido' => $historico,
         ]);
+    }
+
+    public function printHeaderPdf(int $id): void
+    {
+        if (!$this->hasVendasCabecalhoTable()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Impressão de venda não disponível neste ambiente.']);
+            return;
+        }
+
+        try {
+            $service = new OrderPdfService($this->pdo);
+            $pdf = $service->renderSalesHeaderPdf($id);
+            if ($pdf === null) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Pedido de venda não encontrado']);
+                return;
+            }
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="pedido-venda-' . $id . '.pdf"');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            echo $pdf;
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível gerar o PDF de venda.']);
+        }
     }
 
     public function deliver(): void

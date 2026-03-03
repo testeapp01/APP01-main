@@ -551,39 +551,20 @@ export default {
       return year && month && day ? `${day}/${month}/${year}` : value
     },
     printOrder(row) {
-      const html = `
-        <html>
-          <head>
-            <title>Ordem de Venda #${row.id}</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
-              h1 { margin-bottom: 6px; }
-              .muted { color: #64748b; margin-bottom: 18px; }
-              table { width: 100%; border-collapse: collapse; }
-              td, th { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-              th { background: #f8fafc; width: 32%; }
-            </style>
-          </head>
-          <body>
-            <h1>Pedido #${row.id}</h1>
-            <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
-            <table>
-              <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
-              <tr><th>Itens</th><td>${row.itens_count ?? '-'}</td></tr>
-              <tr><th>Valor Total</th><td>R$ ${row.valor_total ?? '-'}</td></tr>
-              <tr><th>Status</th><td>${row.status || '-'}</td></tr>
-              <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
-              <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>
-            </table>
-          </body>
-        </html>
-      `
-      const printWindow = window.open('', '_blank', 'width=900,height=700')
-      if (!printWindow) return
-      printWindow.document.write(html)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.print()
+      api.get(`/api/v1/vendas/cabecalhos/${row.id}/pdf`, {
+        responseType: 'blob',
+      }).then((response) => {
+        const blob = new Blob([response.data], { type: 'application/pdf' })
+        const url = window.URL.createObjectURL(blob)
+        const printWindow = window.open(url, '_blank')
+        if (!printWindow) {
+          window.URL.revokeObjectURL(url)
+          return
+        }
+        setTimeout(() => window.URL.revokeObjectURL(url), 8000)
+      }).catch((err) => {
+        alert(err?.response?.data?.error || 'Não foi possível gerar o PDF de venda.')
+      })
     },
   },
 }

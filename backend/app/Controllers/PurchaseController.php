@@ -4,6 +4,7 @@ namespace App\Controllers;
 use PDO;
 use App\Services\PurchaseCreationService;
 use App\Services\PurchaseHeaderService;
+use App\Services\OrderPdfService;
 use App\Helpers\Request;
 
 class PurchaseController
@@ -395,6 +396,33 @@ class PurchaseController
             'items' => $items,
             'historico_statuscompra' => $historico,
         ]);
+    }
+
+    public function printHeaderPdf(int $id): void
+    {
+        if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Impressão de compra não disponível neste ambiente.']);
+            return;
+        }
+
+        try {
+            $service = new OrderPdfService($this->pdo);
+            $pdf = $service->renderPurchaseHeaderPdf($id);
+            if ($pdf === null) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Pedido de compra não encontrado']);
+                return;
+            }
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="pedido-compra-' . $id . '.pdf"');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            echo $pdf;
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Não foi possível gerar o PDF de compra.']);
+        }
     }
 
     public function updateHeader(int $id): void
