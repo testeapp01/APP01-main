@@ -64,6 +64,9 @@
         :columns="tableCols"
         :rows="paginatedCompras"
       >
+        <template #numero_pedido="{ row }">
+          #{{ row.id }}
+        </template>
         <template #tipo_operacao="{ row }">
           {{ row.tipo_operacao || '-' }}
         </template>
@@ -76,14 +79,11 @@
         <template #motorista="{ row }">
           {{ row.motorista || '-' }}
         </template>
-        <template #produto="{ row }">
-          {{ row.produto || '-' }}
+        <template #itens_count="{ row }">
+          {{ row.itens_count ?? '-' }}
         </template>
-        <template #quantidade="{ row }">
-          {{ row.quantidade !== undefined && row.quantidade !== null ? row.quantidade : '-' }}
-        </template>
-        <template #valor_unitario="{ row }">
-          {{ row.valor_unitario !== undefined && row.valor_unitario !== null ? ('R$ ' + row.valor_unitario) : '-' }}
+        <template #valor_total="{ row }">
+          {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
         </template>
         <template #status="{ row }">
           {{ row.status || '-' }}
@@ -95,12 +95,20 @@
           {{ formatDate(row.data_entrega_prevista) }}
         </template>
         <template #acoes="{ row }">
-          <BaseButton
-            variant="secondary"
-            @click="printOrder(row)"
-          >
-            Imprimir
-          </BaseButton>
+          <div class="flex flex-wrap gap-2">
+            <BaseButton
+              variant="ghost"
+              @click="openItems(row.id)"
+            >
+              Itens
+            </BaseButton>
+            <BaseButton
+              variant="secondary"
+              @click="printOrder(row)"
+            >
+              Imprimir
+            </BaseButton>
+          </div>
         </template>
       </BaseTable>
     </div>
@@ -490,13 +498,13 @@ export default {
   },
   computed: {
     tableCols() { return [
+      { key: 'numero_pedido', label: 'Pedido' },
       { key: 'tipo_operacao', label: 'Tipo' },
       { key: 'fornecedor', label: 'Fornecedor' },
       { key: 'cliente', label: 'Cliente' },
       { key: 'motorista', label: 'Motorista' },
-      { key: 'produto', label: 'Produto' },
-      { key: 'quantidade', label: 'Quantidade' },
-      { key: 'valor_unitario', label: 'Valor Unit.' },
+      { key: 'itens_count', label: 'Itens' },
+      { key: 'valor_total', label: 'Valor Total' },
       { key: 'status', label: 'Status' },
       { key: 'data_envio_prevista', label: 'Envio Previsto' },
       { key: 'data_entrega_prevista', label: 'Entrega Prevista' },
@@ -506,10 +514,9 @@ export default {
       return (this.compras || []).filter(c => {
         if (!c) return false
         const hasFornecedor = c.fornecedor && String(c.fornecedor).trim().length > 0
-        const hasProduto = c.produto && String(c.produto).trim().length > 0
-        const hasQuantidade = c.quantidade !== undefined && c.quantidade !== null
-        const hasValor = c.valor_unitario !== undefined && c.valor_unitario !== null
-        return hasFornecedor || hasProduto || hasQuantidade || hasValor
+        const hasItens = c.itens_count !== undefined && c.itens_count !== null
+        const hasValor = c.valor_total !== undefined && c.valor_total !== null
+        return hasFornecedor || hasItens || hasValor
       })
     },
     totalPages() { return Math.max(1, Math.ceil(this.totalCount / this.pageSize)) },
@@ -561,6 +568,13 @@ export default {
           cliente_id: this.novaCompra.tipo === 'venda' ? this.novaCompra.cliente_id : null,
           data_envio_prevista: this.novaCompra.data_envio_prevista || null,
           data_entrega_prevista: this.novaCompra.data_entrega_prevista || null,
+          items: [
+            {
+              produto_id: this.novaCompra.produto_id,
+              quantidade: this.novaCompra.quantidade,
+              valor_unitario: this.novaCompra.valor_unitario,
+            }
+          ],
         }
 
         if (this.novaCompra.tipo === 'venda') {
@@ -636,15 +650,40 @@ export default {
     prevPage() { if (this.currentPage > 1) { this.currentPage--; this.loadCompras() } },
     nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.loadCompras() } },
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadCompras() },
+    openItems(id) {
+      this.$router.push(`/compras/cabecalho/${id}`)
+    },
     formatDate(value) {
       if (!value) return '-'
       const [year, month, day] = String(value).slice(0, 10).split('-')
       return year && month && day ? `${day}/${month}/${year}` : value
     },
-    printOrder(row) {
-      const quantidade = row.quantidade ?? 0
-      const valorUnitario = Number(row.valor_unitario ?? 0)
-      const valorTotal = quantidade * valorUnitario
+    async printOrder(row) {
+      let header = row
+      let items = []
+
+      try {
+        const res = await api.get(`/api/v1/compras/cabecalhos/${row.id}`)
+        header = res.data?.header || row
+        items = Array.isArray(res.data?.items) ? res.data.items : []
+      } catch (e) {
+        items = []
+      }
+
+      const renderedItems = items.length
+        ? items.map((item) => {
+          const quantidade = Number(item.quantidade ?? 0)
+          const valorUnitario = Number(item.valor_unitario ?? 0)
+          const valorTotalItem = quantidade * valorUnitario
+          return `<tr>
+                    <td>${item.produto || '-'}</td>
+                    <td>${quantidade || '-'}</td>
+                    <td>R$ ${Number.isFinite(valorUnitario) ? valorUnitario.toFixed(2) : '-'}</td>
+                    <td>R$ ${Number.isFinite(valorTotalItem) ? valorTotalItem.toFixed(2) : '-'}</td>
+                  </tr>`
+        }).join('')
+        : `<tr><td colspan="4">Nenhum item encontrado.</td></tr>`
+
       const html = `
         <html>
           <head>
@@ -660,18 +699,18 @@ export default {
             </style>
           </head>
           <body>
-            <h1>Ordem de Compra #${row.id}</h1>
+            <h1>Ordem de Compra #${header.id || row.id}</h1>
             <div class="muted">Emitida em ${new Date().toLocaleString('pt-BR')}</div>
 
             <h2>Cabeçalho da Cotação</h2>
             <table>
-              <tr><th>Tipo de Operação</th><td>${row.tipo_operacao || '-'}</td></tr>
-              <tr><th>Fornecedor</th><td>${row.fornecedor || '-'}</td></tr>
-              <tr><th>Cliente</th><td>${row.cliente || '-'}</td></tr>
-              <tr><th>Motorista</th><td>${row.motorista || '-'}</td></tr>
-              <tr><th>Status</th><td>${row.status || '-'}</td></tr>
-              <tr><th>Data de Envio</th><td>${this.formatDate(row.data_envio_prevista)}</td></tr>
-              <tr><th>Data de Entrega</th><td>${this.formatDate(row.data_entrega_prevista)}</td></tr>
+              <tr><th>Tipo de Operação</th><td>${header.tipo_operacao || '-'}</td></tr>
+              <tr><th>Fornecedor</th><td>${header.fornecedor || '-'}</td></tr>
+              <tr><th>Cliente</th><td>${header.cliente || '-'}</td></tr>
+              <tr><th>Motorista</th><td>${header.motorista || '-'}</td></tr>
+              <tr><th>Status</th><td>${header.status || '-'}</td></tr>
+              <tr><th>Data de Envio</th><td>${this.formatDate(header.data_envio_prevista)}</td></tr>
+              <tr><th>Data de Entrega</th><td>${this.formatDate(header.data_entrega_prevista)}</td></tr>
             </table>
 
             <h2>Itens da Cotação</h2>
@@ -685,18 +724,13 @@ export default {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>${row.produto || '-'}</td>
-                  <td>${quantidade || '-'}</td>
-                  <td>R$ ${Number.isFinite(valorUnitario) ? valorUnitario.toFixed(2) : '-'}</td>
-                  <td>R$ ${Number.isFinite(valorTotal) ? valorTotal.toFixed(2) : '-'}</td>
-                </tr>
+                ${renderedItems}
               </tbody>
             </table>
 
             <table>
-              <tr><th>Produto</th><td>${row.produto || '-'}</td></tr>
-              <tr><th>Total Geral</th><td>R$ ${Number.isFinite(valorTotal) ? valorTotal.toFixed(2) : '-'}</td></tr>
+              <tr><th>Itens</th><td>${items.length || header.itens_count || '-'}</td></tr>
+              <tr><th>Total Geral</th><td>R$ ${Number(header.valor_total || row.valor_total || 0).toFixed(2)}</td></tr>
             </table>
           </body>
         </html>

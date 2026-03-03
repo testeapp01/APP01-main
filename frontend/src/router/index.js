@@ -7,6 +7,7 @@ const routes = [
   { path: '/clientes', name: 'Clientes', component: () => import('../pages/ClientesMotoristas.vue'), meta: { requiresAuth: true } },
   { path: '/motoristas', name: 'Motoristas', component: () => import('../pages/Motoristas.vue'), meta: { requiresAuth: true } },
   { path: '/compras', name: 'Compras', component: () => import('../pages/Compras.vue'), meta: { requiresAuth: true } },
+  { path: '/compras/cabecalho/:id', name: 'ComprasCabecalhoDetalhe', component: () => import('../pages/CompraCabecalhoDetalhe.vue'), meta: { requiresAuth: true } },
   { path: '/estoque', name: 'Produtos', component: () => import('../pages/Produtos.vue'), meta: { requiresAuth: true } },
   { path: '/fornecedores', name: 'Fornecedores', component: () => import('../pages/Fornecedores.vue'), meta: { requiresAuth: true } },
   { path: '/relatorios', name: 'Relatorios', component: () => import('../pages/Relatorios.vue'), meta: { requiresAuth: true } },

@@ -121,6 +121,11 @@ if ($uri === '/api/v1/compras' && $method === 'GET') {
     exit;
 }
 
+if (preg_match('#^/api/v1/compras/cabecalhos/(\d+)$#', $uri, $matches) && $method === 'GET') {
+    (new PurchaseController($pdo))->showHeader((int)$matches[1]);
+    exit;
+}
+
 // vendas (placeholder)
 if ($uri === '/api/v1/vendas' && $method === 'POST') {
     (new SalesController($pdo))->create();
