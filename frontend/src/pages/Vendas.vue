@@ -94,30 +94,49 @@
             {{ formatDate(row.data_entrega_prevista) }}
           </template>
           <template #acoes="{ row }">
-            <div class="flex flex-wrap gap-2">
-              <BaseButton
-                variant="ghost"
-                @click="openItems(row.id)"
+            <div
+              class="relative inline-block text-left"
+              @click.stop
+            >
+              <button
+                type="button"
+                class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Abrir ações"
+                @click.stop="toggleActionsMenu(row.id, $event)"
               >
-                Itens
-              </BaseButton>
-              <BaseButton
-                variant="secondary"
-                @click="printOrder(row)"
+                ⋯
+              </button>
+
+              <div
+                v-if="openActionsMenuId === row.id"
+                :class="[
+                  'absolute right-0 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg',
+                  openActionsMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+                ]"
               >
-                Imprimir
-              </BaseButton>
-              <BaseButton
-                v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')"
-                variant="primary"
-                @click="openConfirm(row.id)"
-              >
-                Entregar
-              </BaseButton>
-              <span
-                v-else
-                class="text-sm muted"
-              >Entregue</span>
+                <button
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  @click="openItems(row.id); closeActionsMenu()"
+                >
+                  Itens
+                </button>
+                <button
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  @click="printOrder(row); closeActionsMenu()"
+                >
+                  Imprimir
+                </button>
+                <button
+                  v-if="!(row.status && String(row.status).toLowerCase() === 'entregue')"
+                  type="button"
+                  class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  @click="openConfirm(row.id); closeActionsMenu()"
+                >
+                  Confirmar entrega
+                </button>
+              </div>
             </div>
           </template>
         </BaseTable>
@@ -371,6 +390,8 @@ export default {
       saleFeedback: { message: '', type: 'info' },
       confirmPayload: null,
       confirming: false,
+      openActionsMenuId: null,
+      openActionsMenuDirection: 'down',
       pageSize: 25,
       currentPage: 1,
       timer: null,
@@ -404,8 +425,40 @@ export default {
     this.loadClients();
     this.loadProducts();
     this.loadVendas();
+    document.addEventListener('click', this.handleDocumentClick)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
+    toggleActionsMenu(id, event) {
+      if (this.openActionsMenuId === id) {
+        this.openActionsMenuId = null
+        return
+      }
+
+      this.openActionsMenuId = id
+      this.$nextTick(() => {
+        const trigger = event?.currentTarget
+        if (!trigger) {
+          this.openActionsMenuDirection = 'down'
+          return
+        }
+
+        const rect = trigger.getBoundingClientRect()
+        const menuHeight = 220
+        const spaceBelow = window.innerHeight - rect.bottom
+        const spaceAbove = rect.top
+
+        this.openActionsMenuDirection = (spaceBelow < menuHeight && spaceAbove > spaceBelow) ? 'up' : 'down'
+      })
+    },
+    closeActionsMenu() {
+      this.openActionsMenuId = null
+    },
+    handleDocumentClick() {
+      this.closeActionsMenu()
+    },
     async loadVendas() {
       this.loading = true
       try {

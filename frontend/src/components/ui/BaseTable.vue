@@ -24,7 +24,7 @@
       </article>
     </div>
 
-    <div class="hidden md:block overflow-x-auto">
+    <div class="hidden md:block overflow-x-auto overflow-y-visible">
       <table class="min-w-[720px] md:min-w-full divide-y divide-slate-200 dark:divide-slate-700">
         <thead class="bg-transparent">
           <tr>

@@ -103,14 +103,17 @@
               type="button"
               class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
               aria-label="Abrir ações"
-              @click.stop="toggleActionsMenu(row.id)"
+              @click.stop="toggleActionsMenu(row.id, $event)"
             >
               ⋯
             </button>
 
             <div
               v-if="openActionsMenuId === row.id"
-              class="absolute right-0 z-20 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+              :class="[
+                'absolute right-0 z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg',
+                openActionsMenuDirection === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+              ]"
             >
               <button
                 type="button"
@@ -686,6 +689,7 @@ export default {
         status: 'NEGOCIADA',
       },
       openActionsMenuId: null,
+      openActionsMenuDirection: 'down',
       pageSize: 25,
       currentPage: 1,
       totalCount: 0,
@@ -729,8 +733,27 @@ export default {
     document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
-    toggleActionsMenu(id) {
-      this.openActionsMenuId = this.openActionsMenuId === id ? null : id
+    toggleActionsMenu(id, event) {
+      if (this.openActionsMenuId === id) {
+        this.openActionsMenuId = null
+        return
+      }
+
+      this.openActionsMenuId = id
+      this.$nextTick(() => {
+        const trigger = event?.currentTarget
+        if (!trigger) {
+          this.openActionsMenuDirection = 'down'
+          return
+        }
+
+        const rect = trigger.getBoundingClientRect()
+        const menuHeight = 240
+        const spaceBelow = window.innerHeight - rect.bottom
+        const spaceAbove = rect.top
+
+        this.openActionsMenuDirection = (spaceBelow < menuHeight && spaceAbove > spaceBelow) ? 'up' : 'down'
+      })
     },
     closeActionsMenu() {
       this.openActionsMenuId = null
