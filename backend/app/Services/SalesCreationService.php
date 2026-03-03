@@ -9,6 +9,7 @@ class SalesCreationService
 {
     private ?array $vendasColumnsCache = null;
     private ?array $vendasCabecalhoColumnsCache = null;
+    private ?array $vendasCabecalhoStatusEnumValuesCache = null;
     private ?bool $hasVendasCabecalhoCache = null;
     private ?bool $hasStatusPedidoCache = null;
 
@@ -140,13 +141,14 @@ class SalesCreationService
         string $status
     ): int {
         $statusNormalizado = $this->normalizeStatusPedidoLabel($status);
+        $statusCabecalho = $this->normalizeVendaHeaderStatusForSchema($statusNormalizado);
         $params = [
             'tipo' => $tipo,
             'cliente_id' => $clienteId,
             'valor_total' => $valorTotal,
             'data_inicio_prevista' => $dataInicio,
             'data_fim_prevista' => $dataFim,
-            'status' => $statusNormalizado,
+            'status' => $statusCabecalho,
         ];
 
         if ($this->hasVendasCabecalhoColumn('id_statuspedido')) {
@@ -167,6 +169,64 @@ class SalesCreationService
         $stmt->execute($params);
 
         return (int)$this->pdo->lastInsertId();
+    }
+
+    private function normalizeVendaHeaderStatusForSchema(string $status): string
+    {
+        if ($status === 'ENTREGUE') {
+            return 'ENTREGUE';
+        }
+
+        $allowed = $this->vendasCabecalhoStatusEnumValues();
+        if (empty($allowed)) {
+            return 'AGUARDANDO';
+        }
+
+        if (in_array('AGUARDANDO', $allowed, true)) {
+            return 'AGUARDANDO';
+        }
+
+        if (in_array('ORCAMENTO', $allowed, true)) {
+            return 'ORCAMENTO';
+        }
+
+        if (in_array('CONFIRMADA', $allowed, true)) {
+            return 'CONFIRMADA';
+        }
+
+        return $allowed[0] ?? 'AGUARDANDO';
+    }
+
+    private function vendasCabecalhoStatusEnumValues(): array
+    {
+        if ($this->vendasCabecalhoStatusEnumValuesCache !== null) {
+            return $this->vendasCabecalhoStatusEnumValuesCache;
+        }
+
+        $this->vendasCabecalhoStatusEnumValuesCache = [];
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'sqlite') {
+            return $this->vendasCabecalhoStatusEnumValuesCache;
+        }
+
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM vendas_cabecalho LIKE 'status'");
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $type = (string)($row['Type'] ?? '');
+            if (preg_match("/^enum\\((.+)\\)$/i", $type, $m) !== 1) {
+                return $this->vendasCabecalhoStatusEnumValuesCache;
+            }
+
+            $parts = str_getcsv($m[1], ',', "'", "\\");
+            $this->vendasCabecalhoStatusEnumValuesCache = array_values(array_filter(array_map(
+                static fn(string $value): string => strtoupper(trim($value)),
+                $parts
+            )));
+        } catch (\Throwable $e) {
+            $this->vendasCabecalhoStatusEnumValuesCache = [];
+        }
+
+        return $this->vendasCabecalhoStatusEnumValuesCache;
     }
 
     private function normalizeStatusPedidoLabel(?string $status): string
