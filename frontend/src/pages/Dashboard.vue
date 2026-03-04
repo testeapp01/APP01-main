@@ -65,6 +65,41 @@
       </template>
     </PageHero>
 
+    <div
+      v-if="showEmptyOverview"
+      class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4"
+    >
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              class="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+            </svg>
+          </span>
+          <div>
+            <p class="text-sm font-semibold text-slate-700">Sem registros para exibir no painel</p>
+            <p class="text-sm text-slate-600">Amplie o período para visualizar movimentações.</p>
+          </div>
+        </div>
+        <BaseButton
+          variant="secondary"
+          class="w-full sm:w-auto"
+          :disabled="loading"
+          @click="applySuggestedPeriod"
+        >
+          {{ suggestedPeriodLabel }}
+        </BaseButton>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <div class="card p-4 rounded-xl border border-slate-200 bg-white">
         <div class="text-xs uppercase text-slate-500">Vendas</div>
@@ -91,8 +126,14 @@
           <span class="text-xs text-slate-500">{{ loading ? 'Atualizando...' : 'Atualizado' }}</span>
         </div>
 
-        <div class="chart-wrapper">
+        <div class="chart-wrapper relative">
           <canvas ref="lineCanvas" />
+          <div
+            v-if="!hasLineData"
+            class="absolute inset-0 flex items-center justify-center text-sm text-slate-500"
+          >
+            Sem registros no período selecionado.
+          </div>
         </div>
       </div>
 
@@ -100,10 +141,23 @@
         <div class="chart-header">
           <h3>Status das Vendas</h3>
         </div>
-        <div class="chart-wrapper pie-wrapper">
+        <div class="chart-wrapper pie-wrapper relative">
           <canvas ref="pieCanvas" />
+          <div
+            v-if="!hasPieData"
+            class="absolute inset-0 flex items-center justify-center text-sm text-slate-500"
+          >
+            Sem registros de status no período.
+          </div>
         </div>
       </div>
+    </div>
+
+    <div
+      v-if="errorMessage"
+      class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+    >
+      {{ errorMessage }}
     </div>
   </div>
 </template>
@@ -111,17 +165,19 @@
 <script>
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import PageHero from '../components/ui/PageHero.vue'
+import BaseButton from '../components/ui/BaseButton.vue'
 import api from '../services/api'
 import Chart from 'chart.js/auto'
 
 export default {
-  components: { PageHero },
+  components: { PageHero, BaseButton },
 
   setup() {
 
     const period = ref('30d')
     const metric = ref('sales')
     const loading = ref(false)
+    const errorMessage = ref('')
     const cards = ref({
       sales_total: 0,
       purchases_total: 0,
@@ -149,6 +205,59 @@ export default {
       return 'Evolução de Vendas'
     })
 
+    const hasLineData = computed(() => {
+      return (lineData.value.data || []).some(value => Number(value || 0) > 0)
+    })
+
+    const hasPieData = computed(() => {
+      const labels = pieData.value.labels || []
+      const values = pieData.value.data || []
+      if (!labels.length || !values.length) return false
+      if (labels.length === 1 && String(labels[0]).toLowerCase() === 'sem dados') return false
+      return values.some(value => Number(value || 0) > 0)
+    })
+
+    const showEmptyOverview = computed(() => {
+      const salesCount = Number(cards.value.sales_count || 0)
+      const purchasesCount = Number(cards.value.purchases_count || 0)
+      return salesCount === 0 && purchasesCount === 0
+    })
+
+    const periodOrder = ['7d', '30d', '90d', '180d', '365d']
+    const suggestedPeriod = computed(() => {
+      const idx = periodOrder.indexOf(period.value)
+      if (idx < 0) return '90d'
+      return periodOrder[Math.min(idx + 1, periodOrder.length - 1)]
+    })
+
+    const suggestedPeriodLabel = computed(() => {
+      const value = suggestedPeriod.value
+      return `Expandir para últimos ${value.replace('d', '')} dias`
+    })
+
+    const normalizeLine = (line) => {
+      const labels = Array.isArray(line?.labels) ? line.labels : []
+      const data = Array.isArray(line?.data) ? line.data : []
+      const datasetLabel = line?.datasetLabel || 'Vendas'
+
+      if (!labels.length || !data.length) {
+        return { labels: ['Sem dados'], data: [0], datasetLabel }
+      }
+
+      return { labels, data, datasetLabel }
+    }
+
+    const normalizePie = (pie) => {
+      const labels = Array.isArray(pie?.labels) ? pie.labels : []
+      const data = Array.isArray(pie?.data) ? pie.data : []
+
+      if (!labels.length || !data.length) {
+        return { labels: ['Sem dados'], data: [1] }
+      }
+
+      return { labels, data }
+    }
+
     const asMoney = (value) => {
       return Number(value || 0).toLocaleString('pt-BR', {
         style: 'currency',
@@ -158,6 +267,7 @@ export default {
 
     const loadDashboard = async () => {
       loading.value = true
+      errorMessage.value = ''
       try {
         const response = await api.get('/relatorios/dashboard', {
           headers: {
@@ -172,17 +282,28 @@ export default {
         })
 
         cards.value = { ...cards.value, ...(response.data?.cards || {}) }
-        lineData.value = response.data?.line || { labels: [], datasetLabel: 'Vendas', data: [] }
-        pieData.value = response.data?.pie || { labels: ['Sem dados'], data: [1] }
+        lineData.value = normalizeLine(response.data?.line)
+        pieData.value = normalizePie(response.data?.pie)
 
         await nextTick()
         renderLineChart()
         renderPieChart()
       } catch (e) {
         console.error('Erro ao buscar dashboard:', e)
+        errorMessage.value = 'Não foi possível atualizar o painel agora. Tente novamente em instantes.'
+        lineData.value = { labels: ['Sem dados'], datasetLabel: 'Vendas', data: [0] }
+        pieData.value = { labels: ['Sem dados'], data: [1] }
+        await nextTick()
+        renderLineChart()
+        renderPieChart()
       } finally {
         loading.value = false
       }
+    }
+
+    const applySuggestedPeriod = async () => {
+      period.value = suggestedPeriod.value
+      await loadDashboard()
     }
 
     const renderLineChart = () => {
@@ -307,10 +428,16 @@ export default {
       period,
       metric,
       loading,
+      errorMessage,
       cards,
       lineCanvas,
       pieCanvas,
       lineTitle,
+      hasLineData,
+      hasPieData,
+      showEmptyOverview,
+      suggestedPeriodLabel,
+      applySuggestedPeriod,
       asMoney,
       loadDashboard,
     }

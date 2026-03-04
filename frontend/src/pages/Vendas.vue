@@ -127,6 +127,7 @@
       </div>
 
       <ListState
+        v-if="loading"
         :loading="loading"
         :has-data="filteredVendas.length > 0"
         loading-text="Carregando vendas..."
@@ -135,6 +136,42 @@
         action-label="Adicionar Venda"
         @action="openCreateModal"
       />
+
+      <div
+        v-if="!loading && filteredVendas.length === 0"
+        class="panel-inner mt-4"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-start gap-3">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+              </svg>
+            </span>
+            <div>
+              <p class="text-sm font-semibold text-slate-700">Sem vendas para exibir</p>
+              <p class="text-sm text-slate-600">{{ hasActiveFilter ? 'Ajuste os filtros e tente novamente.' : 'Cadastre a primeira venda para iniciar o acompanhamento.' }}</p>
+            </div>
+          </div>
+          <div class="flex w-full sm:w-auto gap-2">
+            <BaseButton
+              v-if="hasActiveFilter"
+              variant="secondary"
+              class="w-full sm:w-auto"
+              @click="clearFilters"
+            >
+              Limpar filtros
+            </BaseButton>
+            <BaseButton
+              variant="primary"
+              class="w-full sm:w-auto"
+              @click="openCreateModal"
+            >
+              Adicionar Venda
+            </BaseButton>
+          </div>
+        </div>
+      </div>
     </div>
     <!-- Pagination controls -->
     <div
@@ -408,6 +445,9 @@ export default {
       if (!this.statusFilter) return this.visibleVendas
       return this.visibleVendas.filter(v => this.normalizeVendaStatus(v.status) === this.statusFilter)
     },
+    hasActiveFilter() {
+      return String(this.statusFilter || '').trim() !== '' || String(this.query || '').trim() !== ''
+    },
   },
   mounted() {
     this.loadClients();
@@ -540,6 +580,7 @@ export default {
       }
     },
     openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
+    clearFilters() { this.query = ''; this.statusFilter = ''; this.currentPage = 1; this.loadVendas() },
     closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },

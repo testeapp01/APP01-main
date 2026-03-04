@@ -74,12 +74,20 @@
           {{ row.unidade || '-' }}
         </template>
         <template #acoes="{ row }">
-          <BaseButton
-            variant="ghost"
-            @click="openEdit(row)"
-          >
-            Atualizar
-          </BaseButton>
+          <div class="flex items-center gap-2">
+            <BaseButton
+              variant="ghost"
+              @click="openEdit(row)"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              variant="danger"
+              @click="deleteProduto(row)"
+            >
+              Excluir
+            </BaseButton>
+          </div>
         </template>
       </BaseTable>
     </div>
@@ -319,6 +327,21 @@ export default {
       }
     }
 
+    async function deleteProduto(row) {
+      if (!row?.id) return
+      const ok = window.confirm(`Deseja excluir o produto "${row.nome || row.id}"?`)
+      if (!ok) return
+
+      try {
+        await api.delete(`/api/v1/produtos/${row.id}`)
+        useToast().notify('Produto excluído com sucesso', { type: 'success' })
+        await loadProdutos()
+      } catch (e) {
+        console.error('Erro ao excluir produto:', e)
+        useToast().notify(e?.response?.data?.error || 'Falha ao excluir produto', { type: 'error' })
+      }
+    }
+
     onMounted(() => loadProdutos())
 
     return {
@@ -342,7 +365,8 @@ export default {
       submittingProduct,
       productFeedback,
       editMode,
-      openEdit
+      openEdit,
+      deleteProduto
     }
   }
 }

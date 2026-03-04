@@ -54,6 +54,41 @@
       {{ pagination.total || 0 }} resultado(s) encontrado(s)
     </div>
 
+    <div
+      v-if="showEmptyOverview"
+      class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4"
+    >
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              class="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+            </svg>
+          </span>
+          <div>
+            <p class="text-sm font-semibold text-slate-700">Sem registros no período atual</p>
+            <p class="text-sm text-slate-600">Amplie o intervalo para visualizar movimentações.</p>
+          </div>
+        </div>
+        <BaseButton
+          variant="secondary"
+          class="w-full sm:w-auto"
+          :disabled="loading"
+          @click="applySuggestedRange"
+        >
+          {{ suggestedRangeLabel }}
+        </BaseButton>
+      </div>
+    </div>
+
     <PurchaseKpiCards :kpis="kpis" />
 
     <PurchaseReportCharts :charts="charts" />
@@ -181,6 +216,21 @@ export default {
       }, 350)
     }
   },
+  computed: {
+    showEmptyOverview() {
+      return !this.loading && Number(this.pagination?.total || 0) === 0
+    },
+    suggestedRangeDays() {
+      const steps = [7, 30, 90, 180, 365]
+      const current = this.currentRangeDays()
+      const idx = steps.findIndex(step => step >= current)
+      if (idx < 0) return 365
+      return steps[Math.min(idx + 1, steps.length - 1)]
+    },
+    suggestedRangeLabel() {
+      return `Expandir para últimos ${this.suggestedRangeDays} dias`
+    }
+  },
   mounted() {
     this.loadReport()
   },
@@ -188,6 +238,35 @@ export default {
     clearTimeout(this.debounceSearchHandle)
   },
   methods: {
+    currentRangeDays() {
+      const from = this.parseIsoDate(this.filters.from)
+      const to = this.parseIsoDate(this.filters.to)
+      if (!from || !to) return 30
+      const diff = Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      return diff > 0 ? diff : 30
+    },
+    parseIsoDate(value) {
+      if (!value) return null
+      const date = new Date(`${String(value).slice(0, 10)}T00:00:00`)
+      return Number.isNaN(date.getTime()) ? null : date
+    },
+    toIsoDate(date) {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    },
+    async applySuggestedRange() {
+      const today = new Date()
+      const start = new Date(today)
+      start.setDate(today.getDate() - this.suggestedRangeDays + 1)
+      this.filters = {
+        ...this.filters,
+        from: this.toIsoDate(start),
+        to: this.toIsoDate(today)
+      }
+      await this.applyFilters()
+    },
     buildParams() {
       const params = {
         page: this.pagination.page,
