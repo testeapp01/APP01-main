@@ -31,8 +31,9 @@
   >
     <!-- Sidebar -->
     <aside
+      ref="sidebarEl"
       :class="[ 'sidebar w-64 flex flex-col h-full p-4 overflow-y-auto no-scrollbar transform top-0 left-0 fixed z-30 transition-transform duration-200', sidebarOpen ? 'translate-x-0' : '-translate-x-full', 'md:translate-x-0 md:static md:shadow-none' ]"
-      :aria-hidden="!sidebarOpen && isMobile"
+      :inert="!sidebarOpen && isMobile"
     >
       <div class="h-full flex flex-col justify-between">
         <div>
@@ -399,6 +400,7 @@
 
       <header class="md:hidden sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-3 py-2 flex items-center gap-3">
         <button
+          ref="menuButtonEl"
           class="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 text-slate-700"
           aria-label="Abrir menu"
           @click="toggleSidebar"
@@ -531,7 +533,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, getCurrentInstance, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, getCurrentInstance, watch, computed, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import api from './services/api'
@@ -544,6 +546,8 @@ export default {
     const pageTitle = ref('Dashboard')
     const isMobile = ref(false)
     const isPublicView = computed(() => route.path === '/login' || route.path === '/sessao-expirada')
+    const sidebarEl = ref(null)
+    const menuButtonEl = ref(null)
     const profileOpen = ref(false)
     const notificationsOpen = ref(false)
     const notifications = ref([])
@@ -662,11 +666,25 @@ export default {
       if (notificationsTimer) window.clearInterval(notificationsTimer)
     })
 
+    const returnFocusToMenuIfNeeded = () => {
+      if (!isMobile.value || sidebarOpen.value) return
+      const active = typeof document !== 'undefined' ? document.activeElement : null
+      if (active && sidebarEl.value && sidebarEl.value.contains(active)) {
+        menuButtonEl.value?.focus()
+      }
+    }
+
     function toggleSidebar() {
       sidebarOpen.value = !sidebarOpen.value
+      if (!sidebarOpen.value) {
+        nextTick(returnFocusToMenuIfNeeded)
+      }
     }
     function closeOnMobile() {
-      if (isMobile.value) sidebarOpen.value = false
+      if (isMobile.value) {
+        sidebarOpen.value = false
+        nextTick(returnFocusToMenuIfNeeded)
+      }
     }
     function updateTitle(title) {
       if (title) pageTitle.value = title
@@ -733,6 +751,8 @@ export default {
       theme,
       toggleTheme,
       isPublicView,
+      sidebarEl,
+      menuButtonEl,
       profileOpen,
       notificationsOpen,
       notifications,
