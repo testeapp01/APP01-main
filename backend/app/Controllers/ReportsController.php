@@ -71,19 +71,37 @@ class ReportsController
             $metric = 'sales';
         }
 
+        $salesTable = 'vendas';
+        $salesValueExpr = '(quantidade * valor_unitario)';
         $salesDateColumn = $this->resolveDateColumn('vendas', ['data_venda', 'created_at']);
-        $purchaseDateColumn = $this->resolveDateColumn('compras', ['data_compra', 'created_at']);
+        $salesStatusColumn = 'status';
+
+        if ($this->hasColumn('vendas_cabecalho', 'valor_total')) {
+            $salesTable = 'vendas_cabecalho';
+            $salesValueExpr = 'IFNULL(valor_total, 0)';
+            $salesDateColumn = $this->resolveDateColumn('vendas_cabecalho', ['data_inicio_prevista', 'data_fim_prevista', 'created_at']);
+            $salesStatusColumn = $this->hasColumn('vendas_cabecalho', 'status') ? 'status' : '';
+        }
+
+        $purchasesTable = 'compras';
         $purchaseValueExpr = $this->hasColumn('compras', 'comissao_total')
             ? '((quantidade * valor_unitario) + IFNULL(comissao_total, 0))'
             : '(quantidade * valor_unitario)';
+        $purchaseDateColumn = $this->resolveDateColumn('compras', ['data_compra', 'created_at']);
+
+        if ($this->hasColumn('compras_cabecalho', 'valor_total')) {
+            $purchasesTable = 'compras_cabecalho';
+            $purchaseValueExpr = 'IFNULL(valor_total, 0)';
+            $purchaseDateColumn = $this->resolveDateColumn('compras_cabecalho', ['data_envio_prevista', 'data_entrega_prevista', 'created_at']);
+        }
 
         $salesAgg = [];
         try {
-            $salesSql = 'SELECT
+                $salesSql = "SELECT
                     COUNT(*) AS sales_count,
-                    IFNULL(SUM(quantidade * valor_unitario), 0) AS sales_total,
-                    IFNULL(AVG(quantidade * valor_unitario), 0) AS average_ticket
-                 FROM vendas';
+                    IFNULL(SUM({$salesValueExpr}), 0) AS sales_total,
+                    IFNULL(AVG({$salesValueExpr}), 0) AS average_ticket
+                 FROM {$salesTable}";
             $salesParams = [];
             if ($salesDateColumn !== null) {
                 $salesSql .= " WHERE {$salesDateColumn} >= :from_date";
@@ -99,10 +117,10 @@ class ReportsController
 
         $purchasesAgg = [];
         try {
-            $purchasesSql = "SELECT
+              $purchasesSql = "SELECT
                     COUNT(*) AS purchases_count,
                     IFNULL(SUM({$purchaseValueExpr}), 0) AS purchases_total
-                 FROM compras";
+                  FROM {$purchasesTable}";
             $purchaseParams = [];
             if ($purchaseDateColumn !== null) {
                 $purchasesSql .= " WHERE {$purchaseDateColumn} >= :from_date";
@@ -133,8 +151,18 @@ class ReportsController
             'products_total' => $productsTotal,
         ];
 
-        $line = $this->buildLineSeries($fromDate, $groupBy, $metric, $salesDateColumn, $purchaseDateColumn, $purchaseValueExpr);
-        $pie = $this->buildPieSeries($fromDate, $salesDateColumn);
+        $line = $this->buildLineSeries(
+            $fromDate,
+            $groupBy,
+            $metric,
+            $salesTable,
+            $salesValueExpr,
+            $salesDateColumn,
+            $purchasesTable,
+            $purchaseValueExpr,
+            $purchaseDateColumn
+        );
+        $pie = $this->buildPieSeries($fromDate, $salesTable, $salesDateColumn, $salesStatusColumn);
 
         echo json_encode([
             'filters' => [
@@ -188,7 +216,10 @@ class ReportsController
         string $fromDate,
         string $groupBy,
         string $metric,
+        string $salesTable,
+        string $salesValueExpr,
         ?string $salesDateColumn,
+        string $purchasesTable,
         ?string $purchaseDateColumn,
         string $purchaseValueExpr
     ): array
@@ -201,23 +232,29 @@ class ReportsController
             $labelExpr = "DATE_FORMAT(%s, '%d/%m')";
         }
 
-        $sales = $this->queryTimeSeries(
-            sprintf($periodExpr, $salesDateColumn ?? 'data_venda'),
-            sprintf($labelExpr, $salesDateColumn ?? 'data_venda'),
-            'vendas',
-            '(quantidade * valor_unitario)',
-            $salesDateColumn,
-            $fromDate
-        );
+        $sales = [];
+        if ($salesDateColumn !== null) {
+            $sales = $this->queryTimeSeries(
+                sprintf($periodExpr, $salesDateColumn),
+                sprintf($labelExpr, $salesDateColumn),
+                $salesTable,
+                $salesValueExpr,
+                $salesDateColumn,
+                $fromDate
+            );
+        }
 
-        $purchases = $this->queryTimeSeries(
-            sprintf($periodExpr, $purchaseDateColumn ?? 'data_compra'),
-            sprintf($labelExpr, $purchaseDateColumn ?? 'data_compra'),
-            'compras',
-            $purchaseValueExpr,
-            $purchaseDateColumn,
-            $fromDate
-        );
+        $purchases = [];
+        if ($purchaseDateColumn !== null) {
+            $purchases = $this->queryTimeSeries(
+                sprintf($periodExpr, $purchaseDateColumn),
+                sprintf($labelExpr, $purchaseDateColumn),
+                $purchasesTable,
+                $purchaseValueExpr,
+                $purchaseDateColumn,
+                $fromDate
+            );
+        }
 
         $labels = [];
         foreach (array_keys($sales) as $k) {
@@ -305,11 +342,18 @@ class ReportsController
         return $series;
     }
 
-    private function buildPieSeries(string $fromDate, ?string $salesDateColumn): array
+    private function buildPieSeries(string $fromDate, string $salesTable, ?string $salesDateColumn, string $statusColumn): array
     {
+        if ($statusColumn === '' || !$this->hasColumn($salesTable, $statusColumn)) {
+            return [
+                'labels' => ['Sem dados'],
+                'data' => [1],
+            ];
+        }
+
         try {
-            $sql = 'SELECT status, COUNT(*) AS total
-                 FROM vendas';
+            $sql = "SELECT {$statusColumn} AS status, COUNT(*) AS total
+                 FROM {$salesTable}";
             $params = [];
             if ($salesDateColumn !== null) {
                 $sql .= " WHERE {$salesDateColumn} >= :from_date";
