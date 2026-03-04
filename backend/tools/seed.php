@@ -105,7 +105,7 @@ function insertIfNotExists(PDO $pdo, $table, $checkColumn, $checkValue, $data)
 }
 
 // Seed users
-$hash = password_hash('secret', PASSWORD_BCRYPT);
+$hash = password_hash('CHICO123', PASSWORD_BCRYPT);
 insertIfNotExists($pdo, 'users', 'email', 'admin@example.com', [
     'name' => 'Admin',
     'email' => 'admin@example.com',
@@ -141,4 +141,4 @@ insertIfNotExists($pdo, 'produtos', 'nome', 'Banana', [
     'custo_medio' => 2.50,
 ]);
 
-echo "Seeding complete. Admin credentials: admin@example.com / secret\n";
+echo "Seeding complete. Admin credentials: admin@example.com / CHICO123\n";
