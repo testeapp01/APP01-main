@@ -7,6 +7,8 @@ use PDO;
 
 class ReportsController
 {
+    private array $columnsCache = [];
+
     public function __construct(private PDO $pdo)
     {
     }
@@ -69,17 +71,27 @@ class ReportsController
             $metric = 'sales';
         }
 
+        $salesDateColumn = $this->resolveDateColumn('vendas', ['data_venda', 'created_at']);
+        $purchaseDateColumn = $this->resolveDateColumn('compras', ['data_compra', 'created_at']);
+        $purchaseValueExpr = $this->hasColumn('compras', 'comissao_total')
+            ? '((quantidade * valor_unitario) + IFNULL(comissao_total, 0))'
+            : '(quantidade * valor_unitario)';
+
         $salesAgg = [];
         try {
-            $salesStmt = $this->pdo->prepare(
-                'SELECT
+            $salesSql = 'SELECT
                     COUNT(*) AS sales_count,
                     IFNULL(SUM(quantidade * valor_unitario), 0) AS sales_total,
                     IFNULL(AVG(quantidade * valor_unitario), 0) AS average_ticket
-                 FROM vendas
-                 WHERE data_venda >= :from_date'
-            );
-            $salesStmt->execute(['from_date' => $fromDate]);
+                 FROM vendas';
+            $salesParams = [];
+            if ($salesDateColumn !== null) {
+                $salesSql .= " WHERE {$salesDateColumn} >= :from_date";
+                $salesParams['from_date'] = $fromDate;
+            }
+
+            $salesStmt = $this->pdo->prepare($salesSql);
+            $salesStmt->execute($salesParams);
             $salesAgg = $salesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Throwable $e) {
             $salesAgg = ['sales_count' => 0, 'sales_total' => 0, 'average_ticket' => 0];
@@ -87,14 +99,18 @@ class ReportsController
 
         $purchasesAgg = [];
         try {
-            $purchasesStmt = $this->pdo->prepare(
-                'SELECT
+            $purchasesSql = "SELECT
                     COUNT(*) AS purchases_count,
-                    IFNULL(SUM((quantidade * valor_unitario) + IFNULL(comissao_total, 0)), 0) AS purchases_total
-                 FROM compras
-                 WHERE data_compra >= :from_date'
-            );
-            $purchasesStmt->execute(['from_date' => $fromDate]);
+                    IFNULL(SUM({$purchaseValueExpr}), 0) AS purchases_total
+                 FROM compras";
+            $purchaseParams = [];
+            if ($purchaseDateColumn !== null) {
+                $purchasesSql .= " WHERE {$purchaseDateColumn} >= :from_date";
+                $purchaseParams['from_date'] = $fromDate;
+            }
+
+            $purchasesStmt = $this->pdo->prepare($purchasesSql);
+            $purchasesStmt->execute($purchaseParams);
             $purchasesAgg = $purchasesStmt->fetch(PDO::FETCH_ASSOC) ?: [];
         } catch (\Throwable $e) {
             $purchasesAgg = ['purchases_count' => 0, 'purchases_total' => 0];
@@ -117,8 +133,8 @@ class ReportsController
             'products_total' => $productsTotal,
         ];
 
-        $line = $this->buildLineSeries($fromDate, $groupBy, $metric);
-        $pie = $this->buildPieSeries($fromDate);
+        $line = $this->buildLineSeries($fromDate, $groupBy, $metric, $salesDateColumn, $purchaseDateColumn, $purchaseValueExpr);
+        $pie = $this->buildPieSeries($fromDate, $salesDateColumn);
 
         echo json_encode([
             'filters' => [
@@ -168,7 +184,14 @@ class ReportsController
         }
     }
 
-    private function buildLineSeries(string $fromDate, string $groupBy, string $metric): array
+    private function buildLineSeries(
+        string $fromDate,
+        string $groupBy,
+        string $metric,
+        ?string $salesDateColumn,
+        ?string $purchaseDateColumn,
+        string $purchaseValueExpr
+    ): array
     {
         if ($groupBy === 'month') {
             $periodExpr = "DATE_FORMAT(%s, '%Y-%m')";
@@ -179,20 +202,20 @@ class ReportsController
         }
 
         $sales = $this->queryTimeSeries(
-            sprintf($periodExpr, 'data_venda'),
-            sprintf($labelExpr, 'data_venda'),
+            sprintf($periodExpr, $salesDateColumn ?? 'data_venda'),
+            sprintf($labelExpr, $salesDateColumn ?? 'data_venda'),
             'vendas',
             '(quantidade * valor_unitario)',
-            'data_venda',
+            $salesDateColumn,
             $fromDate
         );
 
         $purchases = $this->queryTimeSeries(
-            sprintf($periodExpr, 'data_compra'),
-            sprintf($labelExpr, 'data_compra'),
+            sprintf($periodExpr, $purchaseDateColumn ?? 'data_compra'),
+            sprintf($labelExpr, $purchaseDateColumn ?? 'data_compra'),
             'compras',
-            '((quantidade * valor_unitario) + IFNULL(comissao_total, 0))',
-            'data_compra',
+            $purchaseValueExpr,
+            $purchaseDateColumn,
             $fromDate
         );
 
@@ -240,7 +263,7 @@ class ReportsController
         string $labelExpr,
         string $table,
         string $valueExpr,
-        string $dateColumn,
+        ?string $dateColumn,
         string $fromDate
     ): array {
         $sql = "SELECT
@@ -248,13 +271,20 @@ class ReportsController
                     {$labelExpr} AS label,
                     IFNULL(SUM({$valueExpr}), 0) AS total
                 FROM {$table}
-                WHERE {$dateColumn} >= :from_date
+                %s
                 GROUP BY bucket, label
                 ORDER BY bucket ASC";
+        $whereClause = '';
+        $params = [];
+        if ($dateColumn !== null) {
+            $whereClause = "WHERE {$dateColumn} >= :from_date";
+            $params['from_date'] = $fromDate;
+        }
+        $sql = sprintf($sql, $whereClause);
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute(['from_date' => $fromDate]);
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             return [];
@@ -275,17 +305,21 @@ class ReportsController
         return $series;
     }
 
-    private function buildPieSeries(string $fromDate): array
+    private function buildPieSeries(string $fromDate, ?string $salesDateColumn): array
     {
         try {
-            $stmt = $this->pdo->prepare(
-                'SELECT status, COUNT(*) AS total
-                 FROM vendas
-                 WHERE data_venda >= :from_date
-                 GROUP BY status
-                 ORDER BY total DESC'
-            );
-            $stmt->execute(['from_date' => $fromDate]);
+            $sql = 'SELECT status, COUNT(*) AS total
+                 FROM vendas';
+            $params = [];
+            if ($salesDateColumn !== null) {
+                $sql .= " WHERE {$salesDateColumn} >= :from_date";
+                $params['from_date'] = $fromDate;
+            }
+            $sql .= ' GROUP BY status
+                 ORDER BY total DESC';
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             $rows = [];
@@ -318,5 +352,51 @@ class ReportsController
         } catch (\Throwable $e) {
             return 0;
         }
+    }
+
+    private function resolveDateColumn(string $table, array $preferred): ?string
+    {
+        foreach ($preferred as $column) {
+            if ($this->hasColumn($table, $column)) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        return in_array($column, $this->tableColumns($table), true);
+    }
+
+    private function tableColumns(string $table): array
+    {
+        if (isset($this->columnsCache[$table])) {
+            return $this->columnsCache[$table];
+        }
+
+        try {
+            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+            if ($driver === 'sqlite') {
+                $stmt = $this->pdo->query("PRAGMA table_info({$table})");
+                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                $this->columnsCache[$table] = array_values(array_filter(array_map(
+                    static fn(array $row) => $row['name'] ?? null,
+                    $rows
+                )));
+            } else {
+                $stmt = $this->pdo->query("SHOW COLUMNS FROM {$table}");
+                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                $this->columnsCache[$table] = array_values(array_filter(array_map(
+                    static fn(array $row) => $row['Field'] ?? null,
+                    $rows
+                )));
+            }
+        } catch (\Throwable $e) {
+            $this->columnsCache[$table] = [];
+        }
+
+        return $this->columnsCache[$table];
     }
 }
