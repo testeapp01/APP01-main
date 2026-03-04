@@ -45,7 +45,7 @@ export default {
       { label: 'Dashboard', href: '#/' },
       { label: 'Vendas', href: '#/vendas' },
       { label: 'Compras', href: '#/compras' },
-      { label: 'Estoque', href: '#/estoque' },
+      { label: 'Produtos', href: '#/produtos' },
       { label: 'Clientes', href: '#/clientes' },
       { label: 'Fornecedores', href: '#/fornecedores' },
       { label: 'Motoristas', href: '#/motoristas' },

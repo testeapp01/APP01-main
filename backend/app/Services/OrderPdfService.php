@@ -227,7 +227,7 @@ class OrderPdfService
         $pageHeight = $canvas->get_height();
         $color = [0.39, 0.45, 0.55];
 
-        $canvas->page_text(36, $pageHeight - 24, $documentLabel . ' • Emitido pelo Hortifrut SaaS', $font, 8, $color);
+        $canvas->page_text(36, $pageHeight - 24, $documentLabel . ' • Emitido pela Safrion', $font, 8, $color);
         $canvas->page_text($pageWidth - 130, $pageHeight - 24, 'Página {PAGE_NUM} de {PAGE_COUNT}', $font, 8, $color);
 
         return $dompdf->output();
@@ -301,7 +301,7 @@ class OrderPdfService
                     ' . ($logo ? '<img class="logo" src="' . $logo . '" alt="Logo">' : '') . '
                     <div>
                         <p class="title">Pedido de Compra #' . (int)$header['id'] . '</p>
-                        <div class="subtitle">Relatório oficial de compra • Estilo SaaS Hortifrut</div>
+                        <div class="subtitle">Relatório oficial de compra • Safrion</div>
                     </div>
                 </div>
                 <div class="meta">Emitido em: ' . $this->e($this->formatDateTime(date('Y-m-d H:i:s'))) . ' • <span class="badge">' . $this->e($header['status'] ?? 'AGUARDANDO') . '</span></div>
@@ -327,7 +327,7 @@ class OrderPdfService
 
             <div class="section-title">Itens do pedido</div>
             <table class="items">
-                <thead><tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Valor Unit.</th><th class="text-right">Custo Total</th><th class="text-right">Comissão</th><th class="text-right">Custo Final</th><th>Status</th></tr></thead>
+                <thead><tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Valor Unit.</th><th class="text-right">Subtotal</th><th>Status</th></tr></thead>
                 <tbody>' . $rows . '</tbody>
             </table>
 
@@ -335,10 +335,10 @@ class OrderPdfService
                 <tr><td><strong>Total do pedido</strong></td><td class="text-right"><strong>' . $this->e($this->money($header['valor_total'] ?? 0)) . '</strong></td></tr>
             </table>
 
-            <div class="section-title">Linha do tempo de status</div>
+            <div class="section-title">Acompanhamento</div>
             ' . $timelineHtml . '
 
-            <div class="footer">Documento gerado automaticamente pelo sistema Hortifrut SaaS.</div>
+            <div class="footer">Documento gerado automaticamente pelo sistema Safrion.</div>
         </div></body></html>';
     }
 
@@ -363,7 +363,7 @@ class OrderPdfService
                     ' . ($logo ? '<img class="logo" src="' . $logo . '" alt="Logo">' : '') . '
                     <div>
                         <p class="title">Pedido de Venda #' . (int)$header['id'] . '</p>
-                        <div class="subtitle">Relatório oficial de venda • Estilo SaaS Hortifrut</div>
+                        <div class="subtitle">Relatório oficial de venda • Safrion</div>
                     </div>
                 </div>
                 <div class="meta">Emitido em: ' . $this->e($this->formatDateTime(date('Y-m-d H:i:s'))) . ' • <span class="badge">' . $this->e($header['status'] ?? 'AGUARDANDO') . '</span></div>
@@ -386,32 +386,31 @@ class OrderPdfService
 
             <div class="section-title">Itens do pedido</div>
             <table class="items">
-                <thead><tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Valor Unit.</th><th class="text-right">Receita</th><th class="text-right">Custo</th><th class="text-right">Lucro</th><th>Status</th></tr></thead>
+                <thead><tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Valor Unit.</th><th class="text-right">Subtotal</th><th>Status</th></tr></thead>
                 <tbody>' . $rows . '</tbody>
             </table>
 
-            <div class="section-title">Linha do tempo de status</div>
+            <div class="section-title">Acompanhamento</div>
             ' . $timelineHtml . '
 
-            <div class="footer">Documento gerado automaticamente pelo sistema Hortifrut SaaS.</div>
+            <div class="footer">Documento gerado automaticamente pelo sistema Safrion.</div>
         </div></body></html>';
     }
 
     private function rowsPurchaseItems(array $items): string
     {
         if (!$items) {
-            return '<tr><td colspan="7">Nenhum item encontrado.</td></tr>';
+            return '<tr><td colspan="5">Nenhum item encontrado.</td></tr>';
         }
 
         $rows = '';
         foreach ($items as $item) {
+            $subtotal = ((float)($item['quantidade'] ?? 0)) * ((float)($item['valor_unitario'] ?? 0));
             $rows .= '<tr>
                 <td>' . $this->e($item['produto'] ?? '-') . '</td>
                 <td class="text-right">' . $this->e($this->number($item['quantidade'] ?? 0)) . '</td>
                 <td class="text-right">' . $this->e($this->money($item['valor_unitario'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['custo_total'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['comissao_total'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['custo_final_real'] ?? 0)) . '</td>
+                <td class="text-right">' . $this->e($this->money($subtotal)) . '</td>
                 <td>' . $this->e($item['status'] ?? '-') . '</td>
             </tr>';
         }
@@ -422,18 +421,20 @@ class OrderPdfService
     private function rowsSalesItems(array $items): string
     {
         if (!$items) {
-            return '<tr><td colspan="7">Nenhum item encontrado.</td></tr>';
+            return '<tr><td colspan="5">Nenhum item encontrado.</td></tr>';
         }
 
         $rows = '';
         foreach ($items as $item) {
+            $subtotal = (float)($item['receita_total'] ?? 0);
+            if ($subtotal <= 0) {
+                $subtotal = ((float)($item['quantidade'] ?? 0)) * ((float)($item['valor_unitario'] ?? 0));
+            }
             $rows .= '<tr>
                 <td>' . $this->e($item['produto'] ?? '-') . '</td>
                 <td class="text-right">' . $this->e($this->number($item['quantidade'] ?? 0)) . '</td>
                 <td class="text-right">' . $this->e($this->money($item['valor_unitario'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['receita_total'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['custo_proporcional'] ?? 0)) . '</td>
-                <td class="text-right">' . $this->e($this->money($item['lucro_bruto'] ?? 0)) . '</td>
+                <td class="text-right">' . $this->e($this->money($subtotal)) . '</td>
                 <td>' . $this->e($item['status'] ?? '-') . '</td>
             </tr>';
         }
@@ -444,15 +445,14 @@ class OrderPdfService
     private function timelineHtml(array $timeline): string
     {
         if (!$timeline) {
-            return '<div class="timeline-item"><div class="timeline-meta">Sem histórico de status registrado.</div></div>';
+            return '<div class="timeline-item"><div class="timeline-meta">Sem atualizações de status registradas.</div></div>';
         }
 
-        $html = '';
-        foreach ($timeline as $item) {
-            $html .= '<div class="timeline-item"><div class="timeline-status">' . $this->e($item['status'] ?? '-') . '</div><div class="timeline-meta">' . $this->e($this->formatDateTime($item['confirmado_em'] ?? null)) . ' • ' . $this->e($item['usuario'] ?? 'Sistema') . '</div></div>';
-        }
+        $latest = $timeline[0] ?? null;
+        $status = (string)($latest['status'] ?? '-');
+        $when = $this->formatDateTime($latest['confirmado_em'] ?? null);
 
-        return $html;
+        return '<div class="timeline-item"><div class="timeline-status">Status atual: ' . $this->e($status) . '</div><div class="timeline-meta">Atualizado em ' . $this->e($when) . '</div></div>';
     }
 
     private function logoDataUri(): ?string

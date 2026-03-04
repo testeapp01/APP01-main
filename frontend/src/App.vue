@@ -17,6 +17,12 @@
         />
       </transition>
     </router-view>
+
+    <footer class="px-4 py-3 text-center">
+      <div class="text-xs text-slate-500">
+        © 2026 Safrion • TODOS OS DIREITOS RESERVADOS...
+      </div>
+    </footer>
   </div>
 
   <div
@@ -165,7 +171,7 @@
               </li>
               <li>
                 <router-link
-                  to="/estoque"
+                  to="/produtos"
                   class="nav-item"
                   @click="closeOnMobile"
                 >
@@ -517,7 +523,7 @@
 
       <footer class="px-4 py-3 bg-white/85 border-t border-slate-200 text-center">
         <div class="text-xs text-slate-500">
-          © 2026 Safrion
+          © 2026 Safrion • TODOS OS DIREITOS RESERVADOS...
         </div>
       </footer>
     </div>

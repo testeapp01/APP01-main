@@ -30,7 +30,7 @@ class ProductController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT id, nome, tipo, unidade, estoque_atual, custo_medio FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT id, nome, tipo, unidade, custo_medio FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -51,21 +51,19 @@ class ProductController
             return;
         }
 
-        $estoqueAtual = isset($data['estoque_atual']) ? (float)$data['estoque_atual'] : 0;
         $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
-        if ($estoqueAtual < 0 || $custoMedio < 0) {
+        if ($custoMedio < 0) {
             http_response_code(400);
-            echo json_encode(['error' => 'estoque_atual e custo_medio não podem ser negativos']);
+            echo json_encode(['error' => 'custo_medio não pode ser negativo']);
             return;
         }
 
-        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, estoque_atual, custo_medio) VALUES (:nome, :tipo, :unidade, :estoque_atual, :custo_medio)');
+        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio) VALUES (:nome, :tipo, :unidade, :custo_medio)');
         try {
             $stmt->execute([
                 'nome' => $nome,
                 'tipo' => $data['tipo'] ?? null,
                 'unidade' => $data['unidade'] ?? 'saco',
-                'estoque_atual' => $estoqueAtual,
                 'custo_medio' => $custoMedio,
             ]);
         } catch (\PDOException $e) {
@@ -96,16 +94,15 @@ class ProductController
             return;
         }
 
-        $estoqueAtual = isset($data['estoque_atual']) ? (float)$data['estoque_atual'] : 0;
         $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
-        if ($estoqueAtual < 0 || $custoMedio < 0) {
+        if ($custoMedio < 0) {
             http_response_code(400);
-            echo json_encode(['error' => 'estoque_atual e custo_medio não podem ser negativos']);
+            echo json_encode(['error' => 'custo_medio não pode ser negativo']);
             return;
         }
 
         $stmt = $this->pdo->prepare(
-            'UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, estoque_atual = :estoque_atual, custo_medio = :custo_medio WHERE id = :id'
+            'UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, custo_medio = :custo_medio WHERE id = :id'
         );
 
         try {
@@ -114,7 +111,6 @@ class ProductController
                 'nome' => $nome,
                 'tipo' => $data['tipo'] ?? null,
                 'unidade' => $data['unidade'] ?? 'saco',
-                'estoque_atual' => $estoqueAtual,
                 'custo_medio' => $custoMedio,
             ]);
         } catch (\PDOException $e) {

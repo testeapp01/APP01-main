@@ -89,7 +89,7 @@
       :has-data="visibleProdutos.length > 0"
       loading-text="Carregando produtos..."
       empty-title="Nenhum produto encontrado."
-      empty-message="Adicione produtos ao estoque para começar."
+      empty-message="Adicione produtos para começar."
       action-label="Adicionar Produto"
       @action="openCreateModal"
     />
@@ -238,7 +238,7 @@ export default {
     const currentPage = ref(1)
     const totalCount = ref(0)
 
-    const produtoForm = ref({ id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' })
+    const produtoForm = ref({ id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' })
     const showCreateModal = ref(false)
     const editMode = ref(false)
     const submittingProduct = ref(false)
@@ -261,7 +261,6 @@ export default {
           nome: item.nome ?? '',
           tipo: item.tipo ?? '',
           unidade: item.unidade ?? '',
-          estoque_atual: Number(item.estoque_atual ?? 0),
           custo_medio: Number(item.custo_medio ?? 0),
         }))
         const parsedTotal = Number(res.data?.total)
@@ -293,9 +292,9 @@ export default {
     function nextPage() { if (currentPage.value < totalPages.value) { currentPage.value++; loadProdutos() } }
     function prevPage() { if (currentPage.value > 1) { currentPage.value--; loadProdutos() } }
 
-    function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' }; showCreateModal.value = true }
+    function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' }; showCreateModal.value = true }
     function openEdit(row) { editMode.value = true; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { ...row }; showCreateModal.value = true }
-    function closeCreateModal() { showCreateModal.value = false; submittingProduct.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', estoque_atual: 0, custo_medio: 0, status: 'ativo' } }
+    function closeCreateModal() { showCreateModal.value = false; submittingProduct.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' } }
 
     async function submitProduto() {
       submittingProduct.value = true

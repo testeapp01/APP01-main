@@ -295,9 +295,19 @@ class SalesController
             http_response_code(201);
             echo json_encode($result);
         } catch (\Throwable $e) {
-            http_response_code(400);
+            $statusCode = (int)$e->getCode();
+            if ($statusCode < 400 || $statusCode > 599) {
+                $statusCode = 400;
+            }
+
+            $message = trim((string)$e->getMessage());
+            if ($message === '') {
+                $message = 'Não foi possível processar a venda.';
+            }
+
+            http_response_code($statusCode);
             error_log('[SalesController::create] ' . $e->getMessage());
-            echo json_encode(['error' => 'Não foi possível processar a venda.']);
+            echo json_encode(['error' => $message]);
         }
     }
 

@@ -17,9 +17,4 @@ class ProductRepository
         return $r ?: null;
     }
 
-    public function updateStockAndCost(int $id, float $novoEstoque, float $novoCusto): bool
-    {
-        $stmt = $this->pdo->prepare('UPDATE produtos SET estoque_atual = :estoque, custo_medio = :custo WHERE id = :id');
-        return $stmt->execute(['estoque' => $novoEstoque, 'custo' => $novoCusto, 'id' => $id]);
-    }
 }

@@ -55,16 +55,14 @@ class SalesHeaderService
                 return ['message' => 'Pedido já entregue'];
             }
 
-            $novoEstoque = null;
             foreach ($rows as $row) {
-                $res = $salesService->confirmDelivery((int)$row['id']);
-                $novoEstoque = $res['novo_estoque'] ?? $novoEstoque;
+                $salesService->confirmDelivery((int)$row['id']);
             }
 
             $this->marcarCabecalhoComoEntregue($headerId, $currentUserId);
             $this->pdo->commit();
 
-            return ['message' => 'ENTREGUE', 'novo_estoque' => $novoEstoque];
+            return ['message' => 'ENTREGUE'];
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -377,9 +375,8 @@ class SalesHeaderService
             }
 
             $itemsStmt = $this->pdo->prepare(
-                'SELECT v.id, v.produto_id, v.quantidade, v.valor_unitario, v.status, p.estoque_atual, p.custo_medio
+                'SELECT v.id, v.produto_id, v.quantidade, v.valor_unitario, v.status
                  FROM vendas v
-                 LEFT JOIN produtos p ON p.id = v.produto_id
                  WHERE v.venda_cabecalho_id = :id
                  ORDER BY v.id ASC'
             );

@@ -13,17 +13,28 @@ class SalesService
 
     public function createSale(array $data): int
     {
-        // check stock
-        $produtoId = (int)$data['produto_id'];
-        $quantidade = (float)$data['quantidade'];
+        $produtoId = (int)($data['produto_id'] ?? 0);
+        if ($produtoId <= 0) {
+            throw new \RuntimeException('produto_id inválido', 400);
+        }
+
+        $quantidade = (float)($data['quantidade'] ?? 0);
+        if ($quantidade <= 0) {
+            throw new \RuntimeException('Quantidade deve ser maior que zero', 400);
+        }
+
+        $valorUnitario = (float)($data['valor_unitario'] ?? 0);
+        if ($valorUnitario <= 0) {
+            throw new \RuntimeException('Valor unitário deve ser maior que zero', 400);
+        }
+
         $prod = $this->productRepo->findById($produtoId);
-        $estoque = $prod ? (float)$prod['estoque_atual'] : 0.0;
-        if ($quantidade > $estoque) {
-            throw new \RuntimeException('Estoque insuficiente');
+        if (!$prod) {
+            throw new \RuntimeException('Produto não encontrado', 404);
         }
 
         // calculate financials
-        $receitaTotal = $quantidade * (float)$data['valor_unitario'];
+        $receitaTotal = $quantidade * $valorUnitario;
         $custoProporcional = $quantidade * (float)$prod['custo_medio'];
         $lucroBruto = $receitaTotal - $custoProporcional;
         $margem = $receitaTotal > 0 ? ($lucroBruto / $receitaTotal) * 100.0 : 0.0;
@@ -46,20 +57,10 @@ class SalesService
         $sale = $this->salesRepo->findById($saleId);
         if (!$sale) throw new \RuntimeException('Venda não encontrada');
         if ($sale['status'] === 'ENTREGUE') throw new \RuntimeException('Venda já entregue');
-
-        // decrease stock
-        $produtoId = (int)$sale['produto_id'];
-        $quantidade = (float)$sale['quantidade'];
-        $prod = $this->productRepo->findById($produtoId);
-        $estoque = $prod ? (float)$prod['estoque_atual'] : 0.0;
-        if ($quantidade > $estoque) throw new \RuntimeException('Estoque insuficiente para entrega');
-
-        $novoEstoque = $estoque - $quantidade;
-        $this->productRepo->updateStockAndCost($produtoId, $novoEstoque, (float)$prod['custo_medio']);
         $this->salesRepo->updateStatus($saleId, 'ENTREGUE');
 
         Logger::get()->info('Venda entregue', ['sale_id' => $saleId]);
 
-        return ['message' => 'ENTREGUE', 'novo_estoque' => $novoEstoque];
+        return ['message' => 'ENTREGUE'];
     }
 }

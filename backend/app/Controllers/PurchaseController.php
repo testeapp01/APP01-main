@@ -644,7 +644,7 @@ class PurchaseController
         try {
             $service = new PurchaseHeaderService($this->pdo);
             $res = $service->confirmItemReceiveById((int)$id);
-            echo json_encode(['message' => 'Compra marcada como RECEBIDA e estoque atualizado'] + $res);
+            echo json_encode(['message' => 'Compra marcada como RECEBIDA'] + $res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 400);

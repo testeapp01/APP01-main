@@ -525,7 +525,7 @@ export default {
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao criar venda:', e)
-        this.saleFeedback = { message: e?.message || 'Falha ao salvar venda.', type: 'error' }
+        this.saleFeedback = { message: e?.response?.data?.error || e?.message || 'Falha ao salvar venda.', type: 'error' }
       } finally {
         this.submittingSale = false
       }

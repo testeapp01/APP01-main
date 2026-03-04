@@ -47,7 +47,7 @@
               {{ asMoney(cards.purchases_total) }}
             </div>
             <div class="saas-kpi-help">
-              Reposição de estoque
+              Gestão de compras
             </div>
           </article>
           <article class="saas-kpi-card">

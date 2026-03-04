@@ -2,7 +2,7 @@
   <div class="page-shell report-shell">
     <PageHero
       title="Relatório Estratégico de Compras"
-      subtitle="Visão analítica enterprise para decisão: KPIs, consolidação por pedido, filtros avançados e exportação executiva."
+      subtitle="Visão clara dos pedidos, custos e prazos para apoiar decisões rápidas."
     >
       <template #actions>
         <BaseButton
@@ -49,6 +49,10 @@
       @update-filter="updateFilter"
       @apply="applyFilters"
     />
+
+    <div class="mb-3 px-1 text-sm text-slate-500">
+      {{ pagination.total || 0 }} resultado(s) encontrado(s)
+    </div>
 
     <PurchaseKpiCards :kpis="kpis" />
 

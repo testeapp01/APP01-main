@@ -1,7 +1,6 @@
 <?php
 namespace App\Services;
 
-use App\Repositories\ProductRepository;
 use App\Repositories\PurchaseRepository;
 use PDO;
 
@@ -50,16 +49,14 @@ class PurchaseHeaderService
                 return ['message' => 'Compra já confirmada como recebida'];
             }
 
-            $novoEstoque = null;
             foreach ($rows as $row) {
-                $res = $this->confirmItemReceiveById((int)$row['id']);
-                $novoEstoque = $res['novo_estoque'] ?? $novoEstoque;
+                $this->confirmItemReceiveById((int)$row['id']);
             }
 
             $this->marcarCabecalhoComoRecebido($id, $currentUserId);
             $this->pdo->commit();
 
-            return ['message' => 'Entrega confirmada com sucesso', 'novo_estoque' => $novoEstoque];
+            return ['message' => 'Entrega confirmada com sucesso'];
         } catch (\RuntimeException $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -110,8 +107,7 @@ class PurchaseHeaderService
     public function confirmItemReceiveById(int $id): array
     {
         $purchaseService = new PurchaseService(
-            new PurchaseRepository($this->pdo),
-            new ProductRepository($this->pdo)
+            new PurchaseRepository($this->pdo)
         );
 
         try {
@@ -146,7 +142,7 @@ class PurchaseHeaderService
             }
 
             $this->pdo->commit();
-            return ['message' => 'Entrega confirmada com sucesso', 'novo_estoque' => $res['novo_estoque'] ?? null];
+            return ['message' => 'Entrega confirmada com sucesso'];
         } catch (\RuntimeException $e) {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
@@ -393,9 +389,8 @@ class PurchaseHeaderService
             }
 
             $itemsStmt = $this->pdo->prepare(
-                'SELECT c.id, c.produto_id, c.quantidade, c.valor_unitario, c.comissao_total, c.status, p.estoque_atual, p.custo_medio
+                'SELECT c.id, c.produto_id, c.quantidade, c.valor_unitario, c.comissao_total, c.status
                  FROM compras c
-                 LEFT JOIN produtos p ON p.id = c.produto_id
                  WHERE c.compra_cabecalho_id = :id
                  ORDER BY c.id ASC'
             );
