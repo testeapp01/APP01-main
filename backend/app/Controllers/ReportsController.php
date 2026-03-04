@@ -159,8 +159,8 @@ class ReportsController
             $salesValueExpr,
             $salesDateColumn,
             $purchasesTable,
-            $purchaseValueExpr,
-            $purchaseDateColumn
+            $purchaseDateColumn,
+            $purchaseValueExpr
         );
         $pie = $this->buildPieSeries($fromDate, $salesTable, $salesDateColumn, $salesStatusColumn);
 

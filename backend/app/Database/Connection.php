@@ -32,7 +32,10 @@ class Connection
             ];
 
             if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
-                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+                $sslVerifyAttr = constant('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT');
+                if (is_int($sslVerifyAttr)) {
+                    $options[$sslVerifyAttr] = false;
+                }
             }
 
             try {
