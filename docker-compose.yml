@@ -9,12 +9,12 @@ services:
       - DB_USER=admin
       - DB_PASS=nautico2@
       - DB_NAME=hortifrutnectar
-      - CORS_ALLOWED_ORIGINS=http://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,https://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io
+      - CORS_ALLOWED_ORIGINS=http://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,https://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,http://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,https://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,http://api.187.77.32.86.sslip.io,https://api.187.77.32.86.sslip.io
     depends_on:
       - db
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend_external.rule=Host(`api.187.77.32.86.sslip.io`)"
+      - "traefik.http.routers.backend_external.rule=Host(`api.187.77.32.86.sslip.io`) || Host(`hw448ggg0coooccckko804kow.187.77.32.86.sslip.io`)"
       - "traefik.http.routers.backend_external.priority=90"
       - "traefik.http.routers.backend_external.service=backend"
       - "traefik.http.services.backend.loadbalancer.server.port=80"
