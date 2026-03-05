@@ -27,12 +27,12 @@
 
   <div
     v-else
-    class="min-h-screen bg-gray-50 dark:bg-slate-900 flex"
+    class="min-h-screen app-shell flex"
   >
     <!-- Sidebar -->
     <aside
       ref="sidebarEl"
-      :class="[ 'sidebar w-64 flex flex-col h-full p-4 overflow-y-auto no-scrollbar transform top-0 left-0 fixed z-30 transition-transform duration-200', sidebarOpen ? 'translate-x-0' : '-translate-x-full', 'md:translate-x-0 md:static md:shadow-none' ]"
+      :class="[ 'sidebar app-sidebar-shell w-64 flex flex-col h-full p-4 overflow-y-auto no-scrollbar transform top-0 left-0 fixed z-30 transition-transform duration-200', sidebarOpen ? 'translate-x-0' : '-translate-x-full', 'md:translate-x-0 md:static md:shadow-none' ]"
       :inert="!sidebarOpen && isMobile"
     >
       <div class="h-full flex flex-col justify-between">
@@ -388,7 +388,7 @@
     </aside>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col main-layout min-w-0">
+    <div class="flex-1 flex flex-col main-layout app-main-shell min-w-0">
       <ToastProvider />
       <!-- Backdrop for mobile when sidebar is open -->
       <div
@@ -419,7 +419,7 @@
 
       <main class="flex-1 p-3 md:p-6 content-wrap main-shift min-w-0 w-full">
         <div class="app-container w-full max-w-[1680px] mx-auto space-y-3 md:space-y-4">
-          <section class="hidden md:flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <section class="hidden md:flex items-center justify-between workspace-strip px-4 py-3">
             <div>
               <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
                 Workspace
@@ -512,7 +512,7 @@
               </div>
             </div>
           </section>
-          <div class="app-surface flex-1 border border-sidebar-border md:border-l md:border-t rounded-xl md:rounded-2xl bg-background text-foreground p-4 sm:p-6 md:p-8">
+          <div class="app-surface flex-1 p-4 sm:p-6 md:p-8">
             <router-view
               v-slot="{ Component }"
               @update:title="updateTitle"
@@ -776,7 +776,78 @@ export default {
 
 <style>
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system;
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(circle at 20% 10%, rgba(16, 185, 129, 0.1), transparent 34%),
+    radial-gradient(circle at 85% 16%, rgba(14, 165, 233, 0.1), transparent 32%),
+    linear-gradient(160deg, #f8fafc 0%, #ecfdf5 54%, #eef2ff 100%);
+}
+
+.app-sidebar-shell {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.88));
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 8px 0 30px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(8px);
+}
+
+.app-main-shell {
+  position: relative;
+}
+
+.workspace-strip {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.75));
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(7px);
+}
+
+.app-surface {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 20px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.86));
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.07);
+  color: #0f172a;
+  backdrop-filter: blur(8px);
+}
+
+.nav-item {
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+}
+
+.nav-label {
+  font-weight: 600;
+}
+
+.router-link-active .nav-icon,
+.nav-item.active .nav-icon {
+  background: linear-gradient(145deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.25);
+}
+
+.router-link-active .nav-label,
+.nav-item.active .nav-label {
+  color: #065f46;
 }
 
 .fade-enter-active, .fade-leave-active {
@@ -789,5 +860,8 @@ body {
 /* ensure the fixed sidebar sits above main content on small screens */
 @media (max-width: 767px) {
   aside { width: 16rem; }
+  .app-surface {
+    border-radius: 14px;
+  }
 }
 </style>
