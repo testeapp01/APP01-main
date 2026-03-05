@@ -5,7 +5,7 @@
   >
     <button
       type="button"
-      class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+      class="h-9 w-9 rounded-xl border border-slate-200/80 bg-white/90 text-slate-700 shadow-[0_6px_14px_rgba(15,23,42,0.07)] hover:bg-white"
       aria-label="Abrir ações"
       @click.stop="toggle($event)"
     >
@@ -15,7 +15,7 @@
     <div
       v-if="open"
       :class="[
-        'z-20 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg mt-2 md:mt-0 md:absolute md:right-0',
+        'z-20 w-52 overflow-hidden rounded-xl border border-slate-200/80 bg-white/95 shadow-[0_18px_34px_rgba(15,23,42,0.12)] mt-2 md:mt-0 md:absolute md:right-0 backdrop-blur',
         direction === 'up' ? 'md:bottom-full md:mb-2' : 'md:top-full md:mt-2'
       ]"
     >
@@ -25,7 +25,7 @@
         type="button"
         :class="[
           'block w-full px-3 py-2 text-left text-sm',
-          item.danger ? 'text-red-600 hover:bg-red-50' : 'hover:bg-slate-50'
+          item.danger ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-emerald-50/60'
         ]"
         @click="select(item.key)"
       >

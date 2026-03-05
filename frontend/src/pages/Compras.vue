@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Compras"
       subtitle="Controle entradas, parceiros e comissões em um fluxo operacional único."
@@ -7,7 +7,7 @@
       <template #actions>
         <select
           v-model="statusFilter"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
         >
           <option value="">
             Todos status
@@ -83,7 +83,7 @@
 
     <div
       v-if="filteredCompras.length > 0"
-      class="panel-inner"
+      class="panel-inner content-card"
     >
       <BaseTable
         :columns="tableCols"
@@ -145,7 +145,7 @@
 
     <div
       v-if="!loading && filteredCompras.length === 0"
-      class="panel-inner mt-4"
+      class="panel-inner content-card mt-4"
     >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-start gap-3">
@@ -199,7 +199,7 @@
       v-if="filteredCompras.length > 0"
       class="mt-4"
     >
-      <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="text-sm muted">
           Mostrando {{ filteredCompras.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredCompras.length) }} de {{ filteredCompras.length }}
         </div>

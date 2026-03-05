@@ -31,7 +31,7 @@ export default {
       return this.disabled || this.loading
     },
     classes() {
-      const base = 'rounded-xl px-4 py-2 min-h-[44px] text-sm sm:text-base font-medium transition transform active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed'
+      const base = 'rounded-xl min-h-[44px] font-semibold tracking-[0.01em] transition-all duration-200 active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200/70'
       const variants = {
         primary: 'btn-primary',
         secondary: 'btn-secondary',
@@ -39,7 +39,12 @@ export default {
         danger: 'btn-destructive',
         destructive: 'btn-destructive'
       }
-      return `${base} ${variants[this.variant] || variants.primary}`
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2 text-sm sm:text-base',
+        lg: 'px-5 py-2.5 text-base'
+      }
+      return `${base} ${sizes[this.size] || sizes.md} ${variants[this.variant] || variants.primary}`
     }
   }
 }

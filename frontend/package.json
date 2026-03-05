@@ -9,6 +9,7 @@
     "serve": "vite preview",
     "lint": "eslint .",
     "test:e2e": "playwright test",
+    "test:e2e:mobile": "playwright test tests/mobile-ux.spec.cjs --project=mobile-chrome --project=mobile-safari",
     "open:logged": "node ./scripts/open_logged.js"
   },
   "dependencies": {

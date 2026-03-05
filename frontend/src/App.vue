@@ -54,7 +54,7 @@
               </div>
             </div>
             <button
-              class="md:hidden ml-auto text-slate-500"
+              class="md:hidden ml-auto inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-300 text-slate-500 bg-white/90"
               aria-label="Fechar menu"
               @click="toggleSidebar"
             >
@@ -862,6 +862,14 @@ body {
   aside { width: 16rem; }
   .app-surface {
     border-radius: 14px;
+  }
+
+  .main-layout > header {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+
+  .main-layout > footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
 </style>

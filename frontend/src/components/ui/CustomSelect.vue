@@ -19,7 +19,7 @@
         v-else
         class="custom-select__value"
       >{{ selectedLabel }}</span>
-      <span class="custom-select__arrow">▼</span>
+      <span class="custom-select__arrow">▾</span>
     </div>
     <ul
       v-if="open"
@@ -63,28 +63,32 @@ watch(() => props.modelValue, () => { if (!props.modelValue) close() })
   outline: none;
 }
 .custom-select__input {
-  background: linear-gradient(90deg, #f0fdf4 0%, #f9fafb 100%);
-  border: 2px solid var(--leaf-500);
-  border-radius: 12px;
+  background: linear-gradient(140deg, rgba(255,255,255,0.96), rgba(255,255,255,0.84));
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 14px;
   padding: 12px 40px 12px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   min-height: 44px;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--foreground);
-  transition: border-color .18s;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(4px);
+  transition: border-color .18s, box-shadow .18s, transform .18s;
 }
 .custom-select__input.open,
 .custom-select__input:focus {
   border-color: var(--leaf-600);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
 }
 .custom-select__placeholder {
   color: var(--muted);
 }
 .custom-select__arrow {
   margin-left: auto;
-  font-size: 1.1em;
+  font-size: 1.25em;
   color: var(--muted);
 }
 .custom-select__dropdown {
@@ -92,10 +96,11 @@ watch(() => props.modelValue, () => { if (!props.modelValue) close() })
   left: 0;
   right: 0;
   top: 110%;
-  background: #fff;
-  border: 1.5px solid var(--leaf-500);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(15,157,88,0.10);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(15,23,42,0.1);
+  backdrop-filter: blur(7px);
   z-index: 20;
   margin: 0;
   padding: 0.25em 0;
@@ -112,7 +117,7 @@ watch(() => props.modelValue, () => { if (!props.modelValue) close() })
 }
 .custom-select__dropdown li.selected,
 .custom-select__dropdown li:hover {
-  background: var(--leaf-500);
+  background: linear-gradient(130deg, #10b981, #059669);
   color: #fff;
 }
 </style>

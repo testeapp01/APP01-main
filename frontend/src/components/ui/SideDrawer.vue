@@ -139,10 +139,16 @@ export default {
   transform: translateY(-1px);
 }
 
+.drawer-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+  border-color: rgba(16,185,129,0.5);
+}
+
 .drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 1.1rem 1.15rem;
+  padding: 1rem 1.1rem calc(1.15rem + env(safe-area-inset-bottom));
 }
 
 .drawer-inner {
@@ -181,6 +187,7 @@ export default {
   bottom: -0.5rem;
   margin-top: 0.5rem;
   padding-top: 0.85rem;
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(247,250,252,0.05) 0%, rgba(247,250,252,0.92) 35%);
 }
 

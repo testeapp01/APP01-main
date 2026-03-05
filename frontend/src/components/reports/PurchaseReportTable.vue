@@ -9,7 +9,77 @@
       </div>
     </div>
 
-    <div class="overflow-auto max-h-[560px] rounded-xl border border-slate-200">
+    <div
+      v-if="loading"
+      class="md:hidden rounded-xl border border-slate-200 bg-white/85 p-4 text-center text-sm text-slate-500"
+    >
+      Carregando relatório...
+    </div>
+
+    <div
+      v-else-if="rows.length === 0"
+      class="md:hidden rounded-xl border border-slate-200 bg-white/85 p-5 text-center text-sm text-slate-500"
+    >
+      Nenhum registro encontrado para os filtros informados.
+    </div>
+
+    <div
+      v-else
+      class="md:hidden space-y-3"
+    >
+      <article
+        v-for="row in rows"
+        :key="`m-row-${row.compra_grupo_id}`"
+        class="rounded-2xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.07)]"
+        @click="$emit('select-row', row)"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+              Pedido #{{ row.compra_cabecalho_id || '-' }}
+            </p>
+            <p class="text-sm font-semibold text-slate-800 mt-1">
+              {{ row.fornecedor || 'Fornecedor não informado' }}
+            </p>
+          </div>
+          <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+            {{ row.status_textual || 'AGUARDANDO' }}
+          </span>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div class="text-slate-500">
+            Data
+          </div>
+          <div class="text-right text-slate-700 font-medium">
+            {{ date(row.data_compra) }}
+          </div>
+
+          <div class="text-slate-500">
+            Produto
+          </div>
+          <div class="text-right text-slate-700 font-medium truncate">
+            {{ row.produto || 'Não informado' }}
+          </div>
+
+          <div class="text-slate-500">
+            Quantidade
+          </div>
+          <div class="text-right text-slate-700 font-medium">
+            {{ number(row.quantidade) }}
+          </div>
+
+          <div class="text-slate-500">
+            Custo total
+          </div>
+          <div class="text-right text-slate-800 font-semibold">
+            {{ money(row.custo_total) }}
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="hidden md:block overflow-auto max-h-[560px] rounded-xl border border-slate-200">
       <table class="min-w-[1100px] w-full text-sm">
         <thead>
           <tr class="bg-slate-50">
@@ -118,7 +188,7 @@
       <div class="text-xs text-slate-500">
         Página {{ pagination.page || 1 }} de {{ pagination.pages || 1 }}
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <select
           :value="pagination.per_page || 20"
           class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm"

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell report-shell">
+  <div class="page-shell report-shell page-fade section-stack">
     <PageHero
       title="Relatório Estratégico de Compras"
       subtitle="Visão clara dos pedidos, custos e prazos para apoiar decisões rápidas."
@@ -50,13 +50,13 @@
       @apply="applyFilters"
     />
 
-    <div class="mb-3 px-1 text-sm text-slate-500">
+    <div class="mb-3 px-1 text-sm text-slate-500 section-title">
       {{ pagination.total || 0 }} resultado(s) encontrado(s)
     </div>
 
     <div
       v-if="showEmptyOverview"
-      class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4"
+      class="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 content-card"
     >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-start gap-3">
@@ -115,7 +115,7 @@
 
     <section
       v-if="selectedRow"
-      class="panel-inner mt-4"
+      class="panel-inner content-card mt-4"
     >
       <h3 class="text-base font-semibold text-slate-800 mb-3">
         Linha do tempo de status • Pedido #{{ selectedRow.compra_cabecalho_id || selectedRow.compra_id }}

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell page-fade">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Vendas"
       subtitle="Acompanhe pedidos e operação de entrega com visão comercial em tempo real."
@@ -8,12 +8,12 @@
         <input
           v-model="query"
           placeholder="Buscar por cliente ou produto"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px]"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
           @input="onQuery"
         >
         <select
           v-model="statusFilter"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto"
+          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
         >
           <option value="">
             Todos status
@@ -91,7 +91,7 @@
     <div>
       <div
         v-if="filteredVendas.length > 0"
-        class="panel-inner"
+        class="panel-inner content-card"
       >
         <BaseTable
           :columns="tableCols"
@@ -145,7 +145,7 @@
 
       <div
         v-if="!loading && filteredVendas.length === 0"
-        class="panel-inner mt-4"
+        class="panel-inner content-card mt-4"
       >
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-start gap-3">
@@ -200,7 +200,7 @@
       v-if="filteredVendas.length > 0"
       class="mt-4"
     >
-      <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="text-sm muted">
           Mostrando {{ filteredVendas.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredVendas.length) }} de {{ filteredVendas.length }}
         </div>
@@ -238,7 +238,7 @@
 
     <div
       v-if="confirming"
-      class="panel-inner mb-4 border border-emerald-200 bg-emerald-50/60"
+      class="panel-inner content-card mb-4 border border-emerald-200 bg-emerald-50/60"
     >
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="text-sm text-slate-700">

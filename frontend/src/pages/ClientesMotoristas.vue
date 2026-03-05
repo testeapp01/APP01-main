@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Clientes"
       subtitle="Gerencie dados de relacionamento dos clientes em um único ambiente."
@@ -54,15 +54,15 @@
         </div>
       </article>
     </section>
-    <div class="mb-6">
+    <div class="section-block">
       <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-2">
-        <h2 class="text-xl font-semibold text-gray-800">
+        <h2 class="text-xl font-semibold text-gray-800 section-title">
           Lista de Clientes
         </h2>
       </div>
       <div
         v-if="visibleClients.length > 0"
-        class="panel-inner"
+        class="panel-inner content-card"
       >
         <BaseTable
           :columns="clientCols"

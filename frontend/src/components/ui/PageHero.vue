@@ -37,10 +37,12 @@ export default {
 
 <style scoped>
 .hero-shell {
-  background: linear-gradient(145deg, rgba(16,185,129,0.10), rgba(255,255,255,0.95));
-  border: 1px solid rgba(16,185,129,0.18);
-  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(16,185,129,0.12), rgba(14,165,233,0.08) 55%, rgba(255,255,255,0.9));
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
   padding: 1rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(6px);
   margin-bottom: 1rem;
 }
 .hero-content {
@@ -49,6 +51,7 @@ export default {
   gap: 0.75rem;
 }
 .hero-title {
+  font-family: var(--font-display, 'Sora', 'Manrope', sans-serif);
   font-size: 1.25rem;
   font-weight: 800;
   color: #111827;
@@ -56,8 +59,8 @@ export default {
 }
 .hero-subtitle {
   margin-top: 0.25rem;
-  font-size: 0.88rem;
-  color: #6B7280;
+  font-size: 0.92rem;
+  color: #475569;
 }
 .hero-actions {
   display: flex;

@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Configurações"
       subtitle="Ajuste parâmetros operacionais e comportamento visual do workspace."
@@ -17,8 +17,8 @@
     </PageHero>
 
     <div class="settings-grid">
-      <div class="panel-inner">
-        <h2 class="text-xl font-semibold mb-4">
+      <div class="panel-inner content-card">
+        <h2 class="text-xl font-semibold mb-4 section-title">
           Comissões
         </h2>
         <form
@@ -56,8 +56,8 @@
         </form>
       </div>
 
-      <div class="panel-inner">
-        <h2 class="text-xl font-semibold mb-4">
+      <div class="panel-inner content-card">
+        <h2 class="text-xl font-semibold mb-4 section-title">
           Layout
         </h2>
         <form

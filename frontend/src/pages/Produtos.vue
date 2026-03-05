@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell page-fade">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Produtos"
       subtitle="Organize o catálogo com estrutura pronta para escala e operação diária."
@@ -58,7 +58,7 @@
 
     <div
       v-if="visibleProdutos.length > 0"
-      class="panel-inner"
+      class="panel-inner content-card"
     >
       <BaseTable
         :columns="tableCols"
@@ -106,7 +106,7 @@
       v-if="visibleProdutos.length > 0"
       class="mt-4"
     >
-      <div class="panel-inner flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="text-sm muted">
           Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}
         </div>

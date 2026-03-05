@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell">
+  <div class="page-shell page-fade section-stack">
     <PageHero
       title="Motoristas"
       subtitle="Coordene base logística com cadastro rápido e estado operacional claro."
@@ -60,16 +60,16 @@
     <!-- Inline create form removed to avoid duplication; use modal 'Adicionar Motorista' -->
 
 
-    <div class="mb-6">
+    <div class="section-block">
       <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xl font-semibold text-gray-800">
+        <h2 class="text-xl font-semibold text-gray-800 section-title">
           Lista de Motoristas
         </h2>
       </div>
 
       <div
         v-if="visibleMotoristas.length > 0"
-        class="panel-inner"
+        class="panel-inner content-card"
       >
         <BaseTable
           :columns="tableCols"

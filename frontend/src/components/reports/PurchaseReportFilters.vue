@@ -1,5 +1,5 @@
 <template>
-  <div class="panel-inner mb-4">
+  <div class="panel-inner mb-4 report-filters-shell">
     <form @submit.prevent="$emit('apply')">
       <div class="mb-3">
         <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Busca</label>
@@ -12,24 +12,24 @@
         >
       </div>
 
-      <div class="mb-3 flex flex-wrap gap-2">
+      <div class="mb-3 flex flex-wrap gap-2 quick-ranges">
         <button
           type="button"
-          class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          class="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           @click="setQuickRange(7)"
         >
           Últimos 7 dias
         </button>
         <button
           type="button"
-          class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          class="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           @click="setQuickRange(30)"
         >
           Últimos 30 dias
         </button>
         <button
           type="button"
-          class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          class="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           @click="setQuickRange(90)"
         >
           Últimos 90 dias
@@ -193,3 +193,25 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.report-filters-shell :is(input, select, button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+}
+
+.quick-ranges button {
+  min-height: 36px;
+}
+
+@media (max-width: 767px) {
+  .report-filters-shell {
+    padding: 0.9rem;
+  }
+
+  .quick-ranges button {
+    flex: 1 1 calc(50% - 0.5rem);
+    justify-content: center;
+  }
+}
+</style>
