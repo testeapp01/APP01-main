@@ -10,20 +10,36 @@
           class="p-2 border border-slate-300 rounded-lg text-sm"
           @change="loadDashboard"
         >
-          <option value="7d">Últimos 7 dias</option>
-          <option value="30d">Últimos 30 dias</option>
-          <option value="90d">Últimos 90 dias</option>
-          <option value="180d">Últimos 180 dias</option>
-          <option value="365d">Últimos 365 dias</option>
+          <option value="7d">
+            Últimos 7 dias
+          </option>
+          <option value="30d">
+            Últimos 30 dias
+          </option>
+          <option value="90d">
+            Últimos 90 dias
+          </option>
+          <option value="180d">
+            Últimos 180 dias
+          </option>
+          <option value="365d">
+            Últimos 365 dias
+          </option>
         </select>
         <select
           v-model="metric"
           class="p-2 border border-slate-300 rounded-lg text-sm"
           @change="loadDashboard"
         >
-          <option value="sales">Linha: Vendas</option>
-          <option value="purchases">Linha: Compras</option>
-          <option value="profit">Linha: Lucro</option>
+          <option value="sales">
+            Linha: Vendas
+          </option>
+          <option value="purchases">
+            Linha: Compras
+          </option>
+          <option value="profit">
+            Linha: Lucro
+          </option>
         </select>
       </template>
       <template #context>
@@ -81,12 +97,20 @@
               class="h-4 w-4"
               aria-hidden="true"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"
+              />
             </svg>
           </span>
           <div>
-            <p class="text-sm font-semibold text-slate-700">Sem registros para exibir no painel</p>
-            <p class="text-sm text-slate-600">Amplie o período para visualizar movimentações.</p>
+            <p class="text-sm font-semibold text-slate-700">
+              Sem registros para exibir no painel
+            </p>
+            <p class="text-sm text-slate-600">
+              Amplie o período para visualizar movimentações.
+            </p>
           </div>
         </div>
         <BaseButton
@@ -102,20 +126,36 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <div class="card p-4 rounded-xl border border-slate-200 bg-white">
-        <div class="text-xs uppercase text-slate-500">Vendas</div>
-        <div class="text-2xl font-bold text-slate-800">{{ cards.sales_count }}</div>
+        <div class="text-xs uppercase text-slate-500">
+          Vendas
+        </div>
+        <div class="text-2xl font-bold text-slate-800">
+          {{ cards.sales_count }}
+        </div>
       </div>
       <div class="card p-4 rounded-xl border border-slate-200 bg-white">
-        <div class="text-xs uppercase text-slate-500">Compras</div>
-        <div class="text-2xl font-bold text-slate-800">{{ cards.purchases_count }}</div>
+        <div class="text-xs uppercase text-slate-500">
+          Compras
+        </div>
+        <div class="text-2xl font-bold text-slate-800">
+          {{ cards.purchases_count }}
+        </div>
       </div>
       <div class="card p-4 rounded-xl border border-slate-200 bg-white">
-        <div class="text-xs uppercase text-slate-500">Ticket Médio</div>
-        <div class="text-2xl font-bold text-slate-800">{{ asMoney(cards.average_ticket) }}</div>
+        <div class="text-xs uppercase text-slate-500">
+          Ticket Médio
+        </div>
+        <div class="text-2xl font-bold text-slate-800">
+          {{ asMoney(cards.average_ticket) }}
+        </div>
       </div>
       <div class="card p-4 rounded-xl border border-slate-200 bg-white">
-        <div class="text-xs uppercase text-slate-500">Clientes / Produtos</div>
-        <div class="text-2xl font-bold text-slate-800">{{ cards.clients_total }} / {{ cards.products_total }}</div>
+        <div class="text-xs uppercase text-slate-500">
+          Clientes / Produtos
+        </div>
+        <div class="text-2xl font-bold text-slate-800">
+          {{ cards.clients_total }} / {{ cards.products_total }}
+        </div>
       </div>
     </div>
 

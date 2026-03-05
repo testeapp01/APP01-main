@@ -71,12 +71,12 @@
 <script>
 export default {
   name: 'BaseTable',
-  emits: ['row-click'],
   props: {
     columns: { type: Array, default: () => [] },
     rows: { type: Array, default: () => [] },
     rowClickable: { type: Boolean, default: false }
   },
+  emits: ['row-click'],
   methods: {
     handleRowClick(row) {
       if (!this.rowClickable) return

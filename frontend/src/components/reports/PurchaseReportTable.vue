@@ -49,23 +49,57 @@
             class="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
             @click="$emit('select-row', row)"
           >
-            <td class="px-3 py-2">{{ row.compra_id }}</td>
-            <td class="px-3 py-2">{{ row.compra_cabecalho_id || '-' }}</td>
-            <td class="px-3 py-2">{{ date(row.data_compra) }}</td>
-            <td class="px-3 py-2">{{ row.fornecedor || 'Não informado' }}</td>
-            <td class="px-3 py-2">{{ row.produto || 'Não informado' }}</td>
-            <td class="px-3 py-2">{{ row.motorista || 'Não informado' }}</td>
-            <td class="px-3 py-2">{{ row.tipo_caminhao || 'Não informado' }}</td>
-            <td class="px-3 py-2">{{ number(row.quantidade) }}</td>
-            <td class="px-3 py-2">{{ money(row.valor_unitario) }}</td>
-            <td class="px-3 py-2">{{ money(row.custo_total) }}</td>
-            <td class="px-3 py-2">{{ money(row.comissao_total) }}</td>
-            <td class="px-3 py-2">{{ money(row.custo_final_real) }}</td>
-            <td class="px-3 py-2">{{ row.status_textual || 'AGUARDANDO' }}</td>
-            <td class="px-3 py-2">{{ date(row.data_envio_prevista) }}</td>
-            <td class="px-3 py-2">{{ date(row.data_entrega_prevista) }}</td>
-            <td class="px-3 py-2">{{ row.itens_count || 0 }}</td>
-            <td class="px-3 py-2">{{ money(row.valor_total_agregado) }}</td>
+            <td class="px-3 py-2">
+              {{ row.compra_id }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.compra_cabecalho_id || '-' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ date(row.data_compra) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.fornecedor || 'Não informado' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.produto || 'Não informado' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.motorista || 'Não informado' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.tipo_caminhao || 'Não informado' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ number(row.quantidade) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ money(row.valor_unitario) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ money(row.custo_total) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ money(row.comissao_total) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ money(row.custo_final_real) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.status_textual || 'AGUARDANDO' }}
+            </td>
+            <td class="px-3 py-2">
+              {{ date(row.data_envio_prevista) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ date(row.data_entrega_prevista) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.itens_count || 0 }}
+            </td>
+            <td class="px-3 py-2">
+              {{ money(row.valor_total_agregado) }}
+            </td>
           </tr>
 
           <tr v-if="!loading && rows.length === 0">
@@ -90,10 +124,18 @@
           class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm"
           @change="$emit('per-page-change', Number($event.target.value))"
         >
-          <option :value="10">10</option>
-          <option :value="20">20</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
+          <option :value="10">
+            10
+          </option>
+          <option :value="20">
+            20
+          </option>
+          <option :value="50">
+            50
+          </option>
+          <option :value="100">
+            100
+          </option>
         </select>
         <button
           class="btn-secondary"

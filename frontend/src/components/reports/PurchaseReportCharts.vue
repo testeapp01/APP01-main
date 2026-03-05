@@ -5,7 +5,10 @@
         Evolução mensal
       </div>
       <div class="h-56">
-        <canvas ref="lineChart" class="w-full h-full" />
+        <canvas
+          ref="lineChart"
+          class="w-full h-full"
+        />
       </div>
     </article>
 
@@ -14,7 +17,10 @@
         Fornecedor x volume
       </div>
       <div class="h-56">
-        <canvas ref="barChart" class="w-full h-full" />
+        <canvas
+          ref="barChart"
+          class="w-full h-full"
+        />
       </div>
     </article>
 
@@ -23,7 +29,10 @@
         Distribuição por status
       </div>
       <div class="h-56">
-        <canvas ref="pieChart" class="w-full h-full" />
+        <canvas
+          ref="pieChart"
+          class="w-full h-full"
+        />
       </div>
     </article>
   </section>

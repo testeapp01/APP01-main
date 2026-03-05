@@ -3,9 +3,9 @@
     <div class="auth-card">
       <div class="flex items-center gap-3 mb-4">
         <img
-          src="/brand-logo.svg"
+          src="/logo-symbol.png"
           alt="Safrion"
-          class="h-11 w-11 rounded-xl object-contain border border-slate-200 bg-white p-1"
+          class="h-12 w-12 object-contain drop-shadow-[0_3px_8px_rgba(15,23,42,0.2)]"
         >
         <div>
           <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">

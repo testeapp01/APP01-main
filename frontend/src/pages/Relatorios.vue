@@ -70,12 +70,20 @@
               class="h-4 w-4"
               aria-hidden="true"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"
+              />
             </svg>
           </span>
           <div>
-            <p class="text-sm font-semibold text-slate-700">Sem registros no período atual</p>
-            <p class="text-sm text-slate-600">Amplie o intervalo para visualizar movimentações.</p>
+            <p class="text-sm font-semibold text-slate-700">
+              Sem registros no período atual
+            </p>
+            <p class="text-sm text-slate-600">
+              Amplie o intervalo para visualizar movimentações.
+            </p>
           </div>
         </div>
         <BaseButton
@@ -207,15 +215,6 @@ export default {
       }
     }
   },
-  watch: {
-    'filters.q'() {
-      clearTimeout(this.debounceSearchHandle)
-      this.debounceSearchHandle = setTimeout(() => {
-        this.pagination.page = 1
-        this.loadReport()
-      }, 350)
-    }
-  },
   computed: {
     showEmptyOverview() {
       return !this.loading && Number(this.pagination?.total || 0) === 0
@@ -229,6 +228,15 @@ export default {
     },
     suggestedRangeLabel() {
       return `Expandir para últimos ${this.suggestedRangeDays} dias`
+    }
+  },
+  watch: {
+    'filters.q'() {
+      clearTimeout(this.debounceSearchHandle)
+      this.debounceSearchHandle = setTimeout(() => {
+        this.pagination.page = 1
+        this.loadReport()
+      }, 350)
     }
   },
   mounted() {

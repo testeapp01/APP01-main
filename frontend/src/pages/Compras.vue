@@ -9,9 +9,15 @@
           v-model="statusFilter"
           class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto"
         >
-          <option value="">Todos status</option>
-          <option value="AGUARDANDO">AGUARDANDO</option>
-          <option value="RECEBIDA">RECEBIDA</option>
+          <option value="">
+            Todos status
+          </option>
+          <option value="AGUARDANDO">
+            AGUARDANDO
+          </option>
+          <option value="RECEBIDA">
+            RECEBIDA
+          </option>
         </select>
         <BaseButton
           class="btn-secondary w-full sm:w-auto"
@@ -144,13 +150,29 @@
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-start gap-3">
           <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              class="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"
+              />
             </svg>
           </span>
           <div>
-            <p class="text-sm font-semibold text-slate-700">Sem compras para exibir</p>
-            <p class="text-sm text-slate-600">{{ hasActiveFilter ? 'Ajuste os filtros e tente novamente.' : 'Cadastre a primeira compra para iniciar o acompanhamento.' }}</p>
+            <p class="text-sm font-semibold text-slate-700">
+              Sem compras para exibir
+            </p>
+            <p class="text-sm text-slate-600">
+              {{ hasActiveFilter ? 'Ajuste os filtros e tente novamente.' : 'Cadastre a primeira compra para iniciar o acompanhamento.' }}
+            </p>
           </div>
         </div>
         <div class="flex w-full sm:w-auto gap-2">
@@ -523,8 +545,12 @@
             class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
             required
           >
-            <option value="venda">Venda</option>
-            <option value="revenda">Revenda</option>
+            <option value="venda">
+              Venda
+            </option>
+            <option value="revenda">
+              Revenda
+            </option>
           </select>
         </div>
 
@@ -618,8 +644,12 @@
             v-model="editCompra.status"
             class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
           >
-            <option value="AGUARDANDO">AGUARDANDO</option>
-            <option value="RECEBIDA">RECEBIDA</option>
+            <option value="AGUARDANDO">
+              AGUARDANDO
+            </option>
+            <option value="RECEBIDA">
+              RECEBIDA
+            </option>
           </select>
         </div>
 

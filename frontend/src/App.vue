@@ -20,7 +20,7 @@
 
     <footer class="px-4 py-3 text-center">
       <div class="text-xs text-slate-500">
-        © 2026 Safrion • TODOS OS DIREITOS RESERVADOS...
+        © 2026 Safrion. Todos os direitos reservados.
       </div>
     </footer>
   </div>
@@ -40,9 +40,9 @@
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-3">
               <img
-                src="/brand-logo.svg"
+                src="/logo-symbol.png"
                 alt="Safrion"
-                class="h-10 w-10 rounded-xl object-contain border border-slate-200 bg-white p-1"
+                class="h-11 w-11 object-contain drop-shadow-[0_2px_6px_rgba(15,23,42,0.18)]"
               >
               <div>
                 <div class="text-lg font-bold">
@@ -408,9 +408,9 @@
           ☰
         </button>
         <img
-          src="/brand-logo.svg"
+          src="/logo-symbol.png"
           alt="Safrion"
-          class="h-7 w-7 rounded-md object-contain border border-slate-200 bg-white p-[2px]"
+          class="h-8 w-8 object-contain drop-shadow-[0_1px_4px_rgba(15,23,42,0.2)]"
         >
         <div class="text-sm font-semibold text-slate-800 truncate">
           {{ pageTitle }}
@@ -469,8 +469,12 @@
                     class="w-full text-left px-2 py-2 rounded-lg hover:bg-slate-50"
                     @click="goToNotification(note)"
                   >
-                    <p class="text-sm font-semibold text-slate-800">{{ note.title }}</p>
-                    <p class="text-xs text-slate-500">{{ note.subtitle }}</p>
+                    <p class="text-sm font-semibold text-slate-800">
+                      {{ note.title }}
+                    </p>
+                    <p class="text-xs text-slate-500">
+                      {{ note.subtitle }}
+                    </p>
                   </button>
                 </div>
               </div>
@@ -491,8 +495,12 @@
                   v-if="profileOpen"
                   class="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-30"
                 >
-                  <p class="px-2 pt-1 text-sm font-semibold text-slate-800">{{ auth.user?.name || 'Usuário' }}</p>
-                  <p class="px-2 pb-2 text-xs text-slate-500">Sessão expira em 10 min sem interação.</p>
+                  <p class="px-2 pt-1 text-sm font-semibold text-slate-800">
+                    {{ auth.user?.name || 'Usuário' }}
+                  </p>
+                  <p class="px-2 pb-2 text-xs text-slate-500">
+                    Sessão expira em 10 min sem interação.
+                  </p>
                   <button
                     type="button"
                     class="w-full text-left px-2 py-2 rounded-lg text-red-600 hover:bg-red-50"
@@ -525,7 +533,7 @@
 
       <footer class="px-4 py-3 bg-white/85 border-t border-slate-200 text-center">
         <div class="text-xs text-slate-500">
-          © 2026 Safrion • TODOS OS DIREITOS RESERVADOS...
+          © 2026 Safrion. Todos os direitos reservados.
         </div>
       </footer>
     </div>
