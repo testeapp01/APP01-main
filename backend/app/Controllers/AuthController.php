@@ -18,7 +18,7 @@ class AuthController
         $errors = SchemaValidator::validate($data, [
             'required' => ['email', 'password'],
             'properties' => [
-                'email' => ['type' => 'string', 'format' => 'email', 'maxLength' => 255],
+                'email' => ['type' => 'string', 'maxLength' => 255],
                 'password' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 255],
             ],
         ]);
@@ -28,18 +28,25 @@ class AuthController
             return;
         }
 
-        $email = trim((string)($data['email'] ?? ''));
+        $login = trim((string)($data['email'] ?? ''));
         $password = (string)($data['password'] ?? '');
 
-        if ($email === '' || $password === '') {
+        if ($login === '' || $password === '') {
             http_response_code(400);
-            echo json_encode(['error' => 'Email e senha são obrigatórios']);
+            echo json_encode(['error' => 'Login e senha são obrigatórios']);
             return;
         }
 
         try {
-            $stmt = $this->pdo->prepare('SELECT id, password, name, role FROM users WHERE email = :email LIMIT 1');
-            $stmt->execute(['email' => $email]);
+            $stmt = $this->pdo->prepare(
+                'SELECT id, password, name, role
+                 FROM users
+                 WHERE email = :login
+                    OR name = :login
+                    OR SUBSTRING_INDEX(email, "@", 1) = :login
+                 LIMIT 1'
+            );
+            $stmt->execute(['login' => $login]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (\Throwable $e) {
             http_response_code(500);

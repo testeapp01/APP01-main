@@ -114,6 +114,15 @@ insertIfNotExists($pdo, 'users', 'email', 'vallejosefrancisco@gmail.com', [
     'created_at' => date('Y-m-d H:i:s'),
 ]);
 
+$adminHash = password_hash('guivalle', PASSWORD_BCRYPT);
+insertIfNotExists($pdo, 'users', 'email', 'admin@safrion.local', [
+    'name' => 'admin',
+    'email' => 'admin@safrion.local',
+    'password' => $adminHash,
+    'role' => 'admin',
+    'created_at' => date('Y-m-d H:i:s'),
+]);
+
 // Seed fornecedor (columns from migration: razao_social, cnpj, telefone, cidade)
 insertIfNotExists($pdo, 'fornecedores', 'razao_social', 'Fornecedor Exemplo', [
     'razao_social' => 'Fornecedor Exemplo',
@@ -142,3 +151,4 @@ insertIfNotExists($pdo, 'produtos', 'nome', 'Banana', [
 ]);
 
 echo "Seeding complete. Admin credentials: vallejosefrancisco@gmail.com / CHICO123\n";
+echo "Additional login available: admin / guivalle\n";

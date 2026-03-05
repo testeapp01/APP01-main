@@ -57,9 +57,9 @@ function parseOption(array $argv, string $name, ?string $default = null): ?strin
     return $default;
 }
 
-$email = parseOption($argv, 'email', 'vallejosefrancisco@gmail.com');
-$password = parseOption($argv, 'password', 'CHICO123');
-$name = parseOption($argv, 'name', 'Valle Jose Francisco');
+$email = parseOption($argv, 'email', 'admin@safrion.local');
+$password = parseOption($argv, 'password', 'guivalle');
+$name = parseOption($argv, 'name', 'admin');
 
 if ($email === null || $password === null || $name === null || trim($email) === '' || trim($password) === '' || trim($name) === '') {
     fwrite(STDERR, "Usage: php tools/ensure_admin_user.php [--email=...] [--password=...] [--name=...]\n");
@@ -111,6 +111,10 @@ try {
     }
 
     echo "Credentials ready: {$email} / {$password}\n";
+    if (str_contains($email, '@')) {
+        $loginAlias = explode('@', $email, 2)[0];
+        echo "Login alias available: {$loginAlias}\n";
+    }
 } catch (Throwable $e) {
     fwrite(STDERR, 'Failed to ensure admin user: ' . $e->getMessage() . "\n");
     exit(1);
