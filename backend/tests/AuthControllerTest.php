@@ -168,4 +168,37 @@ final class AuthControllerTest extends TestCase
         $stored = (string)$pdo->query('SELECT senha FROM users WHERE email = "legado@example.com"')->fetchColumn();
         $this->assertTrue(password_verify($plainPassword, $stored));
     }
+
+    public function testLoginWorksWithLegacyUserIdAndPasswdColumns(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('CREATE TABLE users (user_id INTEGER PRIMARY KEY AUTOINCREMENT, usuario TEXT NOT NULL, passwd TEXT NOT NULL, tipo TEXT)');
+
+        $plainPassword = 'secret123';
+        $stmt = $pdo->prepare('INSERT INTO users (usuario, passwd, tipo) VALUES (:usuario, :passwd, :tipo)');
+        $stmt->execute([
+            'usuario' => 'legacyuser',
+            'passwd' => $plainPassword,
+            'tipo' => 'admin',
+        ]);
+
+        $GLOBALS['SANITIZED_INPUT'] = [
+            'email' => 'legacyuser',
+            'password' => $plainPassword,
+        ];
+
+        ob_start();
+        (new AuthController($pdo))->login();
+        $raw = ob_get_clean();
+
+        $this->assertSame(200, http_response_code());
+        $payload = json_decode((string)$raw, true);
+        $this->assertIsArray($payload);
+        $this->assertSame('legacyuser', $payload['user']['name'] ?? null);
+        $this->assertSame('admin', $payload['user']['role'] ?? null);
+
+        $stored = (string)$pdo->query('SELECT passwd FROM users WHERE usuario = "legacyuser"')->fetchColumn();
+        $this->assertTrue(password_verify($plainPassword, $stored));
+    }
 }

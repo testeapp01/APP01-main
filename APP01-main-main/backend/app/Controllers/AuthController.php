@@ -143,7 +143,12 @@ class AuthController
             }
         }
 
-        return [null, $hadSqlError];
+        [$fallbackUser, $fallbackFailed] = $this->findUserForLoginByScanning($login);
+        if (!$fallbackFailed) {
+            return [$fallbackUser, false];
+        }
+
+        return [null, $hadSqlError || $fallbackFailed];
     }
 
     private function findUserById(int $userId): array
@@ -183,7 +188,148 @@ class AuthController
             }
         }
 
-        return [null, $hadSqlError];
+        [$fallbackUser, $fallbackFailed] = $this->findUserByIdByScanning($userId);
+        if (!$fallbackFailed) {
+            return [$fallbackUser, false];
+        }
+
+        return [null, $hadSqlError || $fallbackFailed];
+    }
+
+    private function findUserForLoginByScanning(string $login): array
+    {
+        try {
+            $stmt = $this->pdo->query('SELECT * FROM users LIMIT 1000');
+            if ($stmt === false) {
+                return [null, true];
+            }
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return [null, true];
+        }
+
+        $loginLower = strtolower($login);
+        foreach ($rows as $row) {
+            $normalized = array_change_key_case($row, CASE_LOWER);
+            $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
+            $passwordColumn = $this->firstExistingColumn($normalized, ['password', 'senha', 'passwd', 'pass']);
+
+            if ($idColumn === null || $passwordColumn === null) {
+                continue;
+            }
+
+            $idValue = $normalized[$idColumn] ?? null;
+            $storedPassword = (string)($normalized[$passwordColumn] ?? '');
+            if (!is_numeric($idValue) || $storedPassword === '') {
+                continue;
+            }
+
+            if (!$this->matchesLoginFromRow($normalized, $login, $loginLower)) {
+                continue;
+            }
+
+            $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? $login;
+            $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
+
+            $this->resolvedIdColumn = $idColumn;
+            $this->resolvedPasswordColumn = $passwordColumn;
+
+            return [[
+                'id' => (int)$idValue,
+                'password' => $storedPassword,
+                'name' => $name,
+                'role' => $role,
+            ], false];
+        }
+
+        return [null, false];
+    }
+
+    private function findUserByIdByScanning(int $userId): array
+    {
+        try {
+            $stmt = $this->pdo->query('SELECT * FROM users LIMIT 1000');
+            if ($stmt === false) {
+                return [null, true];
+            }
+
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return [null, true];
+        }
+
+        foreach ($rows as $row) {
+            $normalized = array_change_key_case($row, CASE_LOWER);
+            $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
+            if ($idColumn === null) {
+                continue;
+            }
+
+            $idValue = $normalized[$idColumn] ?? null;
+            if (!is_numeric($idValue) || (int)$idValue !== $userId) {
+                continue;
+            }
+
+            $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? 'Usuário';
+            $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
+
+            return [[
+                'id' => $userId,
+                'name' => $name,
+                'role' => $role,
+            ], false];
+        }
+
+        return [null, false];
+    }
+
+    private function matchesLoginFromRow(array $normalized, string $login, string $loginLower): bool
+    {
+        $candidates = ['email', 'login', 'usuario', 'username', 'name', 'nome'];
+        foreach ($candidates as $column) {
+            if (!array_key_exists($column, $normalized)) {
+                continue;
+            }
+
+            $value = trim((string)($normalized[$column] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            if (strcasecmp($value, $login) === 0) {
+                return true;
+            }
+
+            if (!str_contains($login, '@') && str_contains($value, '@') && str_starts_with(strtolower($value), $loginLower . '@')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function firstExistingColumn(array $normalized, array $candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            $key = strtolower((string)$candidate);
+            if (array_key_exists($key, $normalized)) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstStringValue(array $normalized, array $candidates): ?string
+    {
+        $column = $this->firstExistingColumn($normalized, $candidates);
+        if ($column === null) {
+            return null;
+        }
+
+        $value = trim((string)($normalized[$column] ?? ''));
+        return $value !== '' ? $value : null;
     }
 
     private function buildLoginWhere(string $emailColumn, string $nameColumn, string $login): array
