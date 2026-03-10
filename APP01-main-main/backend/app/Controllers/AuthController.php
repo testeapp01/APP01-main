@@ -8,7 +8,8 @@ use App\Helpers\SchemaValidator;
 
 class AuthController
 {
-    private ?array $usersColumnsCache = null;
+    private string $resolvedIdColumn = 'id';
+    private string $resolvedPasswordColumn = 'password';
 
     public function __construct(private PDO $pdo)
     {
@@ -39,48 +40,8 @@ class AuthController
             return;
         }
 
-        try {
-            $idColumn = $this->resolveUsersColumn(['id', 'user_id']);
-            $passwordColumn = $this->resolveUsersColumn(['password', 'senha', 'passwd']);
-            $emailColumn = $this->resolveUsersColumn(['email', 'login', 'usuario', 'username']);
-            $nameColumn = $this->resolveUsersColumn(['name', 'nome', 'username', 'usuario']);
-            $roleColumn = $this->resolveUsersColumn(['role', 'perfil', 'tipo']);
-
-            if ($idColumn === null || $passwordColumn === null || $emailColumn === null) {
-                throw new \RuntimeException('Schema da tabela users incompatível com autenticação.');
-            }
-
-            $resolvedNameColumn = $nameColumn ?? $emailColumn;
-            $idSelect = $this->quotedColumn($idColumn);
-            $passwordSelect = $this->quotedColumn($passwordColumn);
-            $emailSelect = $this->quotedColumn($emailColumn);
-            $nameSelect = $this->quotedColumn($resolvedNameColumn);
-            $roleSelect = $roleColumn !== null ? $this->quotedColumn($roleColumn) : "'cliente'";
-
-            $conditions = [
-                $emailSelect . ' = :login',
-            ];
-
-            if ($resolvedNameColumn !== $emailColumn) {
-                $conditions[] = $nameSelect . ' = :login';
-            }
-
-            $params = ['login' => $login];
-
-            if (!str_contains($login, '@') && $emailColumn === 'email') {
-                $conditions[] = $emailSelect . ' LIKE :login_prefix';
-                $params['login_prefix'] = $login . '@%';
-            }
-
-            $stmt = $this->pdo->prepare(
-                'SELECT ' . $idSelect . ' AS id, ' . $passwordSelect . ' AS password, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
-                 FROM users
-                 WHERE ' . implode(' OR ', $conditions) . '
-                 LIMIT 1'
-            );
-            $stmt->execute($params);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (\Throwable $e) {
+        [$user, $queryFailed] = $this->findUserForLogin($login);
+        if ($queryFailed) {
             http_response_code(500);
             echo json_encode(['error' => 'Não foi possível autenticar no momento.']);
             return;
@@ -117,23 +78,8 @@ class AuthController
             return;
         }
 
-        try {
-            $idColumn = $this->resolveUsersColumn(['id', 'user_id']);
-            $emailColumn = $this->resolveUsersColumn(['email', 'login', 'usuario', 'username']);
-            $nameColumn = $this->resolveUsersColumn(['name', 'nome', 'username', 'usuario']) ?? $emailColumn;
-            $roleColumn = $this->resolveUsersColumn(['role', 'perfil', 'tipo']);
-
-            if ($idColumn === null || $nameColumn === null) {
-                throw new \RuntimeException('Schema da tabela users incompatível com sessão.');
-            }
-
-            $idSelect = $this->quotedColumn($idColumn);
-            $nameSelect = $this->quotedColumn($nameColumn);
-            $roleSelect = $roleColumn !== null ? $this->quotedColumn($roleColumn) : "'cliente'";
-            $stmt = $this->pdo->prepare('SELECT ' . $idSelect . ' AS id, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role FROM users WHERE ' . $idSelect . ' = :id LIMIT 1');
-            $stmt->execute(['id' => $userId]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (\Throwable $e) {
+        [$user, $queryFailed] = $this->findUserById($userId);
+        if ($queryFailed) {
             http_response_code(500);
             echo json_encode(['error' => 'Não foi possível carregar os dados do usuário']);
             return;
@@ -150,47 +96,116 @@ class AuthController
         echo json_encode(['user' => $user]);
     }
 
-    private function usersColumns(): array
+    private function findUserForLogin(string $login): array
     {
-        if ($this->usersColumnsCache !== null) {
-            return $this->usersColumnsCache;
-        }
+        $attempts = [
+            ['id' => 'id', 'password' => 'password', 'email' => 'email', 'name' => 'name', 'role' => 'role'],
+            ['id' => 'id', 'password' => 'password', 'email' => 'email', 'name' => 'name', 'role' => null],
+            ['id' => 'id', 'password' => 'password', 'email' => 'email', 'name' => 'username', 'role' => 'role'],
+            ['id' => 'id', 'password' => 'senha', 'email' => 'email', 'name' => 'nome', 'role' => 'perfil'],
+            ['id' => 'id', 'password' => 'senha', 'email' => 'email', 'name' => 'nome', 'role' => null],
+            ['id' => 'id', 'password' => 'senha', 'email' => 'usuario', 'name' => 'nome', 'role' => 'perfil'],
+            ['id' => 'id', 'password' => 'password', 'email' => 'email', 'name' => 'email', 'role' => null],
+        ];
 
-        try {
-            $stmt = $this->pdo->query('SHOW COLUMNS FROM users');
-            if ($stmt === false) {
-                $this->usersColumnsCache = [];
-                return $this->usersColumnsCache;
-            }
+        $hadSqlError = false;
+        foreach ($attempts as $attempt) {
+            try {
+                [$where, $params] = $this->buildLoginWhere(
+                    $attempt['email'],
+                    $attempt['name'],
+                    $login
+                );
 
-            $columns = [];
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($rows as $row) {
-                $field = strtolower(trim((string)($row['Field'] ?? '')));
-                if ($field !== '') {
-                    $columns[] = $field;
+                $idSelect = $this->quotedColumn($attempt['id']);
+                $passwordSelect = $this->quotedColumn($attempt['password']);
+                $nameSelect = $this->quotedColumn($attempt['name']);
+                $roleSelect = $attempt['role'] !== null
+                    ? $this->quotedColumn($attempt['role'])
+                    : "'cliente'";
+
+                $stmt = $this->pdo->prepare(
+                    'SELECT ' . $idSelect . ' AS id, ' . $passwordSelect . ' AS password, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
+                     FROM users
+                     WHERE ' . $where . '
+                     LIMIT 1'
+                );
+                $stmt->execute($params);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    $this->resolvedIdColumn = $attempt['id'];
+                    $this->resolvedPasswordColumn = $attempt['password'];
+                    return [$user, false];
                 }
+            } catch (\Throwable) {
+                $hadSqlError = true;
             }
-
-            $this->usersColumnsCache = $columns;
-        } catch (\Throwable) {
-            $this->usersColumnsCache = [];
         }
 
-        return $this->usersColumnsCache;
+        return [null, $hadSqlError];
     }
 
-    private function resolveUsersColumn(array $candidates): ?string
+    private function findUserById(int $userId): array
     {
-        $columns = $this->usersColumns();
-        foreach ($candidates as $candidate) {
-            $normalized = strtolower(trim((string)$candidate));
-            if ($normalized !== '' && in_array($normalized, $columns, true)) {
-                return $normalized;
+        $attempts = [
+            ['id' => 'id', 'name' => 'name', 'role' => 'role'],
+            ['id' => 'id', 'name' => 'name', 'role' => null],
+            ['id' => 'id', 'name' => 'username', 'role' => 'role'],
+            ['id' => 'id', 'name' => 'nome', 'role' => 'perfil'],
+            ['id' => 'id', 'name' => 'nome', 'role' => null],
+            ['id' => 'id', 'name' => 'email', 'role' => null],
+        ];
+
+        $hadSqlError = false;
+        foreach ($attempts as $attempt) {
+            try {
+                $idSelect = $this->quotedColumn($attempt['id']);
+                $nameSelect = $this->quotedColumn($attempt['name']);
+                $roleSelect = $attempt['role'] !== null
+                    ? $this->quotedColumn($attempt['role'])
+                    : "'cliente'";
+
+                $stmt = $this->pdo->prepare(
+                    'SELECT ' . $idSelect . ' AS id, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
+                     FROM users
+                     WHERE ' . $idSelect . ' = :id
+                     LIMIT 1'
+                );
+                $stmt->execute(['id' => $userId]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($user) {
+                    return [$user, false];
+                }
+            } catch (\Throwable) {
+                $hadSqlError = true;
             }
         }
 
-        return null;
+        return [null, $hadSqlError];
+    }
+
+    private function buildLoginWhere(string $emailColumn, string $nameColumn, string $login): array
+    {
+        $emailSelect = $this->quotedColumn($emailColumn);
+        $nameSelect = $this->quotedColumn($nameColumn);
+
+        $conditions = [
+            $emailSelect . ' = :login',
+        ];
+
+        if ($nameColumn !== $emailColumn) {
+            $conditions[] = $nameSelect . ' = :login';
+        }
+
+        $params = ['login' => $login];
+        if (!str_contains($login, '@') && $emailColumn === 'email') {
+            $conditions[] = $emailSelect . ' LIKE :login_prefix';
+            $params['login_prefix'] = $login . '@%';
+        }
+
+        return [implode(' OR ', $conditions), $params];
     }
 
     private function quotedColumn(string $column): string
@@ -246,14 +261,8 @@ class AuthController
         }
 
         try {
-            $idColumn = $this->resolveUsersColumn(['id', 'user_id']);
-            $passwordColumn = $this->resolveUsersColumn(['password', 'senha', 'passwd']);
-            if ($idColumn === null || $passwordColumn === null) {
-                return;
-            }
-
             $stmt = $this->pdo->prepare(
-                'UPDATE users SET ' . $this->quotedColumn($passwordColumn) . ' = :password WHERE ' . $this->quotedColumn($idColumn) . ' = :id'
+                'UPDATE users SET ' . $this->quotedColumn($this->resolvedPasswordColumn) . ' = :password WHERE ' . $this->quotedColumn($this->resolvedIdColumn) . ' = :id'
             );
             $stmt->execute([
                 'password' => $hash,
