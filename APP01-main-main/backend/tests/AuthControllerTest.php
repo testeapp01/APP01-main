@@ -201,4 +201,35 @@ final class AuthControllerTest extends TestCase
         $stored = (string)$pdo->query('SELECT passwd FROM users WHERE usuario = "legacyuser"')->fetchColumn();
         $this->assertTrue(password_verify($plainPassword, $stored));
     }
+
+    public function testLoginWorksWhenUsersTableIsNamedUsuarios(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('CREATE TABLE usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, email TEXT NOT NULL, senha TEXT NOT NULL, perfil TEXT)');
+
+        $plainPassword = 'secret123';
+        $stmt = $pdo->prepare('INSERT INTO usuarios (nome, email, senha, perfil) VALUES (:nome, :email, :senha, :perfil)');
+        $stmt->execute([
+            'nome' => 'Usuario Alternativo',
+            'email' => 'alt@example.com',
+            'senha' => $plainPassword,
+            'perfil' => 'admin',
+        ]);
+
+        $GLOBALS['SANITIZED_INPUT'] = [
+            'email' => 'alt@example.com',
+            'password' => $plainPassword,
+        ];
+
+        ob_start();
+        (new AuthController($pdo))->login();
+        $raw = ob_get_clean();
+
+        $this->assertSame(200, http_response_code());
+        $payload = json_decode((string)$raw, true);
+        $this->assertIsArray($payload);
+        $this->assertSame('Usuario Alternativo', $payload['user']['name'] ?? null);
+        $this->assertSame('admin', $payload['user']['role'] ?? null);
+    }
 }

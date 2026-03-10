@@ -10,6 +10,7 @@ class AuthController
 {
     private string $resolvedIdColumn = 'id';
     private string $resolvedPasswordColumn = 'password';
+    private string $resolvedUsersTable = 'users';
 
     public function __construct(private PDO $pdo)
     {
@@ -107,43 +108,47 @@ class AuthController
             ['id' => 'id', 'password' => 'senha', 'email' => 'usuario', 'name' => 'nome', 'role' => 'perfil'],
             ['id' => 'id', 'password' => 'password', 'email' => 'email', 'name' => 'email', 'role' => null],
         ];
+        $tableCandidates = $this->usersTableCandidates();
 
         $hadSqlError = false;
-        foreach ($attempts as $attempt) {
-            try {
-                [$where, $params] = $this->buildLoginWhere(
-                    $attempt['email'],
-                    $attempt['name'],
-                    $login
-                );
+        foreach ($tableCandidates as $tableName) {
+            foreach ($attempts as $attempt) {
+                try {
+                    [$where, $params] = $this->buildLoginWhere(
+                        $attempt['email'],
+                        $attempt['name'],
+                        $login
+                    );
 
-                $idSelect = $this->quotedColumn($attempt['id']);
-                $passwordSelect = $this->quotedColumn($attempt['password']);
-                $nameSelect = $this->quotedColumn($attempt['name']);
-                $roleSelect = $attempt['role'] !== null
-                    ? $this->quotedColumn($attempt['role'])
-                    : "'cliente'";
+                    $idSelect = $this->quotedColumn($attempt['id']);
+                    $passwordSelect = $this->quotedColumn($attempt['password']);
+                    $nameSelect = $this->quotedColumn($attempt['name']);
+                    $roleSelect = $attempt['role'] !== null
+                        ? $this->quotedColumn($attempt['role'])
+                        : "'cliente'";
 
-                $stmt = $this->pdo->prepare(
-                    'SELECT ' . $idSelect . ' AS id, ' . $passwordSelect . ' AS password, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
-                     FROM users
-                     WHERE ' . $where . '
-                     LIMIT 1'
-                );
-                $stmt->execute($params);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $stmt = $this->pdo->prepare(
+                        'SELECT ' . $idSelect . ' AS id, ' . $passwordSelect . ' AS password, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
+                         FROM ' . $this->quotedIdentifier($tableName) . '
+                         WHERE ' . $where . '
+                         LIMIT 1'
+                    );
+                    $stmt->execute($params);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($user) {
-                    $this->resolvedIdColumn = $attempt['id'];
-                    $this->resolvedPasswordColumn = $attempt['password'];
-                    return [$user, false];
+                    if ($user) {
+                        $this->resolvedIdColumn = $attempt['id'];
+                        $this->resolvedPasswordColumn = $attempt['password'];
+                        $this->resolvedUsersTable = $tableName;
+                        return [$user, false];
+                    }
+                } catch (\Throwable) {
+                    $hadSqlError = true;
                 }
-            } catch (\Throwable) {
-                $hadSqlError = true;
             }
         }
 
-        [$fallbackUser, $fallbackFailed] = $this->findUserForLoginByScanning($login);
+        [$fallbackUser, $fallbackFailed] = $this->findUserForLoginByScanning($login, $tableCandidates);
         if (!$fallbackFailed) {
             return [$fallbackUser, false];
         }
@@ -161,34 +166,37 @@ class AuthController
             ['id' => 'id', 'name' => 'nome', 'role' => null],
             ['id' => 'id', 'name' => 'email', 'role' => null],
         ];
+        $tableCandidates = $this->usersTableCandidates();
 
         $hadSqlError = false;
-        foreach ($attempts as $attempt) {
-            try {
-                $idSelect = $this->quotedColumn($attempt['id']);
-                $nameSelect = $this->quotedColumn($attempt['name']);
-                $roleSelect = $attempt['role'] !== null
-                    ? $this->quotedColumn($attempt['role'])
-                    : "'cliente'";
+        foreach ($tableCandidates as $tableName) {
+            foreach ($attempts as $attempt) {
+                try {
+                    $idSelect = $this->quotedColumn($attempt['id']);
+                    $nameSelect = $this->quotedColumn($attempt['name']);
+                    $roleSelect = $attempt['role'] !== null
+                        ? $this->quotedColumn($attempt['role'])
+                        : "'cliente'";
 
-                $stmt = $this->pdo->prepare(
-                    'SELECT ' . $idSelect . ' AS id, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
-                     FROM users
-                     WHERE ' . $idSelect . ' = :id
-                     LIMIT 1'
-                );
-                $stmt->execute(['id' => $userId]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $stmt = $this->pdo->prepare(
+                        'SELECT ' . $idSelect . ' AS id, ' . $nameSelect . ' AS name, ' . $roleSelect . ' AS role
+                         FROM ' . $this->quotedIdentifier($tableName) . '
+                         WHERE ' . $idSelect . ' = :id
+                         LIMIT 1'
+                    );
+                    $stmt->execute(['id' => $userId]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($user) {
-                    return [$user, false];
+                    if ($user) {
+                        return [$user, false];
+                    }
+                } catch (\Throwable) {
+                    $hadSqlError = true;
                 }
-            } catch (\Throwable) {
-                $hadSqlError = true;
             }
         }
 
-        [$fallbackUser, $fallbackFailed] = $this->findUserByIdByScanning($userId);
+        [$fallbackUser, $fallbackFailed] = $this->findUserByIdByScanning($userId, $tableCandidates);
         if (!$fallbackFailed) {
             return [$fallbackUser, false];
         }
@@ -196,92 +204,109 @@ class AuthController
         return [null, $hadSqlError || $fallbackFailed];
     }
 
-    private function findUserForLoginByScanning(string $login): array
+    private function findUserForLoginByScanning(string $login, array $tableCandidates): array
     {
-        try {
-            $stmt = $this->pdo->query('SELECT * FROM users LIMIT 1000');
-            if ($stmt === false) {
-                return [null, true];
-            }
-
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Throwable) {
-            return [null, true];
-        }
-
+        $hadSqlError = false;
         $loginLower = strtolower($login);
-        foreach ($rows as $row) {
-            $normalized = array_change_key_case($row, CASE_LOWER);
-            $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
-            $passwordColumn = $this->firstExistingColumn($normalized, ['password', 'senha', 'passwd', 'pass']);
 
-            if ($idColumn === null || $passwordColumn === null) {
+        foreach ($tableCandidates as $tableName) {
+            try {
+                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 1000');
+                if ($stmt === false) {
+                    $hadSqlError = true;
+                    continue;
+                }
+
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\Throwable) {
+                $hadSqlError = true;
                 continue;
             }
 
-            $idValue = $normalized[$idColumn] ?? null;
-            $storedPassword = (string)($normalized[$passwordColumn] ?? '');
-            if (!is_numeric($idValue) || $storedPassword === '') {
-                continue;
+            foreach ($rows as $row) {
+                $normalized = array_change_key_case($row, CASE_LOWER);
+                $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
+                $passwordColumn = $this->firstExistingColumn($normalized, ['password', 'senha', 'passwd', 'pass']);
+
+                if ($idColumn === null || $passwordColumn === null) {
+                    continue;
+                }
+
+                $idValue = $normalized[$idColumn] ?? null;
+                $storedPassword = (string)($normalized[$passwordColumn] ?? '');
+                if (!is_numeric($idValue) || $storedPassword === '') {
+                    continue;
+                }
+
+                if (!$this->matchesLoginFromRow($normalized, $login, $loginLower)) {
+                    continue;
+                }
+
+                $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? $login;
+                $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
+
+                $this->resolvedUsersTable = $tableName;
+                $this->resolvedIdColumn = $idColumn;
+                $this->resolvedPasswordColumn = $passwordColumn;
+
+                return [[
+                    'id' => (int)$idValue,
+                    'password' => $storedPassword,
+                    'name' => $name,
+                    'role' => $role,
+                ], false];
             }
-
-            if (!$this->matchesLoginFromRow($normalized, $login, $loginLower)) {
-                continue;
-            }
-
-            $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? $login;
-            $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
-
-            $this->resolvedIdColumn = $idColumn;
-            $this->resolvedPasswordColumn = $passwordColumn;
-
-            return [[
-                'id' => (int)$idValue,
-                'password' => $storedPassword,
-                'name' => $name,
-                'role' => $role,
-            ], false];
         }
 
-        return [null, false];
+        return [null, $hadSqlError];
     }
 
-    private function findUserByIdByScanning(int $userId): array
+    private function findUserByIdByScanning(int $userId, array $tableCandidates): array
     {
-        try {
-            $stmt = $this->pdo->query('SELECT * FROM users LIMIT 1000');
-            if ($stmt === false) {
-                return [null, true];
-            }
+        $hadSqlError = false;
+        foreach ($tableCandidates as $tableName) {
+            try {
+                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 1000');
+                if ($stmt === false) {
+                    $hadSqlError = true;
+                    continue;
+                }
 
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (\Throwable) {
-            return [null, true];
-        }
-
-        foreach ($rows as $row) {
-            $normalized = array_change_key_case($row, CASE_LOWER);
-            $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
-            if ($idColumn === null) {
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\Throwable) {
+                $hadSqlError = true;
                 continue;
             }
 
-            $idValue = $normalized[$idColumn] ?? null;
-            if (!is_numeric($idValue) || (int)$idValue !== $userId) {
-                continue;
+            foreach ($rows as $row) {
+                $normalized = array_change_key_case($row, CASE_LOWER);
+                $idColumn = $this->firstExistingColumn($normalized, ['id', 'user_id']);
+                if ($idColumn === null) {
+                    continue;
+                }
+
+                $idValue = $normalized[$idColumn] ?? null;
+                if (!is_numeric($idValue) || (int)$idValue !== $userId) {
+                    continue;
+                }
+
+                $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? 'Usuário';
+                $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
+
+                return [[
+                    'id' => $userId,
+                    'name' => $name,
+                    'role' => $role,
+                ], false];
             }
-
-            $name = $this->firstStringValue($normalized, ['name', 'nome', 'username', 'usuario', 'email', 'login']) ?? 'Usuário';
-            $role = $this->firstStringValue($normalized, ['role', 'perfil', 'tipo']) ?? 'cliente';
-
-            return [[
-                'id' => $userId,
-                'name' => $name,
-                'role' => $role,
-            ], false];
         }
 
-        return [null, false];
+        return [null, $hadSqlError];
+    }
+
+    private function usersTableCandidates(): array
+    {
+        return ['users', 'usuarios', 'usuario', 'tb_users', 'tbl_users', 'user'];
     }
 
     private function matchesLoginFromRow(array $normalized, string $login, string $loginLower): bool
@@ -356,7 +381,12 @@ class AuthController
 
     private function quotedColumn(string $column): string
     {
-        return '`' . str_replace('`', '', $column) . '`';
+        return $this->quotedIdentifier($column);
+    }
+
+    private function quotedIdentifier(string $identifier): string
+    {
+        return '`' . str_replace('`', '', $identifier) . '`';
     }
 
     private function normalizeRole(mixed $role): string
@@ -408,7 +438,7 @@ class AuthController
 
         try {
             $stmt = $this->pdo->prepare(
-                'UPDATE users SET ' . $this->quotedColumn($this->resolvedPasswordColumn) . ' = :password WHERE ' . $this->quotedColumn($this->resolvedIdColumn) . ' = :id'
+                'UPDATE ' . $this->quotedIdentifier($this->resolvedUsersTable) . ' SET ' . $this->quotedColumn($this->resolvedPasswordColumn) . ' = :password WHERE ' . $this->quotedColumn($this->resolvedIdColumn) . ' = :id'
             );
             $stmt->execute([
                 'password' => $hash,
