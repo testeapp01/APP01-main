@@ -433,53 +433,123 @@
                 ● Online
               </span>
 
-              <div class="relative">
+              <div
+                ref="notificationsMenuEl"
+                class="relative notifications-anchor"
+              >
                 <button
+                  ref="notificationsButtonEl"
                   type="button"
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  class="notif-trigger"
                   aria-label="Notificações"
+                  :aria-expanded="notificationsOpen ? 'true' : 'false'"
                   @click="toggleNotifications"
                 >
-                  🔔
                   <span
-                    v-if="notifications.length"
-                    class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-5 h-5 rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+                    class="notif-trigger-icon"
+                    aria-hidden="true"
                   >
-                    {{ notifications.length > 9 ? '9+' : notifications.length }}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14.5 18a2.5 2.5 0 0 1-5 0"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M18.5 16h-13c1.4-1.2 2.2-2.95 2.2-4.8V9.7a4.3 4.3 0 1 1 8.6 0v1.5c0 1.85.8 3.6 2.2 4.8Z"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    v-if="unreadNotificationsCount"
+                    class="notif-badge"
+                  >
+                    {{ unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount }}
                   </span>
                 </button>
 
                 <div
                   v-if="notificationsOpen"
-                  class="absolute right-0 mt-2 w-[320px] rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-30"
+                  ref="notificationsPanelEl"
+                  class="notifications-panel"
+                  role="dialog"
+                  aria-label="Central de notificações"
                 >
-                  <p class="px-2 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Notificações
-                  </p>
+                  <div class="notifications-panel-header">
+                    <div>
+                      <p class="notifications-title">
+                        Central de alertas
+                      </p>
+                      <p class="notifications-subtitle">
+                        Envios e entregas próximos do prazo
+                      </p>
+                    </div>
+                    <button
+                      v-if="notifications.length"
+                      type="button"
+                      class="notifications-action"
+                      @click="markNotificationsAsRead"
+                    >
+                      Limpar alerta
+                    </button>
+                  </div>
+
                   <div
                     v-if="!notifications.length"
-                    class="px-2 py-3 text-sm text-slate-500"
+                    class="notifications-empty"
                   >
-                    Sem alertas de envio/entrega.
+                    Nenhum alerta pendente no momento.
                   </div>
-                  <button
-                    v-for="note in notifications"
-                    :key="note.key"
-                    type="button"
-                    class="w-full text-left px-2 py-2 rounded-lg hover:bg-slate-50"
-                    @click="goToNotification(note)"
+
+                  <div
+                    v-else
+                    class="notifications-scroll"
                   >
-                    <p class="text-sm font-semibold text-slate-800">
-                      {{ note.title }}
-                    </p>
-                    <p class="text-xs text-slate-500">
-                      {{ note.subtitle }}
-                    </p>
-                  </button>
+                    <button
+                      v-for="note in notifications"
+                      :key="note.key"
+                      type="button"
+                      class="notification-note"
+                      :class="[
+                        `tone-${note.tone}`,
+                        { 'is-read': isNotificationRead(note) }
+                      ]"
+                      @click="goToNotification(note)"
+                    >
+                      <span
+                        class="notification-note-dot"
+                        aria-hidden="true"
+                      />
+                      <div class="notification-note-body">
+                        <p class="notification-note-title">
+                          {{ note.title }}
+                        </p>
+                        <p class="notification-note-subtitle">
+                          {{ note.subtitle }}
+                        </p>
+                      </div>
+                      <span class="notification-note-chip">
+                        {{ note.tag }}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div class="relative">
+              <div
+                ref="profileMenuEl"
+                class="relative"
+              >
                 <button
                   type="button"
                   class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -557,8 +627,13 @@ export default {
     const sidebarEl = ref(null)
     const menuButtonEl = ref(null)
     const profileOpen = ref(false)
+    const profileMenuEl = ref(null)
     const notificationsOpen = ref(false)
+    const notificationsMenuEl = ref(null)
+    const notificationsButtonEl = ref(null)
+    const notificationsPanelEl = ref(null)
     const notifications = ref([])
+    const readNotificationKeys = ref({})
     const lastInteractionAt = ref(Date.now())
     const idleLimitMs = 10 * 60 * 1000
     let idleTimer = null
@@ -593,8 +668,51 @@ export default {
       return `${label} em ${days} dia(s) (${formatDate(date)})`
     }
 
+    const noteMeta = (days) => {
+      if (days < 0) return { tone: 'danger', tag: 'Atrasado' }
+      if (days === 0) return { tone: 'warning', tag: 'Hoje' }
+      return { tone: 'info', tag: 'Próximo' }
+    }
+
+    const unreadNotificationsCount = computed(() => {
+      return notifications.value.reduce((total, note) => {
+        return total + (readNotificationKeys.value[note.key] ? 0 : 1)
+      }, 0)
+    })
+
     const markInteraction = () => {
       lastInteractionAt.value = Date.now()
+    }
+
+    const isNotificationRead = (note) => {
+      if (!note?.key) return true
+      return !!readNotificationKeys.value[note.key]
+    }
+
+    const pruneReadNotifications = (items) => {
+      const activeKeys = new Set((items || []).map((note) => note.key).filter(Boolean))
+      const nextRead = {}
+      for (const key of Object.keys(readNotificationKeys.value)) {
+        if (activeKeys.has(key)) {
+          nextRead[key] = true
+        }
+      }
+      readNotificationKeys.value = nextRead
+    }
+
+    const markNotificationsAsRead = (items = notifications.value) => {
+      const nextRead = { ...readNotificationKeys.value }
+      let changed = false
+      for (const note of items || []) {
+        if (!note?.key) continue
+        if (!nextRead[note.key]) {
+          nextRead[note.key] = true
+          changed = true
+        }
+      }
+      if (changed) {
+        readNotificationKeys.value = nextRead
+      }
     }
 
     const buildNotifications = (items, kind) => {
@@ -603,23 +721,29 @@ export default {
         if (!row?.id) continue
         const envioDays = daysUntil(row.data_envio_prevista)
         if (Number.isFinite(envioDays) && envioDays <= 2) {
+          const meta = noteMeta(envioDays)
           mapped.push({
             key: `${kind}-${row.id}-envio`,
             route: kind === 'Compra' ? '/compras' : '/vendas',
             title: `${kind} #${row.id} • Envio`,
             subtitle: noteSubtitle('Envio previsto', row.data_envio_prevista, envioDays),
             days: envioDays,
+            tone: meta.tone,
+            tag: meta.tag,
           })
         }
 
         const entregaDays = daysUntil(row.data_entrega_prevista)
         if (Number.isFinite(entregaDays) && entregaDays <= 2) {
+          const meta = noteMeta(entregaDays)
           mapped.push({
             key: `${kind}-${row.id}-entrega`,
             route: kind === 'Compra' ? '/compras' : '/vendas',
             title: `${kind} #${row.id} • Entrega`,
             subtitle: noteSubtitle('Entrega prevista', row.data_entrega_prevista, entregaDays),
             days: entregaDays,
+            tone: meta.tone,
+            tag: meta.tag,
           })
         }
       }
@@ -638,12 +762,35 @@ export default {
         ])
         const compraItems = buildNotifications(comprasRes.data?.items || [], 'Compra')
         const vendaItems = buildNotifications(vendasRes.data?.items || [], 'Venda')
-        notifications.value = [...compraItems, ...vendaItems]
+        const merged = [...compraItems, ...vendaItems]
           .sort((a, b) => a.days - b.days)
           .slice(0, 12)
+        notifications.value = merged
+        pruneReadNotifications(merged)
       } catch {
         notifications.value = []
+        readNotificationKeys.value = {}
       }
+    }
+
+    const handleOutsideMenus = (event) => {
+      if (typeof document === 'undefined') return
+      const target = event.target
+      if (!(target instanceof Node)) return
+
+      if (notificationsOpen.value && notificationsMenuEl.value && !notificationsMenuEl.value.contains(target)) {
+        notificationsOpen.value = false
+      }
+
+      if (profileOpen.value && profileMenuEl.value && !profileMenuEl.value.contains(target)) {
+        profileOpen.value = false
+      }
+    }
+
+    const handleEscapeKey = (event) => {
+      if (event.key !== 'Escape') return
+      notificationsOpen.value = false
+      profileOpen.value = false
     }
 
     function updateIsMobile() {
@@ -662,6 +809,8 @@ export default {
           auth.expireSession()
         }
       }, 30000)
+      window.addEventListener('pointerdown', handleOutsideMenus)
+      window.addEventListener('keydown', handleEscapeKey)
       loadNotifications()
       notificationsTimer = window.setInterval(loadNotifications, 60000)
     })
@@ -670,6 +819,8 @@ export default {
       ;['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evt) => {
         window.removeEventListener(evt, markInteraction)
       })
+      window.removeEventListener('pointerdown', handleOutsideMenus)
+      window.removeEventListener('keydown', handleEscapeKey)
       if (idleTimer) window.clearInterval(idleTimer)
       if (notificationsTimer) window.clearInterval(notificationsTimer)
     })
@@ -705,7 +856,10 @@ export default {
 
     function toggleNotifications() {
       notificationsOpen.value = !notificationsOpen.value
-      if (notificationsOpen.value) profileOpen.value = false
+      if (notificationsOpen.value) {
+        profileOpen.value = false
+        markNotificationsAsRead()
+      }
     }
 
     function logoutNow() {
@@ -715,6 +869,7 @@ export default {
     function goToNotification(note) {
       profileOpen.value = false
       notificationsOpen.value = false
+      markNotificationsAsRead([note])
       if (note?.route) {
         markInteraction()
         window.location.assign(note.route)
@@ -762,8 +917,15 @@ export default {
       sidebarEl,
       menuButtonEl,
       profileOpen,
+      profileMenuEl,
       notificationsOpen,
+      notificationsMenuEl,
+      notificationsButtonEl,
+      notificationsPanelEl,
       notifications,
+      unreadNotificationsCount,
+      isNotificationRead,
+      markNotificationsAsRead,
       userInitials,
       toggleProfile,
       toggleNotifications,
@@ -813,6 +975,235 @@ body {
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.07);
   color: #0f172a;
   backdrop-filter: blur(8px);
+}
+
+.notifications-anchor {
+  position: relative;
+  z-index: 35;
+}
+
+.notif-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+  color: #0f172a;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.notif-trigger:hover {
+  transform: translateY(-1px);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 14px 24px rgba(16, 185, 129, 0.16);
+}
+
+.notif-trigger:focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.5);
+  outline-offset: 2px;
+}
+
+.notif-trigger-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #047857;
+  background: linear-gradient(150deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.08));
+}
+
+.notif-trigger-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.45rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  border: 2px solid #ffffff;
+  background: linear-gradient(140deg, #ef4444, #dc2626);
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.notifications-panel {
+  position: absolute;
+  right: 0;
+  margin-top: 0.7rem;
+  width: min(24rem, calc(100vw - 2rem));
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 28px 48px rgba(15, 23, 42, 0.16);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.notifications-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem 0.65rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0));
+}
+
+.notifications-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #065f46;
+}
+
+.notifications-subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.notifications-action {
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notifications-action:hover {
+  color: #065f46;
+}
+
+.notifications-empty {
+  padding: 1rem;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.notifications-scroll {
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.notification-note {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.8rem;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.58rem 0.62rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+}
+
+.notification-note:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.notification-note.is-read {
+  opacity: 0.72;
+}
+
+.notification-note-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 9999px;
+  background: #22c55e;
+}
+
+.notification-note-body {
+  min-width: 0;
+}
+
+.notification-note-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-note-subtitle {
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.notification-note-chip {
+  border-radius: 9999px;
+  padding: 0.18rem 0.45rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #334155;
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.notification-note.tone-danger .notification-note-dot {
+  background: #ef4444;
+}
+
+.notification-note.tone-danger .notification-note-chip {
+  color: #991b1b;
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(254, 226, 226, 0.9);
+}
+
+.notification-note.tone-warning .notification-note-dot {
+  background: #f59e0b;
+}
+
+.notification-note.tone-warning .notification-note-chip {
+  color: #92400e;
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(254, 243, 199, 0.9);
+}
+
+.notification-note.tone-info .notification-note-dot {
+  background: #0ea5e9;
+}
+
+.notification-note.tone-info .notification-note-chip {
+  color: #155e75;
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(224, 242, 254, 0.9);
 }
 
 .nav-item {
