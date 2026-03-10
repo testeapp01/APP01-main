@@ -134,4 +134,38 @@ final class AuthControllerTest extends TestCase
         $this->assertNotSame(md5($plainPassword), $stored);
         $this->assertTrue(password_verify($plainPassword, $stored));
     }
+
+    public function testLoginWorksWithPortugueseUsersColumns(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, email TEXT NOT NULL, senha TEXT NOT NULL, perfil TEXT)');
+
+        $plainPassword = 'secret123';
+        $stmt = $pdo->prepare('INSERT INTO users (nome, email, senha, perfil) VALUES (:nome, :email, :senha, :perfil)');
+        $stmt->execute([
+            'nome' => 'Usuario Legado',
+            'email' => 'legado@example.com',
+            'senha' => $plainPassword,
+            'perfil' => 'operador',
+        ]);
+
+        $GLOBALS['SANITIZED_INPUT'] = [
+            'email' => 'legado@example.com',
+            'password' => $plainPassword,
+        ];
+
+        ob_start();
+        (new AuthController($pdo))->login();
+        $raw = ob_get_clean();
+
+        $this->assertSame(200, http_response_code());
+        $payload = json_decode((string)$raw, true);
+        $this->assertIsArray($payload);
+        $this->assertSame('Usuario Legado', $payload['user']['name'] ?? null);
+        $this->assertSame('operador', $payload['user']['role'] ?? null);
+
+        $stored = (string)$pdo->query('SELECT senha FROM users WHERE email = "legado@example.com"')->fetchColumn();
+        $this->assertTrue(password_verify($plainPassword, $stored));
+    }
 }
