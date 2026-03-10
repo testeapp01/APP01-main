@@ -339,6 +339,50 @@ class AuthController
             // Keep static fallbacks when table discovery is not allowed.
         }
 
+        $infoSchemaTables = [];
+        try {
+            $stmt = $this->pdo->query(
+                'SELECT TABLE_NAME, LOWER(COLUMN_NAME) AS column_name
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()'
+            );
+            if ($stmt !== false) {
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $columnsByTable = [];
+                foreach ($rows as $row) {
+                    $tableName = strtolower(trim((string)($row['TABLE_NAME'] ?? '')));
+                    $columnName = strtolower(trim((string)($row['column_name'] ?? '')));
+                    if ($tableName === '' || $columnName === '') {
+                        continue;
+                    }
+
+                    if (!isset($columnsByTable[$tableName])) {
+                        $columnsByTable[$tableName] = [];
+                    }
+                    $columnsByTable[$tableName][$columnName] = true;
+                }
+
+                foreach ($columnsByTable as $tableName => $columnsSet) {
+                    $hasLoginColumn = isset($columnsSet['email'])
+                        || isset($columnsSet['login'])
+                        || isset($columnsSet['usuario'])
+                        || isset($columnsSet['username'])
+                        || isset($columnsSet['nome'])
+                        || isset($columnsSet['name']);
+                    $hasPasswordColumn = isset($columnsSet['password'])
+                        || isset($columnsSet['senha'])
+                        || isset($columnsSet['passwd'])
+                        || isset($columnsSet['pass']);
+
+                    if ($hasLoginColumn && $hasPasswordColumn) {
+                        $infoSchemaTables[] = $tableName;
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            // Keep static fallbacks when information_schema access is not allowed.
+        }
+
         $discovered = [];
         foreach ($allTables as $tableName) {
             if (preg_match('/(user|usuario|acesso|login|conta)/i', $tableName) === 1) {
@@ -346,7 +390,7 @@ class AuthController
             }
         }
 
-        $this->usersTableCandidatesCache = array_values(array_unique(array_merge($preferred, $discovered, $allTables)));
+        $this->usersTableCandidatesCache = array_values(array_unique(array_merge($preferred, $infoSchemaTables, $discovered, $allTables)));
 
         return $this->usersTableCandidatesCache;
     }
