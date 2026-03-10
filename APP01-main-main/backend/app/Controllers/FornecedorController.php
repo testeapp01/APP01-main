@@ -1,0 +1,156 @@
+<?php
+namespace App\Controllers;
+
+use PDO;
+
+class FornecedorController
+{
+    private ?array $fornecedorColumnsCache = null;
+
+    public function __construct(private PDO $pdo)
+    {
+    }
+
+    private function fornecedorColumns(): array
+    {
+        if ($this->fornecedorColumnsCache !== null) {
+            return $this->fornecedorColumnsCache;
+        }
+
+        $stmt = $this->pdo->query('SHOW COLUMNS FROM fornecedores');
+        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $this->fornecedorColumnsCache = array_values(array_filter(array_map(
+            static fn(array $row) => $row['Field'] ?? null,
+            $cols
+        )));
+
+        return $this->fornecedorColumnsCache;
+    }
+
+    private function hasFornecedorColumn(string $column): bool
+    {
+        return in_array($column, $this->fornecedorColumns(), true);
+    }
+
+    public function index(): void
+    {
+        $wanted = ['id', 'razao_social', 'endereco', 'numero', 'complemento', 'bairro', 'cep', 'cidade', 'cnpj', 'email', 'telefone', 'status', 'uf'];
+        $select = array_map(function (string $column): string {
+            if ($this->hasFornecedorColumn($column)) {
+                return $column;
+            }
+            if ($column === 'status') {
+                return '1 AS status';
+            }
+            return 'NULL AS ' . $column;
+        }, $wanted);
+
+        $stmt = $this->pdo->query('SELECT ' . implode(', ', $select) . ' FROM fornecedores ORDER BY razao_social ASC');
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($items);
+    }
+
+    public function create(): void
+    {
+        $data = \App\Helpers\Request::body();
+        if (empty($data['razao_social'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Razão social obrigatória']);
+            return;
+        }
+        if (isset($data['status'])) {
+            $data['status'] = $data['status'] ? 1 : 0;
+        } else {
+            $data['status'] = 1;
+        }
+        $data['uf'] = $data['uf'] ?? null;
+        $data['endereco'] = $data['endereco'] ?? null;
+        $data['numero'] = $data['numero'] ?? null;
+        $data['complemento'] = $data['complemento'] ?? null;
+        $data['bairro'] = $data['bairro'] ?? null;
+        $data['cep'] = $data['cep'] ?? null;
+        $data['cidade'] = $data['cidade'] ?? null;
+        require_once __DIR__.'/../Helpers/Validator.php';
+
+        if (!empty($data['cnpj'])) {
+            $cnpjDigits = preg_replace('/\D/', '', (string)$data['cnpj']);
+            if (strlen($cnpjDigits) !== 14 || !\Validator::validateCNPJ($cnpjDigits)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'CNPJ inválido']);
+                return;
+            }
+            $data['cnpj'] = $cnpjDigits;
+        }
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Telefone inválido']);
+            return;
+        }
+
+        if ($data['email'] && !\Validator::validateEmail($data['email'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Email inválido']);
+            return;
+        }
+        $possible = [
+            'razao_social' => $data['razao_social'],
+            'endereco' => $data['endereco'] ?? null,
+            'numero' => $data['numero'] ?? null,
+            'complemento' => $data['complemento'] ?? null,
+            'bairro' => $data['bairro'] ?? null,
+            'cep' => $data['cep'] ?? null,
+            'cidade' => $data['cidade'] ?? null,
+            'cnpj' => $data['cnpj'] ?? null,
+            'email' => $data['email'] ?? null,
+            'telefone' => $data['telefone'] ?? null,
+            'status' => $data['status'],
+            'uf' => $data['uf'] ?? null,
+        ];
+
+        $insertData = array_filter(
+            $possible,
+            fn($value, $column) => $this->hasFornecedorColumn((string)$column),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        if (empty($insertData)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Tabela fornecedores sem colunas compatíveis para inserção.']);
+            return;
+        }
+
+        $columns = array_keys($insertData);
+        $placeholders = array_map(static fn(string $column) => ':' . $column, $columns);
+        $sql = 'INSERT INTO fornecedores (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($insertData);
+        } catch (\PDOException $e) {
+            if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+                http_response_code(409);
+                echo json_encode(['error' => 'CNPJ já cadastrado.']);
+                return;
+            }
+
+            http_response_code(500);
+            echo json_encode(['error' => 'Falha ao salvar fornecedor.']);
+            return;
+        }
+
+        http_response_code(201);
+        echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
+    }
+
+    public function delete(int $id): void
+    {
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM fornecedores WHERE id = :id');
+            $stmt->execute(['id' => $id]);
+            echo json_encode(['message' => 'Fornecedor removido com sucesso']);
+        } catch (\PDOException $e) {
+            http_response_code(409);
+            echo json_encode(['error' => 'Não foi possível excluir o fornecedor. Verifique vínculos com compras.']);
+        }
+    }
+}

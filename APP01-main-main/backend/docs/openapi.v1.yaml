@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: Hortifrut API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Healthy
+        '503':
+          description: Degraded
+  /metrics:
+    get:
+      summary: Runtime metrics snapshot
+      responses:
+        '200':
+          description: Metrics payload
+  /auth/login:
+    post:
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated
+        '401':
+          description: Invalid credentials
+        '422':
+          description: Invalid payload
+  /compras:
+    post:
+      summary: Create purchase header with items
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+    get:
+      summary: List purchases
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /compras/cabecalhos/{id}/confirmar-entrega:
+    post:
+      summary: Confirm purchase receipt
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Confirmed
+        '409':
+          description: Invalid transition
+  /vendas:
+    post:
+      summary: Create sale
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+    get:
+      summary: List sales
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /vendas/deliver:
+    post:
+      summary: Confirm sale delivery
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Delivered
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
