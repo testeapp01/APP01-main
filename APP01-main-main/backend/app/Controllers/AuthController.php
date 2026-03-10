@@ -11,6 +11,7 @@ class AuthController
     private string $resolvedIdColumn = 'id';
     private string $resolvedPasswordColumn = 'password';
     private string $resolvedUsersTable = 'users';
+    private ?array $usersTableCandidatesCache = null;
 
     public function __construct(private PDO $pdo)
     {
@@ -211,7 +212,7 @@ class AuthController
 
         foreach ($tableCandidates as $tableName) {
             try {
-                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 1000');
+                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 5000');
                 if ($stmt === false) {
                     $hadSqlError = true;
                     continue;
@@ -266,7 +267,7 @@ class AuthController
         $hadSqlError = false;
         foreach ($tableCandidates as $tableName) {
             try {
-                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 1000');
+                $stmt = $this->pdo->query('SELECT * FROM ' . $this->quotedIdentifier($tableName) . ' LIMIT 5000');
                 if ($stmt === false) {
                     $hadSqlError = true;
                     continue;
@@ -306,7 +307,48 @@ class AuthController
 
     private function usersTableCandidates(): array
     {
-        return ['users', 'usuarios', 'usuario', 'tb_users', 'tbl_users', 'user'];
+        if ($this->usersTableCandidatesCache !== null) {
+            return $this->usersTableCandidatesCache;
+        }
+
+        $preferred = [
+            'users',
+            'usuarios',
+            'usuario',
+            'tb_users',
+            'tbl_users',
+            'tb_usuario',
+            'tbl_usuario',
+            'usuarios_sistema',
+            'user',
+        ];
+
+        $allTables = [];
+        try {
+            $stmt = $this->pdo->query('SHOW TABLES');
+            if ($stmt !== false) {
+                $rows = $stmt->fetchAll(PDO::FETCH_NUM);
+                foreach ($rows as $row) {
+                    $tableName = strtolower(trim((string)($row[0] ?? '')));
+                    if ($tableName !== '') {
+                        $allTables[] = $tableName;
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            // Keep static fallbacks when table discovery is not allowed.
+        }
+
+        $discovered = [];
+        foreach ($allTables as $tableName) {
+            if (preg_match('/(user|usuario|acesso|login|conta)/i', $tableName) === 1) {
+                $discovered[] = $tableName;
+            }
+        }
+
+        $this->usersTableCandidatesCache = array_values(array_unique(array_merge($preferred, $discovered, $allTables)));
+
+        return $this->usersTableCandidatesCache;
     }
 
     private function matchesLoginFromRow(array $normalized, string $login, string $loginLower): bool
