@@ -1,0 +1,57 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASS=nautico2@
+      - DB_NAME=hortifrutnectar
+      - CORS_ALLOWED_ORIGINS=https://safrion.store,http://safrion.store,https://www.safrion.store,http://www.safrion.store,https://api.safrion.store,http://api.safrion.store,http://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,https://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,http://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,https://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,http://api.187.77.32.86.sslip.io,https://api.187.77.32.86.sslip.io
+    depends_on:
+      - db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend_external.rule=Host(`api.safrion.store`) || Host(`api.187.77.32.86.sslip.io`) || Host(`hw448ggg0coooccckko804kow.187.77.32.86.sslip.io`)"
+      - "traefik.http.routers.backend_external.priority=90"
+      - "traefik.http.routers.backend_external.service=backend"
+      - "traefik.http.routers.backend_external.tls=true"
+      - "traefik.http.routers.backend_external.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=80"
+      - "traefik.http.routers.backend_api_from_frontend.rule=(Host(`safrion.store`) || Host(`www.safrion.store`) || Host(`lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io`)) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend_api_from_frontend.priority=100"
+      - "traefik.http.routers.backend_api_from_frontend.service=backend"
+      - "traefik.http.routers.backend_api_from_frontend.tls=true"
+      - "traefik.http.routers.backend_api_from_frontend.tls.certresolver=letsencrypt"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`safrion.store`) || Host(`www.safrion.store`) || Host(`lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io`)"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+  db:
+    image: mysql:8.0
+    restart: always
+    container_name: safrion_v1_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: nautico2@
+      MYSQL_DATABASE: hortifrutnectar
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: nautico2@
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:

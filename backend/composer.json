@@ -1,0 +1,24 @@
+{
+    "name": "hortifrut/box-management",
+    "description": "Sistema de gestão interna para box de hortifrut - backend",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "firebase/php-jwt": "^6.10",
+        "monolog/monolog": "^3.0",
+        "vlucas/phpdotenv": "^5.5",
+        "dompdf/dompdf": "^2.0",
+        "phpoffice/phpspreadsheet": "^1.30"
+    },
+    "config": {
+        "audit": { "block-insecure": false }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}
