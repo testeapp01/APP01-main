@@ -66,7 +66,7 @@ class AuthController
             return;
         }
 
-        if (!$user || !password_verify($password, $user['password'])) {
+        if (!$user || !$this->passwordMatchesAndMaybeUpgrade((int)$user['id'], (string)($user['password'] ?? ''), $password)) {
             http_response_code(401);
             echo json_encode(['error' => 'Credenciais inválidas']);
             return;
@@ -139,5 +139,57 @@ class AuthController
     {
         $normalized = strtolower(trim((string)$role));
         return $normalized !== '' ? $normalized : 'cliente';
+    }
+
+    private function passwordMatchesAndMaybeUpgrade(int $userId, string $storedPassword, string $inputPassword): bool
+    {
+        if ($storedPassword === '') {
+            return false;
+        }
+
+        if (password_verify($inputPassword, $storedPassword)) {
+            if (password_needs_rehash($storedPassword, PASSWORD_BCRYPT)) {
+                $this->upgradePasswordHash($userId, $inputPassword);
+            }
+
+            return true;
+        }
+
+        // Backward compatibility: users manually inserted with plain text password.
+        if (hash_equals($storedPassword, $inputPassword)) {
+            $this->upgradePasswordHash($userId, $inputPassword);
+            return true;
+        }
+
+        // Legacy compatibility: hashes generated manually in database.
+        if (preg_match('/^[a-f0-9]{32}$/i', $storedPassword) === 1 && hash_equals(strtolower($storedPassword), md5($inputPassword))) {
+            $this->upgradePasswordHash($userId, $inputPassword);
+            return true;
+        }
+
+        if (preg_match('/^[a-f0-9]{40}$/i', $storedPassword) === 1 && hash_equals(strtolower($storedPassword), sha1($inputPassword))) {
+            $this->upgradePasswordHash($userId, $inputPassword);
+            return true;
+        }
+
+        return false;
+    }
+
+    private function upgradePasswordHash(int $userId, string $plainPassword): void
+    {
+        $hash = password_hash($plainPassword, PASSWORD_BCRYPT);
+        if ($hash === false) {
+            return;
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('UPDATE users SET password = :password WHERE id = :id');
+            $stmt->execute([
+                'password' => $hash,
+                'id' => $userId,
+            ]);
+        } catch (\Throwable) {
+            // Keep login successful even if hash upgrade fails.
+        }
     }
 }
