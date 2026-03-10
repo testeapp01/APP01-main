@@ -12,6 +12,7 @@ class AuthController
     private string $resolvedPasswordColumn = 'password';
     private string $resolvedUsersTable = 'users';
     private ?array $usersTableCandidatesCache = null;
+    private ?string $lastLookupError = null;
 
     public function __construct(private PDO $pdo)
     {
@@ -45,7 +46,10 @@ class AuthController
         [$user, $queryFailed] = $this->findUserForLogin($login);
         if ($queryFailed) {
             http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível autenticar no momento.']);
+            echo json_encode([
+                'error' => 'Não foi possível autenticar no momento.',
+                'code' => $this->classifyLookupError(),
+            ]);
             return;
         }
 
@@ -143,7 +147,10 @@ class AuthController
                         $this->resolvedUsersTable = $tableName;
                         return [$user, false];
                     }
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    if ($this->lastLookupError === null) {
+                        $this->lastLookupError = $e->getMessage();
+                    }
                     $hadSqlError = true;
                 }
             }
@@ -191,7 +198,10 @@ class AuthController
                     if ($user) {
                         return [$user, false];
                     }
-                } catch (\Throwable) {
+                } catch (\Throwable $e) {
+                    if ($this->lastLookupError === null) {
+                        $this->lastLookupError = $e->getMessage();
+                    }
                     $hadSqlError = true;
                 }
             }
@@ -219,7 +229,10 @@ class AuthController
                 }
 
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                if ($this->lastLookupError === null) {
+                    $this->lastLookupError = $e->getMessage();
+                }
                 $hadSqlError = true;
                 continue;
             }
@@ -274,7 +287,10 @@ class AuthController
                 }
 
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                if ($this->lastLookupError === null) {
+                    $this->lastLookupError = $e->getMessage();
+                }
                 $hadSqlError = true;
                 continue;
             }
@@ -441,6 +457,28 @@ class AuthController
 
         $value = trim((string)($normalized[$column] ?? ''));
         return $value !== '' ? $value : null;
+    }
+
+    private function classifyLookupError(): string
+    {
+        $message = strtolower((string)($this->lastLookupError ?? ''));
+        if ($message === '') {
+            return 'auth_lookup_unknown';
+        }
+
+        if (str_contains($message, 'doesn\'t exist') || str_contains($message, 'no such table')) {
+            return 'auth_users_table_missing';
+        }
+
+        if (str_contains($message, 'access denied') || str_contains($message, 'permission denied')) {
+            return 'auth_users_access_denied';
+        }
+
+        if (str_contains($message, 'unknown column')) {
+            return 'auth_users_schema_mismatch';
+        }
+
+        return 'auth_lookup_query_failed';
     }
 
     private function buildLoginWhere(string $emailColumn, string $nameColumn, string $login): array
