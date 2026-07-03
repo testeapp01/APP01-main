@@ -857,7 +857,7 @@ export default {
         }
         await api.post('/api/v1/compras', payload)
         this.purchaseFeedback = { message: 'Compra criada com sucesso.', type: 'success' }
-        this.novaCompra = { tipo: 'venda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 }
+        this.novaCompra = { tipo: 'compra', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadCompras()
       } catch (e) {
@@ -958,8 +958,8 @@ export default {
       const payload = {
         tipo_operacao: this.editCompra.tipo_operacao,
         fornecedor_id: this.editCompra.fornecedor_id,
-        cliente_id: this.editCompra.tipo_operacao === 'venda' ? this.editCompra.cliente_id : null,
-        motorista_id: this.editCompra.tipo_operacao === 'venda' ? this.editCompra.motorista_id : null,
+        cliente_id: this.editCompra.tipo_operacao === 'revenda' ? this.editCompra.cliente_id : null,
+        motorista_id: this.editCompra.tipo_operacao === 'revenda' ? this.editCompra.motorista_id : null,
         data_envio_prevista: this.editCompra.data_envio_prevista || null,
         data_entrega_prevista: this.editCompra.data_entrega_prevista || null,
         status: this.normalizeCompraStatus(this.editCompra.status),
@@ -999,7 +999,7 @@ export default {
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },
-    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { tipo: 'venda', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingPurchase = false; this.purchaseFeedback = { message: '', type: 'info' }; this.novaCompra = { tipo: 'compra', fornecedor_id: null, cliente_id: null, produto_id: null, motorista_id: null, comissao_intermediador: null, comissao_motorista: null, comissao_intermediador_em_dinheiro: true, comissao_motorista_em_dinheiro: true, data_envio_prevista: '', data_entrega_prevista: '', quantidade: 0, valor_unitario: 0 } },
     prevPage() { if (this.currentPage > 1) { this.currentPage--; this.loadCompras() } },
     nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.loadCompras() } },
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadCompras() },
