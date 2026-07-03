@@ -37,42 +37,61 @@ export default {
 
 <style scoped>
 .hero-shell {
-  background: linear-gradient(145deg, rgba(16,185,129,0.12), rgba(14,165,233,0.08) 55%, rgba(255,255,255,0.9));
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 18px;
-  padding: 1rem;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
-  backdrop-filter: blur(6px);
-  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
 }
+
 .hero-content {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
+
 .hero-title {
   font-family: var(--font-display, 'Sora', 'Manrope', sans-serif);
-  font-size: 1.25rem;
+  font-size: 2rem;
   font-weight: 800;
-  color: #111827;
+  color: #0F172A;
   letter-spacing: -0.02em;
+  line-height: 1.2;
 }
+
 .hero-subtitle {
   margin-top: 0.25rem;
-  font-size: 0.92rem;
-  color: #475569;
+  font-size: 1rem;
+  color: #64748B;
+  line-height: 1.5;
+  font-weight: 500;
 }
+
 .hero-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
+  align-items: center;
 }
+
 .hero-context {
-  margin-top: 0.85rem;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #E2E8F0;
 }
+
 @media (min-width: 768px) {
-  .hero-shell { padding: 1.25rem; margin-bottom: 1.25rem; }
-  .hero-content { flex-direction: row; align-items: center; justify-content: space-between; }
-  .hero-title { font-size: 1.65rem; }
+  .hero-shell { 
+    padding: 2rem 1.75rem; 
+    margin-bottom: 1.75rem;
+  }
+  .hero-content { 
+    flex-direction: row; 
+    align-items: flex-start; 
+    justify-content: space-between;
+  }
+  .hero-title { font-size: 2.25rem; }
+  .hero-subtitle { font-size: 1.05rem; }
 }
 </style>

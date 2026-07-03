@@ -5,38 +5,56 @@
       subtitle="Gerencie dados de relacionamento dos clientes em um único ambiente."
     >
       <template #actions>
-        <BaseButton
-          class="btn-secondary"
-          @click="refreshClients"
-        >
-          Atualizar
-        </BaseButton>
-        <BaseButton
-          class="btn-primary"
-          @click="openCreateClient"
-        >
-          Adicionar Cliente
-        </BaseButton>
+        <div class="flex flex-col gap-3 w-full sm:flex-row sm:items-end">
+          <input
+            v-model="queryClients"
+            placeholder="Buscar por nome ou CPF/CNPJ"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
+            @input="onQueryClients"
+          >
+          <div class="flex gap-2">
+            <BaseButton
+              v-if="hasActiveFilterClients"
+              variant="secondary"
+              class="w-full sm:w-auto whitespace-nowrap"
+              @click="clearFiltersClients"
+            >
+              Limpar
+            </BaseButton>
+            <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="refreshClients"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              class="btn-primary w-full sm:w-auto whitespace-nowrap"
+              @click="openCreateClient"
+            >
+              + Cliente
+            </BaseButton>
+          </div>
+        </div>
       </template>
     </PageHero>
     <section class="saas-context-grid">
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Clientes
+          Total Clientes
         </div>
         <div class="saas-kpi-value">
-          {{ visibleClients.length }}
+          {{ filteredClients.length }}
         </div>
         <div class="saas-kpi-help">
-          Cadastros disponíveis
+          Registros exibidos
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Motoristas
+          Total Motoristas
         </div>
         <div class="saas-kpi-value">
-          {{ visibleDrivers.length }}
+          {{ filteredDrivers.length }}
         </div>
         <div class="saas-kpi-help">
           Base operacional
@@ -44,13 +62,13 @@
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Página Clientes
+          Ações
         </div>
         <div class="saas-kpi-value">
-          {{ currentPageClients }}
+          {{ editingClientIndex !== null ? 'Edição' : 'Cadastro' }}
         </div>
         <div class="saas-kpi-help">
-          Navegação ativa
+          Modo de trabalho
         </div>
       </article>
     </section>
@@ -87,54 +105,30 @@
             {{ row.email || '-' }}
           </template>
           <template #status="{ row }">
-            {{ row.status ? 'ATIVO' : 'INATIVO' }}
+            <span
+              :class="[
+                'dt-badge',
+                row.status ? 'success' : 'warn'
+              ]"
+            >
+              {{ row.status ? '✓ ATIVO' : '⏱ INATIVO' }}
+            </span>
           </template>
           <template #acoes="{ row }">
-            <div class="flex items-center gap-2">
-              <BaseButton
-                variant="ghost"
-                @click="editClient(row)"
-              >
-                Editar
-              </BaseButton>
-              <BaseButton
-                variant="destructive"
-                @click="deleteClient(row)"
-              >
-                Excluir
-              </BaseButton>
+            <div @click.stop>
+              <ActionDropdown
+                :items="getClientRowActions(row)"
+                :menu-height="180"
+                @select="handleClientRowAction($event, row)"
+              />
             </div>
           </template>
         </BaseTable>
-        <div class="mt-2 page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPageClients<=1"
-            @click="prevClients"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPagesClients)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPageClients===p }"
-              @click="goToClients(p)"
-            >
-              {{ p }}
-            </button>
-          </template>
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPageClients>=totalPagesClients"
-            @click="nextClients"
-          >
-            Próximo
-          </BaseButton>
-        </div>
+        <PaginationPremium
+          :current-page.sync="currentPageClients"
+          :page-size.sync="pageSize"
+          :total="visibleClients.length"
+        />
       </div>
       <ListState
         :loading="loadingClients"
@@ -370,6 +364,8 @@ import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
+import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import api from '../services/api'
 
 export default {
@@ -383,9 +379,12 @@ export default {
     ListState,
     FormFeedback,
     ConfirmDialog,
+    PaginationPremium,
+    ActionDropdown,
   },
   data() {
     return {
+      queryClients: '',
       clients: [],
       motoristas: [],
       loadingClients: true,
@@ -416,14 +415,24 @@ export default {
     };
   },
   computed: {
-    clientCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'cpf_cnpj', label: 'CPF / CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
-    driverCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'placa', label: 'Placa' }, { key: 'veiculo', label: 'Veículo' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
+    clientCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'cpf_cnpj', label: 'CPF / CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'acoes', label: 'Ações' } ] },
+    driverCols() { return [ { key: 'nome', label: 'Nome' }, { key: 'placa', label: 'Placa' }, { key: 'veiculo', label: 'Veículo' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'status', label: 'Status' }, { key: 'acoes', label: 'Ações' } ] },
     visibleClients() { return (this.clients||[]).filter(c=> c && (c.nome||c.cpf_cnpj||c.telefone||c.email)) },
-    totalPagesClients() { return Math.max(1, Math.ceil(this.visibleClients.length / this.pageSize)) },
-    paginatedClients() { const s=(this.currentPageClients-1)*this.pageSize; return this.visibleClients.slice(s,s+this.pageSize) },
+    filteredClients() {
+      return this.visibleClients.filter(c => {
+        const matchesQuery = !this.queryClients || 
+          c.nome?.toLowerCase().includes(this.queryClients.toLowerCase()) ||
+          c.cpf_cnpj?.toLowerCase().includes(this.queryClients.toLowerCase())
+        return matchesQuery
+      })
+    },
+    hasActiveFilterClients() { return this.queryClients },
+    totalPagesClients() { return Math.max(1, Math.ceil(this.filteredClients.length / this.pageSize)) },
+    paginatedClients() { const s=(this.currentPageClients-1)*this.pageSize; return this.filteredClients.slice(s,s+this.pageSize) },
     visibleDrivers() { return (this.motoristas||[]).filter(m=> m && (m.nome||m.placa||m.veiculo||m.telefone)) },
-    totalPagesDrivers() { return Math.max(1, Math.ceil(this.visibleDrivers.length / this.pageSize)) },
-    paginatedDrivers() { const s=(this.currentPageDrivers-1)*this.pageSize; return this.visibleDrivers.slice(s,s+this.pageSize) },
+    filteredDrivers() { return this.visibleDrivers },
+    totalPagesDrivers() { return Math.max(1, Math.ceil(this.filteredDrivers.length / this.pageSize)) },
+    paginatedDrivers() { const s=(this.currentPageDrivers-1)*this.pageSize; return this.filteredDrivers.slice(s,s+this.pageSize) },
     ufOptions() {
       return [
         { value: '', label: 'UF' },
@@ -437,6 +446,19 @@ export default {
     this.fetchTiposCaminhao()
   },
   methods: {
+    refreshClients() { this.fetchClients() },
+    onQueryClients() { this.currentPageClients = 1 },
+    clearFiltersClients() { this.queryClients = ''; this.currentPageClients = 1 },
+    getClientRowActions(row) {
+      return [
+        { key: 'editar', label: 'Editar' },
+        { key: 'excluir', label: 'Excluir', danger: true },
+      ]
+    },
+    handleClientRowAction(action, row) {
+      if (action === 'editar') this.editClient(row)
+      if (action === 'excluir') this.deleteClient(row)
+    },
     async fetchClients() {
       this.loadingClients = true
       try {

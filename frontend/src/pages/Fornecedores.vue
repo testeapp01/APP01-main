@@ -5,53 +5,85 @@
       subtitle="Centralize fornecedores, contatos e disponibilidade de forma confiável."
     >
       <template #actions>
-        <BaseButton
-          class="btn-secondary"
-          @click="refreshFornecedores"
-        >
-          Atualizar
-        </BaseButton>
-        <BaseButton
-          class="btn-primary"
-          @click="openCreateFornecedor"
-        >
-          Adicionar Fornecedor
-        </BaseButton>
+        <div class="flex flex-col gap-3 w-full sm:flex-row sm:items-end">
+          <input
+            v-model="query"
+            placeholder="Buscar por razão social ou CNPJ"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
+            @input="onQuery"
+          >
+          <select
+            v-model="statusFilter"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
+          >
+            <option value="">
+              Todos status
+            </option>
+            <option value="ATIVO">
+              ATIVO
+            </option>
+            <option value="INATIVO">
+              INATIVO
+            </option>
+          </select>
+          <div class="flex gap-2">
+            <BaseButton
+              v-if="hasActiveFilter"
+              variant="secondary"
+              class="w-full sm:w-auto whitespace-nowrap"
+              @click="clearFilters"
+            >
+              Limpar
+            </BaseButton>
+            <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="refreshFornecedores"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              class="btn-primary w-full sm:w-auto whitespace-nowrap"
+              @click="openCreateFornecedor"
+            >
+              + Fornecedor
+            </BaseButton>
+          </div>
+        </div>
       </template>
     </PageHero>
 
     <section class="saas-context-grid">
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Fornecedores
+          Total de Fornecedores
         </div>
         <div class="saas-kpi-value">
-          {{ visibleFornecedores.length }}
+          {{ filteredFornecedores.length }}
         </div>
         <div class="saas-kpi-help">
-          Cadastros ativos na listagem
+          Registros no período
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Página Atual
+          Fornecedores Ativos
         </div>
         <div class="saas-kpi-value">
-          {{ currentPageFornecedores }}
+          {{ activeFornecedoresCount }}
         </div>
         <div class="saas-kpi-help">
-          Controle de navegação
+          Base operacional
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Ação Primária
+          Inativos
         </div>
         <div class="saas-kpi-value">
-          Cadastro
+          {{ inactiveFornecedoresCount }}
         </div>
         <div class="saas-kpi-help">
-          Fluxo contextual em painel lateral
+          Suspensão de contrato
         </div>
       </article>
     </section>
@@ -90,64 +122,103 @@
             {{ row.email || '-' }}
           </template>
           <template #status="{ row }">
-            {{ row.status ? 'ATIVO' : 'INATIVO' }}
+            <span
+              :class="[
+                'dt-badge',
+                row.status ? 'success' : 'warn'
+              ]"
+            >
+              {{ row.status ? '✓ ATIVO' : '⏱ INATIVO' }}
+            </span>
           </template>
           <template #acoes="{ row }">
-            <div class="flex items-center gap-2">
-              <BaseButton
-                variant="ghost"
-                @click="editFornecedor(row)"
-              >
-                Editar
-              </BaseButton>
-              <BaseButton
-                variant="destructive"
-                @click="deleteFornecedor(row)"
-              >
-                Excluir
-              </BaseButton>
+            <div @click.stop>
+              <ActionDropdown
+                :items="getRowActions(row)"
+                :menu-height="180"
+                @select="handleRowAction($event, row)"
+              />
             </div>
           </template>
         </BaseTable>
-        <div class="mt-2 page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPageFornecedores<=1"
-            @click="prevFornecedores"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPagesFornecedores)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPageFornecedores===p }"
-              @click="goToFornecedores(p)"
+      </div>
+    </div>
+    <ListState
+      v-if="loading"
+      :loading="loading"
+      :has-data="filteredFornecedores.length > 0"
+      loading-text="Carregando fornecedores..."
+      empty-title="Nenhum fornecedor encontrado."
+      empty-message="Adicione fornecedores para começar a gerenciar parceiros."
+      action-label="Adicionar Fornecedor"
+      @action="openCreateFornecedor"
+    />
+
+    <div
+      v-if="!loading && filteredFornecedores.length === 0"
+      class="panel-inner content-card mt-4"
+    >
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              class="h-4 w-4"
+              aria-hidden="true"
             >
-              {{ p }}
-            </button>
-          </template>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v4m0 4h.01M12 3a9 9 0 100 18 9 9 0 000-18z"
+              />
+            </svg>
+          </span>
+          <div>
+            <p class="text-sm font-semibold text-slate-700">
+              Sem fornecedores para exibir
+            </p>
+            <p class="text-sm text-slate-600">
+              {{ hasActiveFilter ? 'Ajuste os filtros e tente novamente.' : 'Cadastre o primeiro fornecedor para iniciar o gerenciamento.' }}
+            </p>
+          </div>
+        </div>
+        <div class="flex w-full sm:w-auto gap-2">
           <BaseButton
-            class="btn-secondary"
-            :disabled="currentPageFornecedores>=totalPagesFornecedores"
-            @click="nextFornecedores"
+            v-if="hasActiveFilter"
+            variant="secondary"
+            class="w-full sm:w-auto"
+            @click="clearFilters"
           >
-            Próximo
+            Limpar filtros
+          </BaseButton>
+          <BaseButton
+            variant="primary"
+            class="w-full sm:w-auto"
+            @click="openCreateFornecedor"
+          >
+            Adicionar Fornecedor
           </BaseButton>
         </div>
       </div>
-      <ListState
-        :loading="loading"
-        :has-data="visibleFornecedores.length > 0"
-        loading-text="Carregando fornecedores..."
-        empty-title="Nenhum fornecedor cadastrado."
-        empty-message="Adicione fornecedores para começar."
-        action-label="Adicionar Fornecedor"
-        @action="openCreateFornecedor"
-      />
+    </div>
+
+    <div
+      v-if="filteredFornecedores.length > 0"
+      class="mt-6"
+    >
+      <div class="panel-inner content-card">
+        <PaginationPremium
+          :current-page.sync="currentPageFornecedores"
+          :page-size.sync="pageSize"
+          :total="filteredFornecedores.length"
+          @update:current-page="currentPageFornecedores = $event"
+          @update:page-size="pageSize = $event"
+        />
+      </div>
     </div>
 
     <SideDrawer
@@ -283,7 +354,9 @@ import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
 import api from '../services/api'
+import ActionDropdown from '../components/ui/ActionDropdown.vue'
 
 export default {
   name: 'Fornecedores',
@@ -296,6 +369,8 @@ export default {
     ListState,
     FormFeedback,
     ConfirmDialog,
+    PaginationPremium,
+    ActionDropdown,
   },
   data() {
     return {
@@ -303,6 +378,7 @@ export default {
       loading: true,
       pageSize: 25,
       currentPageFornecedores: 1,
+      totalCount: 0,
       showCreateFornecedor: false,
       submittingFornecedor: false,
       fornecedorFeedback: { message: '', type: 'info' },
@@ -312,13 +388,25 @@ export default {
       confirmDeleteMessage: '',
       deletingFornecedor: false,
       fornecedorToDelete: null,
+      query: '',
+      statusFilter: '',
     }
   },
   computed: {
-    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Ativo' }, { key: 'acoes', label: 'Ações' } ] },
+    fornecedorCols() { return [ { key: 'razao_social', label: 'Razão Social' }, { key: 'cnpj', label: 'CNPJ' }, { key: 'endereco', label: 'Endereço' }, { key: 'uf', label: 'UF' }, { key: 'telefone', label: 'Telefone' }, { key: 'email', label: 'Email' }, { key: 'status', label: 'Status' }, { key: 'acoes', label: 'Ações' } ] },
     visibleFornecedores() { return (this.fornecedores||[]).filter(f=> f && (f.razao_social||f.cnpj||f.telefone||f.email)) },
-    totalPagesFornecedores() { return Math.max(1, Math.ceil(this.visibleFornecedores.length / this.pageSize)) },
-    paginatedFornecedores() { const s=(this.currentPageFornecedores-1)*this.pageSize; return this.visibleFornecedores.slice(s,s+this.pageSize) },
+    filteredFornecedores() {
+      return this.visibleFornecedores.filter(f => {
+        const matchesQuery = !this.query || f.razao_social?.toLowerCase().includes(this.query.toLowerCase()) || f.cnpj?.includes(this.query)
+        const matchesStatus = !this.statusFilter || (this.statusFilter === 'ATIVO' ? f.status : !f.status)
+        return matchesQuery && matchesStatus
+      })
+    },
+    hasActiveFilter() { return this.query || this.statusFilter },
+    activeFornecedoresCount() { return this.filteredFornecedores.filter(f => f.status).length },
+    inactiveFornecedoresCount() { return this.filteredFornecedores.filter(f => !f.status).length },
+    totalPagesFornecedores() { return Math.max(1, Math.ceil(this.filteredFornecedores.length / this.pageSize)) },
+    paginatedFornecedores() { const s=(this.currentPageFornecedores-1)*this.pageSize; return this.filteredFornecedores.slice(s,s+this.pageSize) },
     ufOptions() {
       return [
         { value: '', label: 'UF' },
@@ -330,6 +418,24 @@ export default {
     this.fetchFornecedores()
   },
   methods: {
+    onQuery() {
+      this.currentPageFornecedores = 1
+    },
+    clearFilters() {
+      this.query = ''
+      this.statusFilter = ''
+      this.currentPageFornecedores = 1
+    },
+    getRowActions(row) {
+      return [
+        { key: 'editar', label: 'Editar' },
+        { key: 'excluir', label: 'Excluir', danger: true },
+      ]
+    },
+    handleRowAction(action, row) {
+      if (action === 'editar') this.editFornecedor(row)
+      if (action === 'excluir') this.deleteFornecedor(row)
+    },
     async fetchFornecedores() {
       this.loading = true
       try {

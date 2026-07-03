@@ -5,38 +5,52 @@
       subtitle="Acompanhe pedidos e operação de entrega com visão comercial em tempo real."
     >
       <template #actions>
-        <input
-          v-model="query"
-          placeholder="Buscar por cliente ou produto"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
-          @input="onQuery"
-        >
-        <select
-          v-model="statusFilter"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
-        >
-          <option value="">
-            Todos status
-          </option>
-          <option value="AGUARDANDO">
-            AGUARDANDO
-          </option>
-          <option value="ENTREGUE">
-            ENTREGUE
-          </option>
-        </select>
-        <BaseButton
-          class="btn-secondary w-full sm:w-auto"
-          @click="refresh"
-        >
-          Atualizar
-        </BaseButton>
-        <BaseButton
-          class="btn-primary w-full sm:w-auto whitespace-nowrap"
-          @click="openCreateModal"
-        >
-          Adicionar Venda
-        </BaseButton>
+        <div class="flex flex-col gap-3 w-full sm:flex-row sm:items-end">
+          <div class="flex-1">
+            <input
+              v-model="query"
+              placeholder="Buscar por cliente ou produto"
+              class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
+              @input="onQuery"
+            >
+          </div>
+          <select
+            v-model="statusFilter"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
+          >
+            <option value="">
+              Todos status
+            </option>
+            <option value="AGUARDANDO">
+              AGUARDANDO
+            </option>
+            <option value="ENTREGUE">
+              ENTREGUE
+            </option>
+          </select>
+          <div class="flex gap-2">
+            <BaseButton
+              v-if="hasActiveFilter"
+              variant="secondary"
+              class="w-full sm:w-auto whitespace-nowrap"
+              @click="clearFilters"
+            >
+              Limpar
+            </BaseButton>
+            <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="refresh"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              class="btn-primary w-full sm:w-auto whitespace-nowrap"
+              @click="openCreateModal"
+            >
+              + Venda
+            </BaseButton>
+          </div>
+        </div>
       </template>
     </PageHero>
 
@@ -54,35 +68,35 @@
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Busca Atual
+          Ticket Médio
         </div>
         <div class="saas-kpi-value">
-          {{ query ? 'Filtrada' : 'Geral' }}
+          {{ formatMoney(averageTicket) }}
         </div>
         <div class="saas-kpi-help">
-          Contexto operacional
+          Valor médio por venda
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Página
+          Total em Vendas
         </div>
         <div class="saas-kpi-value">
-          {{ currentPage }}
+          {{ formatMoney(totalSalesValue) }}
         </div>
         <div class="saas-kpi-help">
-          Navegação ativa
+          Valor total filtrado
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Filtro de Status
+          Taxa de Entrega
         </div>
         <div class="saas-kpi-value">
-          {{ statusFilter || 'TODOS' }}
+          {{ deliveryRate }}%
         </div>
         <div class="saas-kpi-help">
-          Visão operacional
+          % de pedidos entregues
         </div>
       </article>
     </section>
@@ -112,13 +126,23 @@
             {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
           </template>
           <template #status="{ row }">
-            {{ normalizeVendaStatus(row.status) }}
+            <span
+              :class="[
+                'dt-badge',
+                normalizeVendaStatus(row.status) === 'ENTREGUE' ? 'success' : 'warn'
+              ]"
+            >
+              {{ normalizeVendaStatus(row.status) === 'ENTREGUE' ? '✓ ENTREGUE' : '⏱ AGUARDANDO' }}
+            </span>
           </template>
           <template #data_envio_prevista="{ row }">
             {{ formatDate(row.data_envio_prevista) }}
           </template>
           <template #data_entrega_prevista="{ row }">
             {{ formatDate(row.data_entrega_prevista) }}
+          </template>
+          <template #motorista="{ row }">
+            {{ row.motorista || '-' }}
           </template>
           <template #acoes="{ row }">
             <div @click.stop>
@@ -195,44 +219,16 @@
         </div>
       </div>
     </div>
-    <!-- Pagination controls -->
-    <div
-      v-if="filteredVendas.length > 0"
-      class="mt-4"
-    >
-      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="text-sm muted">
-          Mostrando {{ filteredVendas.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredVendas.length) }} de {{ filteredVendas.length }}
-        </div>
-        <div class="page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage<=1"
-            @click="prevPage"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPages)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPage===p }"
-              @click="goToPage(p)"
-            >
-              {{ p }}
-            </button>
-          </template>
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage>=totalPages"
-            @click="nextPage"
-          >
-            Próximo
-          </BaseButton>
-        </div>
+    <!-- Pagination Premium -->
+    <div v-if="filteredVendas.length > 0" class="mt-6">
+      <div class="panel-inner content-card">
+        <PaginationPremium
+          :current-page.sync="currentPage"
+          :page-size.sync="pageSize"
+          :total="filteredVendas.length"
+          @update:current-page="currentPage = $event"
+          @update:page-size="pageSize = $event"
+        />
       </div>
     </div>
 
@@ -274,26 +270,51 @@
           :message="saleFeedback.message"
           :type="saleFeedback.type"
         />
-        <label class="text-sm text-gray-600">Cliente</label>
-        <select
-          v-model="novaVenda.cliente_id"
-          required
-          class="p-3 border border-gray-300 rounded-xl estilo-select"
-        >
-          <option
-            value=""
-            disabled
-          >
-            Selecione um cliente
-          </option>
-          <option
-            v-for="c in clients"
-            :key="c.id"
-            :value="c.id"
-          >
-            {{ c.nome }}
-          </option>
-        </select>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-gray-600">Cliente</label>
+            <select
+              v-model="novaVenda.cliente_id"
+              required
+              class="p-3 border border-gray-300 rounded-xl estilo-select"
+            >
+              <option
+                value=""
+                disabled
+              >
+                Selecione um cliente
+              </option>
+              <option
+                v-for="c in clients"
+                :key="c.id"
+                :value="c.id"
+              >
+                {{ c.nome }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-gray-600">Motorista</label>
+            <select
+              v-model.number="novaVenda.motorista_id"
+              class="p-3 border border-gray-300 rounded-xl estilo-select"
+            >
+              <option
+                :value="null"
+                disabled
+              >
+                Escolha um motorista
+              </option>
+              <option
+                v-for="m in motoristas"
+                :key="m.id"
+                :value="m.id"
+              >
+                {{ m.nome }}
+              </option>
+            </select>
+          </div>
+        </div>
 
         <div class="space-y-2">
           <div
@@ -372,6 +393,50 @@
             >
           </div>
         </div>
+
+        <div class="bg-gray-50 rounded-2xl p-4 border-2 border-green-300 shadow-sm flex flex-col gap-2">
+          <div class="font-semibold text-gray-700 flex items-center gap-2 text-base mb-1">
+            <span class="flex w-7 h-7 bg-green-100 text-green-600 rounded-full items-center justify-center mr-2 text-xl">🚚</span>
+            Comissão Motorista
+          </div>
+          <div class="flex items-center gap-3 mb-1">
+            <label class="text-xs text-gray-600">Tipo:</label>
+            <button
+              type="button"
+              :class="['relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none', novaVenda.comissao_motorista_em_dinheiro ? 'bg-green-500' : 'bg-gray-300']"
+              @click="novaVenda.comissao_motorista_em_dinheiro = !novaVenda.comissao_motorista_em_dinheiro"
+            >
+              <span :class="['absolute left-0 top-0 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200', novaVenda.comissao_motorista_em_dinheiro ? 'translate-x-6' : '']" />
+              <span
+                v-if="!novaVenda.comissao_motorista_em_dinheiro"
+                class="absolute left-1 top-1 text-xs font-bold"
+              >%</span>
+              <span
+                v-if="novaVenda.comissao_motorista_em_dinheiro"
+                class="absolute right-1 top-1 text-xs font-bold"
+              >R$</span>
+            </button>
+            <span class="text-xs text-gray-700 font-semibold">{{ novaVenda.comissao_motorista_em_dinheiro ? 'R$' : '%' }}</span>
+          </div>
+          <input
+            v-model.number="novaVenda.comissao_motorista"
+            type="number"
+            min="0"
+            :max="novaVenda.comissao_motorista_em_dinheiro ? null : 100"
+            :step="novaVenda.comissao_motorista_em_dinheiro ? '0.01' : '0.01'"
+            placeholder="Comissão motorista"
+            class="p-2 border border-green-300 rounded-xl w-full text-base"
+          >
+          <div class="text-xs text-gray-600 mt-1">
+            <span v-if="novaVenda.comissao_motorista_em_dinheiro">
+              Ganho fixo: <span class="font-bold text-green-700">R$ {{ (novaVenda.comissao_motorista || 0).toFixed(2) }}</span>
+            </span>
+            <span v-else>
+              Comissão: <span class="font-bold">{{ novaVenda.comissao_motorista || 0 }}%</span>
+            </span>
+          </div>
+        </div>
+
         <div class="drawer-actions flex justify-end gap-3 mt-4">
           <BaseButton
             type="button"
@@ -407,22 +472,27 @@ import FormFeedback from '../components/ui/FormFeedback.vue'
 import CustomSelect from '../components/ui/CustomSelect.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import { useToast } from '../composables/useToast'
+import { useFormat } from '../composables/useFormat'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 
 export default {
-  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, CustomSelect, ActionDropdown },
+  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, CustomSelect, ActionDropdown, PaginationPremium, EmptyState },
   data() {
     return {
       vendas: [],
       loading: false,
       query: '',
       statusFilter: '',
-      novaVenda: { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
+      novaVenda: { cliente_id: null, motorista_id: null, data_envio_prevista: '', data_entrega_prevista: '', comissao_motorista: null, comissao_motorista_em_dinheiro: true, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] },
+      motoristas: [],
       tableCols: [
         { key: 'numero_pedido', label: 'Pedido' },
         { key: 'cliente', label: 'Cliente' },
         { key: 'itens_count', label: 'Itens' },
         { key: 'valor_total', label: 'Valor Total' },
         { key: 'status', label: 'Status' },
+        { key: 'motorista', label: 'Motorista' },
         { key: 'data_envio_prevista', label: 'Envio Previsto' },
         { key: 'data_entrega_prevista', label: 'Entrega Prevista' },
         { key: 'acoes', label: 'Ações' },
@@ -458,7 +528,7 @@ export default {
       })
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.filteredVendas.length / this.pageSize))
+      return Math.max(1, Math.ceil(this.totalCount / this.pageSize))
     },
     paginatedVendas() {
       return this.filteredVendas
@@ -470,11 +540,29 @@ export default {
     hasActiveFilter() {
       return String(this.statusFilter || '').trim() !== '' || String(this.query || '').trim() !== ''
     },
+    averageTicket() {
+      if (this.filteredVendas.length === 0) return 0
+      const total = this.filteredVendas.reduce((sum, v) => sum + (Number(v.valor_total) || 0), 0)
+      return total / this.filteredVendas.length
+    },
+    totalSalesValue() {
+      return this.filteredVendas.reduce((sum, v) => sum + (Number(v.valor_total) || 0), 0)
+    },
+    deliveryRate() {
+      if (this.filteredVendas.length === 0) return 0
+      const entregues = this.filteredVendas.filter(v => this.normalizeVendaStatus(v.status) === 'ENTREGUE').length
+      return Math.round((entregues / this.filteredVendas.length) * 100)
+    },
   },
   mounted() {
     this.loadClients();
     this.loadProducts();
+    this.loadMotoristas();
     this.loadVendas();
+  },
+  setup() {
+    const { formatDate, formatMoney } = useFormat()
+    return { formatDate, formatMoney }
   },
   methods: {
     getRowActions(row) {
@@ -532,6 +620,14 @@ export default {
         this.products = []
       }
     },
+    async loadMotoristas() {
+      try {
+        const res = await api.get('/api/v1/motoristas')
+        this.motoristas = res.data || []
+      } catch (e) {
+        this.motoristas = []
+      }
+    },
     goToPage(n) { this.currentPage = Math.min(Math.max(1, n), this.totalPages); this.loadVendas() },
     nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.loadVendas() } },
     prevPage() { if (this.currentPage > 1) { this.currentPage--; this.loadVendas() } },
@@ -574,15 +670,19 @@ export default {
         if (!this.novaVenda.cliente_id) throw new Error('Cliente obrigatório')
         const items = (this.novaVenda.items || []).filter(it => it && it.produto_id)
         if (items.length === 0) throw new Error('Adicione pelo menos um produto')
+        const totalValue = items.reduce((sum, it) => sum + ((it.quantidade || 1) * (it.valor_unitario || 0)), 0)
         const payload = {
           cliente_id: this.novaVenda.cliente_id,
+          motorista_id: this.novaVenda.motorista_id || null,
           data_envio_prevista: this.novaVenda.data_envio_prevista || null,
           data_entrega_prevista: this.novaVenda.data_entrega_prevista || null,
+          comissao_motorista: this.novaVenda.comissao_motorista || null,
+          comissao_motorista_em_dinheiro: this.novaVenda.comissao_motorista_em_dinheiro,
           items: items.map(it => ({ produto_id: it.produto_id, quantidade: it.quantidade || 1, valor_unitario: it.valor_unitario || 0 }))
         }
         await api.post('/api/v1/vendas', payload)
         this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
-        this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
+        this.novaVenda = { cliente_id: null, motorista_id: null, data_envio_prevista: '', data_entrega_prevista: '', comissao_motorista: null, comissao_motorista_em_dinheiro: true, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
       } catch (e) {
@@ -603,16 +703,11 @@ export default {
     },
     openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
     clearFilters() { this.query = ''; this.statusFilter = ''; this.currentPage = 1; this.loadVendas() },
-    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, data_envio_prevista: '', data_entrega_prevista: '', items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
+    closeCreateModal() { this.showCreateModal = false; this.submittingSale = false; this.saleFeedback = { message: '', type: 'info' }; this.novaVenda = { cliente_id: null, motorista_id: null, data_envio_prevista: '', data_entrega_prevista: '', comissao_motorista: null, comissao_motorista_em_dinheiro: true, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] } },
     addItem() { this.novaVenda.items.push({ produto_id: null, quantidade: 1, valor_unitario: null }) },
     removeItem(idx) { if (this.novaVenda.items.length > 1) this.novaVenda.items.splice(idx, 1) },
     refresh() { this.loadVendas() },
     onQuery() { clearTimeout(this.timer); this.timer = setTimeout(() => this.loadVendas(), 350) },
-    formatDate(value) {
-      if (!value) return '-'
-      const [year, month, day] = String(value).slice(0, 10).split('-')
-      return year && month && day ? `${day}/${month}/${year}` : value
-    },
     printOrder(row) {
       api.get(`/api/v1/vendas/cabecalhos/${row.id}/pdf`, {
         responseType: 'blob',

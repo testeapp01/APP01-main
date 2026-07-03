@@ -5,32 +5,44 @@
       subtitle="Controle entradas, parceiros e comissões em um fluxo operacional único."
     >
       <template #actions>
-        <select
-          v-model="statusFilter"
-          class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
-        >
-          <option value="">
-            Todos status
-          </option>
-          <option value="AGUARDANDO">
-            AGUARDANDO
-          </option>
-          <option value="RECEBIDA">
-            RECEBIDA
-          </option>
-        </select>
-        <BaseButton
-          class="btn-secondary w-full sm:w-auto"
-          @click="loadCompras"
-        >
-          Atualizar
-        </BaseButton>
-        <BaseButton
-          class="btn-primary w-full sm:w-auto"
-          @click="openCreateModal"
-        >
-          Adicionar Compra
-        </BaseButton>
+        <div class="flex flex-col gap-3 w-full sm:flex-row sm:items-end">
+          <select
+            v-model="statusFilter"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:w-auto hero-control"
+          >
+            <option value="">
+              Todos status
+            </option>
+            <option value="AGUARDANDO">
+              AGUARDANDO
+            </option>
+            <option value="RECEBIDA">
+              RECEBIDA
+            </option>
+          </select>
+          <div class="flex gap-2">
+            <BaseButton
+              v-if="hasActiveFilter"
+              variant="secondary"
+              class="w-full sm:w-auto whitespace-nowrap"
+              @click="clearFilters"
+            >
+              Limpar
+            </BaseButton>
+            <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="loadCompras"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              class="btn-primary w-full sm:w-auto whitespace-nowrap"
+              @click="openCreateModal"
+            >
+              + Compra
+            </BaseButton>
+          </div>
+        </div>
       </template>
     </PageHero>
 
@@ -43,40 +55,29 @@
           {{ filteredCompras.length }}
         </div>
         <div class="saas-kpi-help">
-          Registros no período atual
+          Registros no período
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Página Atual
+          Total Investido
         </div>
         <div class="saas-kpi-value">
-          {{ currentPage }}
+          {{ formatMoney(totalPurchasesValue) }}
         </div>
         <div class="saas-kpi-help">
-          Navegação operacional
+          Valor total em compras
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Itens por Página
+          Taxa Recebimento
         </div>
         <div class="saas-kpi-value">
-          {{ pageSize }}
+          {{ receiptRate }}%
         </div>
         <div class="saas-kpi-help">
-          Escala de visualização
-        </div>
-      </article>
-      <article class="saas-kpi-card">
-        <div class="saas-kpi-label">
-          Filtro de Status
-        </div>
-        <div class="saas-kpi-value">
-          {{ statusFilter || 'TODOS' }}
-        </div>
-        <div class="saas-kpi-help">
-          Visão operacional
+          % de compras recebidas
         </div>
       </article>
     </section>
@@ -110,10 +111,17 @@
           {{ row.itens_count ?? '-' }}
         </template>
         <template #valor_total="{ row }">
-          {{ row.valor_total !== undefined && row.valor_total !== null ? ('R$ ' + Number(row.valor_total).toFixed(2)) : '-' }}
+          {{ row.valor_total !== undefined && row.valor_total !== null ? formatMoney(row.valor_total) : '-' }}
         </template>
         <template #status="{ row }">
-          {{ normalizeCompraStatus(row.status) }}
+          <span
+            :class="[
+              'dt-badge',
+              normalizeCompraStatus(row.status) === 'RECEBIDA' ? 'success' : 'warn'
+            ]"
+          >
+            {{ normalizeCompraStatus(row.status) === 'RECEBIDA' ? '✓ RECEBIDA' : '⏱ AGUARDANDO' }}
+          </span>
         </template>
         <template #data_envio_prevista="{ row }">
           {{ formatDate(row.data_envio_prevista) }}
@@ -197,41 +205,16 @@
 
     <div
       v-if="filteredCompras.length > 0"
-      class="mt-4"
+      class="mt-6"
     >
-      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="text-sm muted">
-          Mostrando {{ filteredCompras.length > 0 ? ((currentPage-1)*pageSize + 1) : 0 }} - {{ Math.min(currentPage*pageSize, filteredCompras.length) }} de {{ filteredCompras.length }}
-        </div>
-        <div class="page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage<=1"
-            @click="prevPage"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPages)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPage===p }"
-              @click="goToPage(p)"
-            >
-              {{ p }}
-            </button>
-          </template>
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage>=totalPages"
-            @click="nextPage"
-          >
-            Próximo
-          </BaseButton>
-        </div>
+      <div class="panel-inner content-card">
+        <PaginationPremium
+          :current-page.sync="currentPage"
+          :page-size.sync="pageSize"
+          :total="filteredCompras.length"
+          @update:current-page="currentPage = $event"
+          @update:page-size="pageSize = $event"
+        />
       </div>
     </div>
 
@@ -253,10 +236,10 @@
           <div class="flex gap-3">
             <button
               type="button"
-              :class="['px-4 py-2 rounded-lg border', novaCompra.tipo === 'venda' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300']"
-              @click="novaCompra.tipo = 'venda'"
+              :class="['px-4 py-2 rounded-lg border', novaCompra.tipo === 'compra' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-700 border-gray-300']"
+              @click="novaCompra.tipo = 'compra'"
             >
-              Venda
+              Compra
             </button>
             <button
               type="button"
@@ -291,7 +274,7 @@
           </select>
         </div>
 
-        <div v-if="novaCompra.tipo === 'venda'">
+        <div v-if="novaCompra.tipo === 'revenda'">
           <label class="block text-sm font-semibold text-gray-700 mb-1">Cliente</label>
           <select
             v-model.number="novaCompra.cliente_id"
@@ -338,7 +321,7 @@
           </select>
         </div>
 
-        <div v-if="novaCompra.tipo === 'venda'">
+        <div v-if="novaCompra.tipo === 'revenda'">
           <label class="text-sm text-gray-600 mb-1 block">Motorista</label>
           <select
             v-model.number="novaCompra.motorista_id"
@@ -407,7 +390,7 @@
         </div>
         <!-- Comissões centralizadas abaixo -->
         <div
-          v-if="novaCompra.tipo === 'venda'"
+          v-if="novaCompra.tipo === 'revenda'"
           class="flex flex-col lg:flex-row justify-center gap-4 lg:gap-6 w-full mb-2"
         >
           <div class="bg-gray-50 rounded-2xl p-4 border-2 border-blue-300 shadow-sm flex flex-col gap-2 w-full lg:max-w-[320px]">
@@ -684,9 +667,12 @@ import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import { useFormat } from '../composables/useFormat'
 
 export default {
-  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback, ActionDropdown },
+  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback, ActionDropdown, PaginationPremium, EmptyState },
   data() {
     return {
       compras: [],
@@ -695,7 +681,7 @@ export default {
       motoristas: [],
       clientes: [],
       novaCompra: {
-        tipo: 'venda',
+        tipo: 'compra',
         fornecedor_id: null,
         cliente_id: null,
         produto_id: null,
@@ -764,6 +750,14 @@ export default {
     },
     totalPages() { return Math.max(1, Math.ceil(this.filteredCompras.length / this.pageSize)) },
     paginatedCompras() { return this.filteredCompras },
+    totalPurchasesValue() {
+      return this.filteredCompras.reduce((sum, c) => sum + (Number(c.valor_total) || 0), 0)
+    },
+    receiptRate() {
+      if (this.filteredCompras.length === 0) return 0
+      const recebidas = this.filteredCompras.filter(c => this.normalizeCompraStatus(c.status) === 'RECEBIDA').length
+      return Math.round((recebidas / this.filteredCompras.length) * 100)
+    },
   },
   mounted() {
     this.loadCompras()
@@ -823,13 +817,13 @@ export default {
       this.submittingPurchase = true
       this.purchaseFeedback = { message: 'Salvando compra...', type: 'info' }
       try {
-        if (this.novaCompra.tipo === 'venda' && !this.novaCompra.cliente_id) {
-          this.purchaseFeedback = { message: 'Selecione um cliente para compras do tipo venda.', type: 'error' }
+        if (this.novaCompra.tipo === 'revenda' && !this.novaCompra.cliente_id) {
+          this.purchaseFeedback = { message: 'Selecione um cliente para compras do tipo revenda.', type: 'error' }
           return
         }
 
-        if (this.novaCompra.tipo === 'venda' && !this.novaCompra.motorista_id) {
-          this.purchaseFeedback = { message: 'Selecione um motorista para compras do tipo venda.', type: 'error' }
+        if (this.novaCompra.tipo === 'revenda' && !this.novaCompra.motorista_id) {
+          this.purchaseFeedback = { message: 'Selecione um motorista para compras do tipo revenda.', type: 'error' }
           return
         }
 
@@ -839,8 +833,8 @@ export default {
           quantidade: this.novaCompra.quantidade,
           valor_unitario: this.novaCompra.valor_unitario,
           fornecedor_id: this.novaCompra.fornecedor_id,
-          motorista_id: this.novaCompra.tipo === 'venda' ? this.novaCompra.motorista_id : null,
-          cliente_id: this.novaCompra.tipo === 'venda' ? this.novaCompra.cliente_id : null,
+          motorista_id: this.novaCompra.tipo === 'revenda' ? this.novaCompra.motorista_id : null,
+          cliente_id: this.novaCompra.tipo === 'revenda' ? this.novaCompra.cliente_id : null,
           data_envio_prevista: this.novaCompra.data_envio_prevista || null,
           data_entrega_prevista: this.novaCompra.data_entrega_prevista || null,
           items: [
@@ -852,7 +846,7 @@ export default {
           ],
         }
 
-        if (this.novaCompra.tipo === 'venda') {
+        if (this.novaCompra.tipo === 'revenda') {
           payload = {
             ...payload,
             comissao_intermediador: this.novaCompra.comissao_intermediador,
@@ -1019,6 +1013,9 @@ export default {
       if (!value) return '-'
       const [year, month, day] = String(value).slice(0, 10).split('-')
       return year && month && day ? `${day}/${month}/${year}` : value
+    },
+    formatMoney(value) {
+      return 'R$ ' + Number(value || 0).toFixed(2).replace('.', ',')
     },
     async printOrder(row) {
       try {

@@ -5,53 +5,71 @@
       subtitle="Organize o catálogo com estrutura pronta para escala e operação diária."
     >
       <template #actions>
-        <BaseButton
-          class="btn-secondary w-full sm:w-auto"
-          @click="loadProdutos"
-        >
-          Atualizar
-        </BaseButton>
-        <BaseButton
-          class="btn-primary w-full sm:w-auto"
-          @click="openCreateModal"
-        >
-          Adicionar Produto
-        </BaseButton>
+        <div class="flex flex-col gap-3 w-full sm:flex-row sm:items-end">
+          <input
+            v-model="query"
+            placeholder="Buscar por nome ou tipo"
+            class="p-3 border border-gray-300 rounded-xl w-full sm:min-w-[260px] hero-control"
+            @input="onQuery"
+          >
+          <div class="flex gap-2">
+            <BaseButton
+              v-if="hasActiveFilter"
+              variant="secondary"
+              class="w-full sm:w-auto whitespace-nowrap"
+              @click="clearFilters"
+            >
+              Limpar
+            </BaseButton>
+            <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="loadProdutos"
+            >
+              Atualizar
+            </BaseButton>
+            <BaseButton
+              class="btn-primary w-full sm:w-auto whitespace-nowrap"
+              @click="openCreateModal"
+            >
+              + Produto
+            </BaseButton>
+          </div>
+        </div>
       </template>
     </PageHero>
 
     <section class="saas-context-grid">
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
+          Total de Produtos
+        </div>
+        <div class="saas-kpi-value">
+          {{ filteredProdutos.length }}
+        </div>
+        <div class="saas-kpi-help">
+          Registros exibidos
+        </div>
+      </article>
+      <article class="saas-kpi-card">
+        <div class="saas-kpi-label">
           Produtos Ativos
         </div>
         <div class="saas-kpi-value">
-          {{ totalCount }}
+          {{ activeProdutosCount }}
         </div>
         <div class="saas-kpi-help">
-          Base de catálogo
+          Base operacional
         </div>
       </article>
       <article class="saas-kpi-card">
         <div class="saas-kpi-label">
-          Página Atual
+          Inativos
         </div>
         <div class="saas-kpi-value">
-          {{ currentPage }}
+          {{ inactiveProdutosCount }}
         </div>
         <div class="saas-kpi-help">
-          Navegação de inventário
-        </div>
-      </article>
-      <article class="saas-kpi-card">
-        <div class="saas-kpi-label">
-          Ações
-        </div>
-        <div class="saas-kpi-value">
-          {{ editMode ? 'Edição' : 'Cadastro' }}
-        </div>
-        <div class="saas-kpi-help">
-          Modo de trabalho atual
+          Suspensos
         </div>
       </article>
     </section>
@@ -73,23 +91,39 @@
         <template #unidade="{ row }">
           {{ row.unidade || '-' }}
         </template>
+        <template #status="{ row }">
+          <span
+            :class="[
+              'dt-badge',
+              row.status ? 'success' : 'warn'
+            ]"
+          >
+            {{ row.status ? '✓ ATIVO' : '⏱ INATIVO' }}
+          </span>
+        </template>
         <template #acoes="{ row }">
-          <div class="flex items-center gap-2">
-            <BaseButton
-              variant="ghost"
-              @click="openEdit(row)"
-            >
-              Atualizar
-            </BaseButton>
-            <BaseButton
-              variant="danger"
-              @click="deleteProduto(row)"
-            >
-              Excluir
-            </BaseButton>
+          <div @click.stop>
+            <ActionDropdown
+              :items="getRowActions(row)"
+              :menu-height="180"
+              @select="handleRowAction($event, row)"
+            />
           </div>
         </template>
       </BaseTable>
+    </div>
+
+    <!-- Pagination Premium -->
+    <div v-if="visibleProdutos.length > 0" class="mt-6">
+      <div class="panel-inner content-card">
+        <PaginationPremium
+          :current-page.sync="currentPage"
+          :page-size.sync="pageSize"
+          :total="filteredProdutos.length"
+          @update:current-page="currentPage = $event"
+          @update:page-size="pageSize = $event"
+        />
+      </div>
     </div>
 
     <ListState
@@ -102,45 +136,7 @@
       @action="openCreateModal"
     />
 
-    <div
-      v-if="visibleProdutos.length > 0"
-      class="mt-4"
-    >
-      <div class="panel-inner content-card flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="text-sm muted">
-          Mostrando {{ (currentPage-1)*pageSize + 1 }} - {{ Math.min(currentPage*pageSize, totalCount) }} de {{ totalCount }}
-        </div>
-        <div class="page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage<=1"
-            @click="prevPage"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPages)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPage===p }"
-              @click="goToPage(p)"
-            >
-              {{ p }}
-            </button>
-          </template>
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage>=totalPages"
-            @click="nextPage"
-          >
-            Próximo
-          </BaseButton>
-        </div>
-      </div>
-    </div>
+    <!-- Old pagination removed - using PaginationPremium above -->
 
     <SideDrawer
       :open="showCreateModal"
@@ -232,17 +228,19 @@ import SideDrawer from '../components/ui/SideDrawer.vue'
 import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import FormFeedback from '../components/ui/FormFeedback.vue'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
+import ActionDropdown from '../components/ui/ActionDropdown.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 import { useToast } from '../composables/useToast'
 
 export default {
-  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback },
+  components: { BaseTable, BaseButton, SideDrawer, PageHero, ListState, FormFeedback, PaginationPremium, ActionDropdown, EmptyState },
   setup() {
     const produtos = ref([])
     const loading = ref(false)
 
     const query = ref('')
-
-    const pageSize = 25
+    const pageSize = ref(25)
     const currentPage = ref(1)
     const totalCount = ref(0)
 
@@ -256,6 +254,7 @@ export default {
       { key: 'codigo', label: 'Tipo' },
       { key: 'descricao', label: 'Nome' },
       { key: 'unidade', label: 'Unidade' },
+      { key: 'status', label: 'Status' },
       { key: 'acoes', label: 'Ações' }
     ]
 
@@ -293,12 +292,49 @@ export default {
       })
     })
 
-    const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize)))
-    const paginatedProdutos = computed(() => visibleProdutos.value)
+    const filteredProdutos = computed(() => {
+      return visibleProdutos.value.filter(p => {
+        const matchesQuery = !query.value || 
+          p.nome?.toLowerCase().includes(query.value.toLowerCase()) ||
+          p.tipo?.toLowerCase().includes(query.value.toLowerCase())
+        return matchesQuery
+      })
+    })
+
+    const hasActiveFilter = computed(() => query.value)
+    const activeProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status !== false).length)
+    const inactiveProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status === false).length)
+
+    const totalPages = computed(() => Math.max(1, Math.ceil(filteredProdutos.value.length / pageSize.value)))
+    const paginatedProdutos = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value
+      return filteredProdutos.value.slice(start, start + pageSize.value)
+    })
 
     function goToPage(n) { currentPage.value = Math.min(Math.max(1, n), totalPages.value); loadProdutos() }
     function nextPage() { if (currentPage.value < totalPages.value) { currentPage.value++; loadProdutos() } }
     function prevPage() { if (currentPage.value > 1) { currentPage.value--; loadProdutos() } }
+
+    function onQuery() {
+      currentPage.value = 1
+    }
+
+    function clearFilters() {
+      query.value = ''
+      currentPage.value = 1
+    }
+
+    function getRowActions(row) {
+      return [
+        { key: 'editar', label: 'Editar' },
+        { key: 'excluir', label: 'Excluir', danger: true },
+      ]
+    }
+
+    function handleRowAction(action, row) {
+      if (action === 'editar') openEdit(row)
+      if (action === 'excluir') deleteProduto(row)
+    }
 
     function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' }; showCreateModal.value = true }
     function openEdit(row) { editMode.value = true; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { ...row }; showCreateModal.value = true }
@@ -349,10 +385,20 @@ export default {
       loading,
       pageSize,
       currentPage,
+      totalCount,
       tableCols,
       visibleProdutos,
+      filteredProdutos,
       paginatedProdutos,
       totalPages,
+      query,
+      hasActiveFilter,
+      activeProdutosCount,
+      inactiveProdutosCount,
+      onQuery,
+      clearFilters,
+      getRowActions,
+      handleRowAction,
       goToPage,
       nextPage,
       prevPage,

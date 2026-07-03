@@ -1,0 +1,272 @@
+/* Dark Mode CSS Variables */
+:root {
+  /* Light Mode - Default */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --card-bg: #ffffff;
+  --card-hover: #f8fafc;
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --input-focus: #22c55e;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+}
+
+:root.dark {
+  /* Dark Mode */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --border-primary: #334155;
+  --border-secondary: #475569;
+  --card-bg: #1e293b;
+  --card-hover: #334155;
+  --input-bg: #334155;
+  --input-border: #475569;
+  --input-focus: #22c55e;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+}
+
+/* Global Dark Mode Selectors */
+:root.dark {
+  color-scheme: dark;
+}
+
+:root.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* Page backgrounds */
+:root.dark .page-shell {
+  @apply bg-slate-900;
+}
+
+:root.dark .section-block {
+  @apply bg-slate-900;
+}
+
+/* Card styling */
+:root.dark .content-card,
+:root.dark .panel-inner,
+:root.dark .saas-kpi-card {
+  @apply bg-slate-800 border-slate-700;
+}
+
+:root.dark .content-card:hover,
+:root.dark .panel-inner:hover {
+  @apply border-slate-600;
+}
+
+/* Input styling */
+:root.dark input,
+:root.dark select,
+:root.dark textarea {
+  @apply bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400;
+}
+
+:root.dark input:focus,
+:root.dark select:focus,
+:root.dark textarea:focus {
+  @apply bg-slate-700 border-green-500 ring-green-500 ring-1;
+}
+
+/* Table styling */
+:root.dark .base-table {
+  @apply bg-slate-800 border-slate-700;
+}
+
+:root.dark .base-table thead {
+  @apply bg-slate-700 border-slate-600;
+}
+
+:root.dark .base-table tbody tr {
+  @apply border-slate-700;
+}
+
+:root.dark .base-table tbody tr:hover {
+  @apply bg-slate-700;
+}
+
+:root.dark .base-table td {
+  @apply text-slate-200;
+}
+
+/* Navigation */
+:root.dark .nav-link {
+  @apply text-slate-300 hover:bg-slate-700;
+}
+
+:root.dark .nav-link.active {
+  @apply bg-green-900 text-green-100;
+}
+
+/* Button styling */
+:root.dark .btn-primary {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+
+:root.dark .btn-secondary {
+  @apply bg-slate-700 hover:bg-slate-600 text-slate-100 border-slate-600;
+}
+
+:root.dark .btn-ghost {
+  @apply text-slate-300 hover:bg-slate-700;
+}
+
+:root.dark .btn-destructive {
+  @apply bg-red-900 hover:bg-red-800 text-red-100;
+}
+
+/* Badge styling */
+:root.dark .badge {
+  @apply bg-slate-700 text-slate-200;
+}
+
+:root.dark .badge-success {
+  @apply bg-green-900 text-green-200;
+}
+
+:root.dark .badge-warning {
+  @apply bg-yellow-900 text-yellow-200;
+}
+
+:root.dark .badge-error {
+  @apply bg-red-900 text-red-200;
+}
+
+:root.dark .badge-info {
+  @apply bg-blue-900 text-blue-200;
+}
+
+/* Drawer/Modal styling */
+:root.dark .side-drawer,
+:root.dark .modal-overlay {
+  @apply bg-slate-800 border-slate-700;
+}
+
+:root.dark .modal-overlay {
+  @apply bg-black/70;
+}
+
+/* Form feedback */
+:root.dark .form-feedback-error {
+  @apply bg-red-900/20 border-red-700 text-red-200;
+}
+
+:root.dark .form-feedback-success {
+  @apply bg-green-900/20 border-green-700 text-green-200;
+}
+
+:root.dark .form-feedback-warning {
+  @apply bg-yellow-900/20 border-yellow-700 text-yellow-200;
+}
+
+:root.dark .form-feedback-info {
+  @apply bg-blue-900/20 border-blue-700 text-blue-200;
+}
+
+/* Lists and empty states */
+:root.dark .list-state,
+:root.dark .empty-state {
+  @apply bg-slate-800 text-slate-300;
+}
+
+/* Pagination */
+:root.dark .pagination {
+  @apply text-slate-300;
+}
+
+:root.dark .pagination button {
+  @apply bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600;
+}
+
+:root.dark .pagination button.active {
+  @apply bg-green-600 border-green-500 text-white;
+}
+
+/* Breadcrumb */
+:root.dark .breadcrumb {
+  @apply text-slate-400;
+}
+
+:root.dark .breadcrumb a {
+  @apply text-slate-300 hover:text-slate-100;
+}
+
+/* Header */
+:root.dark .header {
+  @apply bg-slate-800 border-slate-700;
+}
+
+/* Sidebar */
+:root.dark .sidebar {
+  @apply bg-slate-800 border-slate-700;
+}
+
+/* Toast notifications */
+:root.dark .toast {
+  @apply bg-slate-800 border-slate-700 text-slate-100;
+}
+
+:root.dark .toast-success {
+  @apply bg-green-900 border-green-700 text-green-100;
+}
+
+:root.dark .toast-error {
+  @apply bg-red-900 border-red-700 text-red-100;
+}
+
+:root.dark .toast-warning {
+  @apply bg-yellow-900 border-yellow-700 text-yellow-100;
+}
+
+:root.dark .toast-info {
+  @apply bg-blue-900 border-blue-700 text-blue-100;
+}
+
+/* Dividers */
+:root.dark hr {
+  @apply border-slate-700;
+}
+
+/* Scrollbars */
+:root.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+:root.dark ::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+:root.dark ::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 4px;
+}
+
+:root.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-primary);
+}
+
+/* Text selections */
+:root.dark ::selection {
+  @apply bg-green-600 text-white;
+}
+
+:root.dark ::-moz-selection {
+  @apply bg-green-600 text-white;
+}

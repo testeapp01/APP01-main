@@ -45,23 +45,26 @@ export default {
 <style scoped>
 .form-feedback {
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  line-height: 1.35;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+  align-items: flex-start;
+  gap: 0.75rem;
+  line-height: 1.5;
+  border-radius: 8px;
+  border-width: 1px;
+  padding: 0.875rem 1rem;
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .form-feedback-icon {
-  height: 1.1rem;
-  width: 1.1rem;
-  border-radius: 999px;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  background: rgba(255,255,255,0.7);
-  border: 1px solid rgba(148,163,184,0.32);
   flex: none;
+  margin-top: 0.05rem;
 }
 </style>

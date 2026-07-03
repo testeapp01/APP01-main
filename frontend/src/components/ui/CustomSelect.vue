@@ -62,62 +62,75 @@ watch(() => props.modelValue, () => { if (!props.modelValue) close() })
   min-width: 160px;
   outline: none;
 }
+
 .custom-select__input {
-  background: linear-gradient(140deg, rgba(255,255,255,0.96), rgba(255,255,255,0.84));
-  border: 1px solid rgba(148, 163, 184, 0.34);
-  border-radius: 14px;
-  padding: 12px 40px 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 0.65rem 2.5rem 0.65rem 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 40px;
   font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--foreground);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-  backdrop-filter: blur(4px);
-  transition: border-color .18s, box-shadow .18s, transform .18s;
+  font-weight: 500;
+  color: #0F172A;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.custom-select__input:hover {
+  border-color: #CBD5E1;
+}
+
 .custom-select__input.open,
 .custom-select__input:focus {
-  border-color: var(--leaf-600);
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+  border-color: #16A34A;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
+
 .custom-select__placeholder {
-  color: var(--muted);
+  color: #94A3B8;
 }
+
 .custom-select__arrow {
   margin-left: auto;
-  font-size: 1.25em;
-  color: var(--muted);
+  font-size: 1rem;
+  color: #94A3B8;
 }
+
 .custom-select__dropdown {
   position: absolute;
   left: 0;
   right: 0;
   top: 110%;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 12px;
-  box-shadow: 0 14px 32px rgba(15,23,42,0.1);
-  backdrop-filter: blur(7px);
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
   z-index: 20;
   margin: 0;
-  padding: 0.25em 0;
+  padding: 0.5rem 0;
   list-style: none;
   max-height: 220px;
   overflow-y: auto;
 }
+
 .custom-select__dropdown li {
-  padding: 10px 18px;
+  padding: 0.65rem 1rem;
   cursor: pointer;
-  font-size: 1rem;
-  color: var(--foreground);
-  transition: background .13s;
+  font-size: 0.95rem;
+  color: #0F172A;
+  transition: background-color 0.2s ease;
 }
-.custom-select__dropdown li.selected,
+
 .custom-select__dropdown li:hover {
-  background: linear-gradient(130deg, #10b981, #059669);
-  color: #fff;
+  background: #F8FAFC;
+}
+
+.custom-select__dropdown li.selected {
+  background: #F1F5F9;
+  color: #16A34A;
+  font-weight: 600;
 }
 </style>

@@ -4,9 +4,9 @@
     :title="title"
     @update:show="onClose"
   >
-    <div class="p-2">
-      <p>{{ message }}</p>
-      <div class="mt-4 flex justify-end gap-2">
+    <div>
+      <p class="text-slate-700 text-base leading-relaxed mb-6">{{ message }}</p>
+      <div class="flex justify-end gap-3">
         <BaseButton
           variant="secondary"
           @click="cancel"

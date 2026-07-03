@@ -4,18 +4,18 @@
     <div
       v-if="show"
       ref="modalRoot"
-      class="fixed inset-0 z-50 flex items-center justify-center"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
       tabindex="-1"
       @keydown.esc="onEsc"
     >
       <div
-        class="absolute inset-0 bg-black/40"
+        class="absolute inset-0 bg-black/30"
         aria-hidden="true"
         @click="close"
       />
       <div
         ref="dialog"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow-lg z-10 w-full max-w-2xl p-4 outline-none"
+        class="bg-white rounded-lg shadow-2xl z-10 w-full max-w-2xl outline-none"
         role="dialog"
         aria-modal="true"
         :aria-label="title || undefined"
@@ -23,27 +23,27 @@
       >
         <header
           v-if="$slots.header || title"
-          class="flex items-center justify-between mb-4"
+          class="flex items-center justify-between px-6 py-5 border-b border-slate-200"
         >
           <slot name="header">
-            <h3 class="text-lg font-semibold">
+            <h3 class="text-xl font-bold text-slate-900">
               {{ title }}
             </h3>
           </slot>
           <button
             aria-label="Fechar"
-            class="ml-2 text-xl"
+            class="ml-4 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
             @click="close"
           >
             ✕
           </button>
         </header>
-        <section>
+        <section class="px-6 py-5">
           <slot />
         </section>
         <footer
           v-if="$slots.footer"
-          class="mt-4"
+          class="border-t border-slate-200 px-6 py-4 bg-slate-50 rounded-b-lg flex items-center justify-end gap-3"
         >
           <slot name="footer" />
         </footer>

@@ -6,14 +6,14 @@
     <div
       v-if="loading"
       key="loading"
-      class="panel-inner py-8 px-5"
+      class="panel-inner py-12 px-5"
     >
-      <div class="space-y-3 animate-pulse">
-        <div class="h-4 w-40 rounded bg-slate-200 mx-auto" />
-        <div class="h-3 w-56 rounded bg-slate-100 mx-auto" />
+      <div class="space-y-4 animate-pulse">
+        <div class="h-4 w-32 rounded bg-slate-200 mx-auto" />
         <div class="h-3 w-48 rounded bg-slate-100 mx-auto" />
+        <div class="h-3 w-40 rounded bg-slate-100 mx-auto" />
       </div>
-      <p class="text-xs muted text-center mt-5 tracking-wide uppercase">
+      <p class="text-xs text-slate-500 text-center mt-6 tracking-wide uppercase font-semibold">
         {{ loadingText }}
       </p>
     </div>
@@ -21,15 +21,15 @@
     <div
       v-else-if="!hasData"
       key="empty"
-      class="py-12 text-center"
+      class="py-16 px-6 text-center"
     >
-      <div class="mx-auto mb-4 h-12 w-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-        ⊕
+      <div class="mx-auto mb-6 h-16 w-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-2xl">
+        ∅
       </div>
-      <p class="text-lg font-semibold mb-2 text-gray-800">
+      <p class="text-xl font-bold mb-3 text-slate-900">
         {{ emptyTitle }}
       </p>
-      <p class="text-sm muted mb-6 max-w-md mx-auto">
+      <p class="text-sm text-slate-600 mb-8 max-w-sm mx-auto leading-relaxed">
         {{ emptyMessage }}
       </p>
       <div

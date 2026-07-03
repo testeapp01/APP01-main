@@ -104,35 +104,11 @@
             </div>
           </template>
         </BaseTable>
-        <div class="mt-2 page-pagination">
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage<=1"
-            @click="prevPage"
-          >
-            Anterior
-          </BaseButton>
-          <template
-            v-for="p in Math.min(5, totalPages)"
-            :key="p"
-          >
-            <button
-              type="button"
-              class="page-number"
-              :class="{ 'is-active': currentPage===p }"
-              @click="goToPage(p)"
-            >
-              {{ p }}
-            </button>
-          </template>
-          <BaseButton
-            class="btn-secondary"
-            :disabled="currentPage>=totalPages"
-            @click="nextPage"
-          >
-            Próximo
-          </BaseButton>
-        </div>
+        <PaginationPremium
+          :current-page.sync="currentPage"
+          :page-size.sync="pageSize"
+          :total="visibleMotoristas.length"
+        />
       </div>
 
       <ListState
@@ -187,8 +163,9 @@ import BaseTable from '../components/ui/BaseTable.vue'
 import PageHero from '../components/ui/PageHero.vue'
 import ListState from '../components/ui/ListState.vue'
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
+import PaginationPremium from '../components/ui/PaginationPremium.vue'
 export default {
-  components: { DriverModal, BaseButton, BaseTable, PageHero, ListState, ConfirmDialog },
+  components: { DriverModal, BaseButton, BaseTable, PageHero, ListState, ConfirmDialog, PaginationPremium },
   data() {
     return {
       nome: '', cpf: '', placa: '', veiculo: '', uf: '', telefone: '', tpCaminhao: '', status: true,

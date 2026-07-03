@@ -228,12 +228,11 @@ defineEmits([
 <style scoped>
 .login-card {
   width: min(100%, 450px);
-  border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.72));
-  backdrop-filter: blur(14px);
-  box-shadow: 0 24px 52px rgba(15, 23, 42, 0.16);
-  padding: 1.45rem;
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
 }
 
 .card-header {
@@ -242,82 +241,85 @@ defineEmits([
 
 .card-headline {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .chip-label {
   margin: 0;
-  color: #64748b;
-  font-size: 0.72rem;
+  color: #94A3B8;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   font-weight: 700;
 }
 
 .card-title {
   margin: 0;
-  color: #0f172a;
-  font-size: 1.45rem;
-  font-weight: 700;
+  color: #0F172A;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .card-subtitle {
-  margin: 0.86rem 0 1.12rem;
-  color: #475569;
+  margin: 0.75rem 0 1.25rem;
+  color: #64748B;
   font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .alert-error {
-  background: rgba(254, 226, 226, 0.85);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  color: #b91c1c;
-  border-radius: 0.9rem;
-  padding: 0.65rem 0.8rem;
-  margin-bottom: 0.9rem;
-  font-size: 0.88rem;
+  background: #FEE2E2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .login-form {
   display: grid;
-  gap: 0.8rem;
+  gap: 1rem;
 }
 
 .field-group {
   display: grid;
-  gap: 0.38rem;
+  gap: 0.5rem;
 }
 
 .field-label {
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #334155;
+  color: #0F172A;
 }
 
 .field-control {
   position: relative;
-  border-radius: 0.95rem;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: rgba(255, 255, 255, 0.78);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .field-control:focus-within {
-  border-color: rgba(15, 157, 88, 0.75);
-  box-shadow: 0 0 0 4px rgba(15, 157, 88, 0.16);
+  border-color: #16A34A;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
 .field-control.has-error {
-  border-color: rgba(239, 68, 68, 0.75);
+  border-color: #FCA5A5;
 }
 
 .field-icon {
   position: absolute;
-  left: 0.8rem;
+  left: 0.875rem;
   top: 50%;
   transform: translateY(-50%);
   width: 1rem;
   height: 1rem;
-  color: #64748b;
+  color: #94A3B8;
 }
 
 .field-icon svg {
@@ -330,36 +332,36 @@ defineEmits([
   border: 0;
   background: transparent;
   outline: 0;
-  padding: 0.78rem 0.8rem 0.78rem 2.45rem;
-  color: #0f172a;
+  padding: 0.75rem 0.875rem 0.75rem 2.5rem;
+  color: #0F172A;
   font-size: 0.95rem;
 }
 
 .password-input {
-  padding-right: 2.9rem;
+  padding-right: 3rem;
 }
 
 .toggle-password {
   position: absolute;
-  right: 0.45rem;
+  right: 0.5rem;
   top: 50%;
   transform: translateY(-50%);
   width: 2rem;
   height: 2rem;
   border: 0;
-  border-radius: 0.7rem;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   background: transparent;
-  color: #64748b;
+  color: #94A3B8;
   cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .toggle-password:hover,
 .toggle-password:focus-visible {
-  background: rgba(15, 157, 88, 0.12);
-  color: #0b7f47;
+  background: #F8FAFC;
+  color: #16A34A;
 }
 
 .toggle-password svg {
@@ -369,21 +371,22 @@ defineEmits([
 
 .field-error {
   margin: 0;
-  color: #b91c1c;
-  font-size: 0.78rem;
+  color: #DC2626;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .row-actions {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  margin-top: 0.15rem;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
 }
 
 .remember-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.625rem;
   cursor: pointer;
   user-select: none;
 }
@@ -395,59 +398,68 @@ defineEmits([
 }
 
 .remember-box {
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 0.33rem;
-  border: 1.4px solid #94a3b8;
-  background: rgba(255, 255, 255, 0.8);
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 4px;
+  border: 1.5px solid #CBD5E1;
+  background: #FFFFFF;
   position: relative;
-  transition: all 140ms ease;
+  transition: all 0.2s ease;
 }
 
 .remember-input:checked + .remember-box {
-  background: #0f9d58;
-  border-color: #0f9d58;
+  background: #16A34A;
+  border-color: #16A34A;
 }
 
 .remember-input:checked + .remember-box::after {
   content: '';
   position: absolute;
   width: 0.3rem;
-  height: 0.56rem;
-  border: solid #fff;
+  height: 0.6rem;
+  border: solid #FFFFFF;
   border-width: 0 2px 2px 0;
   left: 0.35rem;
-  top: 0.16rem;
+  top: 0.15rem;
   transform: rotate(45deg);
 }
 
 .remember-text {
-  color: #334155;
-  font-size: 0.83rem;
-  line-height: 1.2;
+  color: #475569;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .submit-btn {
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
   width: 100%;
   border: 0;
-  border-radius: 0.95rem;
-  background: linear-gradient(135deg, #0f9d58, #34a853);
-  color: #fff;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+  color: #FFFFFF;
   font-weight: 700;
   font-size: 0.95rem;
-  padding: 0.85rem 1rem;
+  padding: 0.875rem 1rem;
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.625rem;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(15, 157, 88, 0.32);
-  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .submit-btn:hover:not(:disabled) {
-  transform: translateY(-1px) scale(1.01);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.28);
+}
+
+.submit-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1), 0 4px 12px rgba(22, 163, 74, 0.2);
+}
+
+.submit-btn:active:not(:disabled) {
   box-shadow: 0 13px 24px rgba(15, 157, 88, 0.35);
   filter: brightness(1.02);
 }

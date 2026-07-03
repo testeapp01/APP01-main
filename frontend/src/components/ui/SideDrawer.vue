@@ -66,24 +66,24 @@ export default {
 }
 
 .drawer-backdrop {
-  background: radial-gradient(circle at top right, rgba(16,185,129,0.18), transparent 50%), rgba(2,6,23,0.48);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
 }
 
 .drawer-panel {
   width: var(--drawer-width, 100vw);
   max-width: 100vw;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbfa 100%);
-  border-left: 1px solid rgba(148,163,184,0.35);
-  box-shadow: -10px 0 42px rgba(2,6,23,0.22);
+  background: #FFFFFF;
+  border-left: 1px solid #E2E8F0;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
 }
 
 .drawer-header {
-  padding: 1.15rem 1.25rem 1rem;
-  border-bottom: 1px solid rgba(148,163,184,0.28);
-  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,253,250,0.85) 100%);
+  padding: 1.5rem;
+  border-bottom: 1px solid #E2E8F0;
+  background: #FFFFFF;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -93,56 +93,57 @@ export default {
 .drawer-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #047857;
-  background: rgba(16,185,129,0.16);
-  border: 1px solid rgba(16,185,129,0.28);
-  margin-bottom: 0.55rem;
+  letter-spacing: 0.05em;
+  color: #166534;
+  background: #DCFCE7;
+  border: 1px solid #BBFBBA;
+  margin-bottom: 0.75rem;
 }
 
 .drawer-title {
   margin: 0;
-  color: #0f172a;
-  font-size: 1.1rem;
+  color: #0F172A;
+  font-size: 1.25rem;
   font-weight: 800;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .drawer-subtitle {
-  margin: 0.45rem 0 0;
-  color: #64748b;
-  font-size: 0.84rem;
-  line-height: 1.35;
+  margin: 0.5rem 0 0;
+  color: #64748B;
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 .drawer-close {
-  height: 2.35rem;
-  width: 2.35rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(148,163,184,0.45);
-  color: #475569;
-  background: #fff;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  color: #64748B;
+  background: #FFFFFF;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all .16s ease;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .drawer-close:hover {
-  background: #f8fafc;
-  color: #0f172a;
-  border-color: rgba(16,185,129,0.45);
-  transform: translateY(-1px);
+  background: #F8FAFC;
+  color: #0F172A;
+  border-color: #CBD5E1;
 }
 
 .drawer-close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
-  border-color: rgba(16,185,129,0.5);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+  border-color: #16A34A;
 }
 
 .drawer-body {
