@@ -3,10 +3,12 @@ FROM php:8.3-apache
 RUN docker-php-ext-install pdo pdo_mysql
 
 COPY backend/ /var/www/html/
+COPY backend/docker/entrypoint-production.sh /usr/local/bin/entrypoint-production.sh
 
 RUN a2enmod rewrite
 
 RUN chown -R www-data:www-data /var/www/html
+RUN chmod +x /usr/local/bin/entrypoint-production.sh
 
 RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
@@ -19,4 +21,4 @@ WORKDIR /var/www/html
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+ENTRYPOINT ["/usr/local/bin/entrypoint-production.sh"]

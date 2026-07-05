@@ -18,9 +18,8 @@ services:
       DB_DATABASE: ${DB_DATABASE:-}
       DB_USERNAME: ${DB_USERNAME:-}
       DB_PASSWORD: ${DB_PASSWORD:-}
+      APP_SKIP_BOOTSTRAP: ${APP_SKIP_BOOTSTRAP:-0}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://safrion.store,https://www.safrion.store,http://safrion.store,http://www.safrion.store}
-    command: >
-      sh -lc "php tools/bootstrap_production.php && exec apache2-foreground"
     expose:
       - "80"
 
