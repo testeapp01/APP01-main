@@ -20,7 +20,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://safrion.store,https://www.safrion.store,http://safrion.store,http://www.safrion.store}
     command: >
-      sh -lc "export DB_HOST=\"${DB_HOST:-${MYSQL_HOST:-xhfsbocdu1b8p9e7d144zz9u}}\"; export DB_PORT=\"${DB_PORT:-${MYSQL_PORT:-3306}}\"; export DB_NAME=\"${DB_NAME:-${DB_DATABASE:-${MYSQL_DATABASE:-default}}}\"; export DB_USER=\"${DB_USER:-${DB_USERNAME:-${MYSQL_USER:-mysql}}}\"; export DB_PASS=\"${DB_PASS:-${DB_PASSWORD:-${MYSQL_PASSWORD:-}}}\"; php tools/create_db.php && php tools/run_migrations.php && php tools/seed.php && exec apache2-foreground"
+      sh -lc "php tools/bootstrap_production.php && exec apache2-foreground"
     expose:
       - "80"
 

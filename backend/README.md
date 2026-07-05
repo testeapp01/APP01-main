@@ -31,6 +31,14 @@ php tools/run_migrations.php
 php tools/seed.php
 ```
 
+Para producao, nao use `seed.php` no startup. Use:
+
+```bash
+php tools/bootstrap_production.php
+```
+
+Esse fluxo cria o banco, aplica migrations pendentes e opcionalmente garante um admin se `ADMIN_PASSWORD` estiver configurada.
+
 4. Point your virtual host to `backend/public` (Laragon: add site or use `php -S localhost:8000 -t backend/public` for quick test).
 
 5. Example endpoints

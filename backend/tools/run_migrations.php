@@ -127,6 +127,30 @@ function executeMigrationSql(PDO $pdo, string $sql): void
     }
 }
 
+function ensureMigrationsTable(PDO $pdo): void
+{
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS schema_migrations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            migration_name VARCHAR(255) NOT NULL UNIQUE,
+            applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+}
+
+function migrationAlreadyApplied(PDO $pdo, string $migrationName): bool
+{
+    $stmt = $pdo->prepare('SELECT 1 FROM schema_migrations WHERE migration_name = :migration_name LIMIT 1');
+    $stmt->execute(['migration_name' => $migrationName]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function markMigrationApplied(PDO $pdo, string $migrationName): void
+{
+    $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration_name) VALUES (:migration_name)');
+    $stmt->execute(['migration_name' => $migrationName]);
+}
+
 $env = parseEnv(__DIR__ . '/../.env');
 $isContainer = file_exists('/.dockerenv') || getenv('COOLIFY_RESOURCE_UUID') || getenv('KUBERNETES_SERVICE_HOST');
 
@@ -174,6 +198,8 @@ try {
     exit(1);
 }
 
+ensureMigrationsTable($pdo);
+
 $migrationFiles = glob(__DIR__ . '/../database/migrations/*.sql');
 sort($migrationFiles);
 
@@ -183,6 +209,12 @@ if (!$migrationFiles) {
 }
 
 foreach ($migrationFiles as $migration) {
+    $migrationName = basename($migration);
+    if (migrationAlreadyApplied($pdo, $migrationName)) {
+        echo "Skipped: {$migrationName} (already applied)\n";
+        continue;
+    }
+
     $sql = file_get_contents($migration);
     if ($sql === false) {
         echo "Could not read migration file: {$migration}\n";
@@ -194,9 +226,10 @@ foreach ($migrationFiles as $migration) {
 
     try {
         executeMigrationSql($pdo, $sanitized);
-        echo "Applied: " . basename($migration) . "\n";
+        markMigrationApplied($pdo, $migrationName);
+        echo "Applied: {$migrationName}\n";
     } catch (Exception $e) {
-        echo "Migration error in " . basename($migration) . ": " . $e->getMessage() . PHP_EOL;
+        echo "Migration error in {$migrationName}: " . $e->getMessage() . PHP_EOL;
         exit(1);
     }
 }

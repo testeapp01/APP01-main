@@ -40,12 +40,19 @@ Clique em **Deploy** no Coolify.
 No stack `docker-compose.coolify.yml`, o serviço `backend` já executa automaticamente ao iniciar:
 
 ```bash
-php tools/create_db.php
-php tools/run_migrations.php
-php tools/seed.php
+php tools/bootstrap_production.php
 ```
 
-Ou seja, no primeiro deploy (e nos próximos) não precisa rodar manualmente.
+Esse bootstrap de producao executa:
+
+```bash
+php tools/create_db.php
+php tools/run_migrations.php
+php tools/ensure_admin_user.php   # somente se ADMIN_PASSWORD estiver configurada
+```
+
+Ou seja, no primeiro deploy (e nos proximos) nao precisa rodar manualmente.
+Dados ficticios nao sao inseridos automaticamente em producao.
 
 Se o banco estiver vazio apos o deploy, quase sempre o problema e um destes:
 - variaveis do banco preenchidas com nome errado
@@ -56,6 +63,7 @@ Se o banco estiver vazio apos o deploy, quase sempre o problema e um destes:
 Para conferir no Coolify, abra os logs do serviço `backend` e valide mensagens como:
 - `Database '...' created or already exists.`
 - `Applied: ...sql`
+- `Skipped: ...sql (already applied)`
 - `Migrations applied.`
 
 Se essas mensagens nao aparecerem, o deploy automatico nao concluiu a etapa de banco.

@@ -18,6 +18,11 @@ function parseEnv($path)
 $env = parseEnv(__DIR__ . '/../.env');
 $isContainer = file_exists('/.dockerenv') || getenv('COOLIFY_RESOURCE_UUID') || getenv('KUBERNETES_SERVICE_HOST');
 
+if ($isContainer && getenv('ALLOW_FAKE_SEED') !== '1') {
+    fwrite(STDERR, "Refusing to seed fake/default data in container/production. Set ALLOW_FAKE_SEED=1 only for explicit non-production bootstrap.\n");
+    exit(1);
+}
+
 function resolveDbVar(array $envNames, array $envFile, array $envFileNames, string $default, bool $isContainer): string
 {
     foreach ($envNames as $name) {
