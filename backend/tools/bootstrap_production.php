@@ -40,12 +40,33 @@ function runStep(string $label, string $command): void
     }
 }
 
+function runStepWithRetry(string $label, string $command, int $attempts = 10, int $delaySeconds = 3): void
+{
+    $attempt = 1;
+    while ($attempt <= $attempts) {
+        echo "[bootstrap] {$label} (attempt {$attempt}/{$attempts})\n";
+        passthru($command, $exitCode);
+        if ($exitCode === 0) {
+            return;
+        }
+
+        if ($attempt >= $attempts) {
+            fwrite(STDERR, "[bootstrap] step failed after {$attempts} attempts: {$label} (exit {$exitCode})\n");
+            exit($exitCode);
+        }
+
+        echo "[bootstrap] Waiting {$delaySeconds}s before retrying {$label}\n";
+        sleep($delaySeconds);
+        $attempt++;
+    }
+}
+
 normalizeDbEnvAliases();
 
 $php = escapeshellarg(PHP_BINARY);
 $basePath = dirname(__DIR__);
 
-runStep('Ensuring database exists', $php . ' ' . escapeshellarg($basePath . '/tools/create_db.php'));
+runStepWithRetry('Ensuring database exists', $php . ' ' . escapeshellarg($basePath . '/tools/create_db.php'));
 runStep('Applying pending migrations', $php . ' ' . escapeshellarg($basePath . '/tools/run_migrations.php'));
 
 $adminPassword = getenv('ADMIN_PASSWORD');
