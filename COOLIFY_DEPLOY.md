@@ -21,6 +21,15 @@ Variáveis obrigatórias:
 - `VITE_API_BASE_URL`
 - `CORS_ALLOWED_ORIGINS`
 
+Variaveis recomendadas para acesso externo no DBeaver com o mesmo usuario da app:
+- `DB_ADMIN_USER` (normalmente `root`)
+- `DB_ADMIN_PASSWORD` (senha admin/root do MySQL)
+
+Quando `DB_ADMIN_PASSWORD` estiver configurada, o bootstrap executa automaticamente:
+- criacao do banco (se faltar)
+- criacao/ajuste do usuario da app
+- `GRANT ALL PRIVILEGES` no schema da app para `DB_USER`
+
 Observacao importante:
 - O backend agora aceita tanto variaveis `DB_*` quanto `MYSQL_*`.
 - Se voce estiver usando um recurso MySQL gerenciado pelo Coolify, o mais seguro e preencher explicitamente `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASS` com os dados exibidos no recurso do banco.
@@ -47,6 +56,7 @@ Esse bootstrap de producao executa:
 
 ```bash
 php tools/create_db.php
+php tools/ensure_db_grants.php
 php tools/run_migrations.php
 php tools/ensure_admin_user.php   # somente se ADMIN_PASSWORD estiver configurada
 ```

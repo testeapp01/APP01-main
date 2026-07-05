@@ -67,6 +67,7 @@ $php = escapeshellarg(PHP_BINARY);
 $basePath = dirname(__DIR__);
 
 runStepWithRetry('Ensuring database exists', $php . ' ' . escapeshellarg($basePath . '/tools/create_db.php'));
+runStepWithRetry('Ensuring app user grants', $php . ' ' . escapeshellarg($basePath . '/tools/ensure_db_grants.php'));
 runStep('Applying pending migrations', $php . ' ' . escapeshellarg($basePath . '/tools/run_migrations.php'));
 
 $adminPassword = getenv('ADMIN_PASSWORD');
