@@ -7,17 +7,15 @@ services:
     environment:
       DB_HOST: ${DB_HOST:-xhfsbocdu1b8p9e7d144zz9u}
       DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME:-default}
-      DB_USER: ${DB_USER:-mysql}
+      DB_NAME: ${DB_NAME:-hortifrutnectar}
+      DB_USER: ${DB_USER:-admin}
       DB_PASS: ${DB_PASS:-}
-      MYSQL_HOST: ${MYSQL_HOST:-}
-      MYSQL_PORT: ${MYSQL_PORT:-}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-}
-      MYSQL_USER: ${MYSQL_USER:-}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-}
-      DB_DATABASE: ${DB_DATABASE:-}
-      DB_USERNAME: ${DB_USERNAME:-}
-      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_ADMIN_USER: ${DB_ADMIN_USER:-root}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@safrion.local}
+      ADMIN_NAME: ${ADMIN_NAME:-admin}
+      JWT_SECRET: ${JWT_SECRET:-CHANGE_THIS_JWT_SECRET_IN_COOLIFY}
       APP_SKIP_BOOTSTRAP: ${APP_SKIP_BOOTSTRAP:-0}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://safrion.store,https://www.safrion.store,http://safrion.store,http://www.safrion.store}
     expose:

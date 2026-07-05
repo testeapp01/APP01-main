@@ -15,6 +15,7 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@safrion.local}
       - ADMIN_NAME=${ADMIN_NAME:-admin}
       - APP_SKIP_BOOTSTRAP=${APP_SKIP_BOOTSTRAP:-0}
+      - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_JWT_SECRET_IN_PRODUCTION}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://safrion.store,http://safrion.store,https://www.safrion.store,http://www.safrion.store,https://api.safrion.store,http://api.safrion.store,http://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,https://lo88sk4w44kscssssco4coo4.187.77.32.86.sslip.io,http://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,https://hw448ggg0coooccckko804kow.187.77.32.86.sslip.io,http://api.187.77.32.86.sslip.io,https://api.187.77.32.86.sslip.io}
     depends_on:
       db:
