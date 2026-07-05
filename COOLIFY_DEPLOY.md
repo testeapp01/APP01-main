@@ -68,6 +68,28 @@ Para conferir no Coolify, abra os logs do serviço `backend` e valide mensagens 
 
 Se essas mensagens nao aparecerem, o deploy automatico nao concluiu a etapa de banco.
 
+## 5.1) Verificar banco exato em runtime (evitar confusao com DBeaver)
+
+No terminal do container `backend`, execute:
+
+```bash
+php tools/verify_runtime_db.php
+```
+
+Esse comando imprime:
+- host/porta/db definidos no ambiente
+- host/porta/db reais da conexao (`@@hostname`, `@@port`, `DATABASE()`)
+- lista de tabelas vistas pelo backend
+
+No DBeaver, rode tambem:
+
+```sql
+SELECT @@hostname, @@port, DATABASE(), CURRENT_USER();
+SHOW TABLES FROM hortifrutnectar;
+```
+
+Os valores de `@@hostname` e `@@port` devem apontar para a mesma instancia do backend.
+
 ## 6) Checks rápidos
 
 - Frontend: abrir o domínio configurado.
