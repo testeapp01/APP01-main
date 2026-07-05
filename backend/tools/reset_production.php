@@ -174,8 +174,12 @@ function parseOption(array $argv, string $name, ?string $default = null): ?strin
 }
 
 $email = parseOption($argv, 'email', 'vallejosefrancisco@gmail.com');
-$password = parseOption($argv, 'password', 'CHICO123');
+$password = parseOption($argv, 'password', null);
 $name = parseOption($argv, 'name', 'Administrador');
+
+if ($password === null || trim($password) === '') {
+    $password = getenv('RESET_ADMIN_PASSWORD') ?: null;
+}
 
 if ($email === null || $password === null || $name === null || trim($email) === '' || trim($password) === '' || trim($name) === '') {
     fwrite(STDERR, "Usage: php tools/reset_production.php [--email=...] [--password=...] [--name=...]\n");
@@ -243,7 +247,7 @@ try {
 
     echo "\nReset finished successfully.\n";
     echo "Admin: {$email}\n";
-    echo "Password: {$password}\n";
+    echo "Password was configured via --password or RESET_ADMIN_PASSWORD.\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'Reset failed: ' . $e->getMessage() . "\n");
     exit(1);

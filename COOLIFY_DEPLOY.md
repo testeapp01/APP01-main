@@ -13,12 +13,17 @@ Este repositório já inclui um stack pronto para Coolify em `docker-compose.coo
 Copie os valores de `.env.coolify.example` para as variáveis do ambiente no Coolify.
 
 Variáveis obrigatórias:
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_DATABASE`
-- `MYSQL_USER`
-- `MYSQL_PASSWORD`
+- `DB_HOST` ou `MYSQL_HOST`
+- `DB_PORT` ou `MYSQL_PORT`
+- `DB_NAME` ou `DB_DATABASE` ou `MYSQL_DATABASE`
+- `DB_USER` ou `DB_USERNAME` ou `MYSQL_USER`
+- `DB_PASS` ou `DB_PASSWORD` ou `MYSQL_PASSWORD`
 - `VITE_API_BASE_URL`
 - `CORS_ALLOWED_ORIGINS`
+
+Observacao importante:
+- O backend agora aceita tanto variaveis `DB_*` quanto `MYSQL_*`.
+- Se voce estiver usando um recurso MySQL gerenciado pelo Coolify, o mais seguro e preencher explicitamente `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASS` com os dados exibidos no recurso do banco.
 
 ## 3) Domínio
 
@@ -42,10 +47,18 @@ php tools/seed.php
 
 Ou seja, no primeiro deploy (e nos próximos) não precisa rodar manualmente.
 
+Se o banco estiver vazio apos o deploy, quase sempre o problema e um destes:
+- variaveis do banco preenchidas com nome errado
+- `DB_HOST` apontando para host interno incorreto
+- senha/usuario do recurso MySQL divergentes
+- o container do backend nao conseguiu alcançar o recurso MySQL
+
 Para conferir no Coolify, abra os logs do serviço `backend` e valide mensagens como:
 - `Database '...' created or already exists.`
 - `Applied: ...sql`
 - `Migrations applied.`
+
+Se essas mensagens nao aparecerem, o deploy automatico nao concluiu a etapa de banco.
 
 ## 6) Checks rápidos
 

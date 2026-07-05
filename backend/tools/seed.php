@@ -38,6 +38,16 @@ function resolveDbVar(array $envNames, array $envFile, array $envFileNames, stri
     return $default;
 }
 
+function resolveSeedPassword(string $envName): string
+{
+    $fromEnv = getenv($envName);
+    if ($fromEnv !== false && trim((string)$fromEnv) !== '') {
+        return (string)$fromEnv;
+    }
+
+    return bin2hex(random_bytes(8));
+}
+
 $host = resolveDbVar(['DB_HOST'], $env, ['DB_HOST'], '127.0.0.1', $isContainer);
 $port = resolveDbVar(['DB_PORT'], $env, ['DB_PORT'], '3306', $isContainer);
 $db   = resolveDbVar(['DB_DATABASE', 'DB_NAME'], $env, ['DB_DATABASE', 'DB_NAME'], 'hortifrutnectar', $isContainer);
@@ -105,7 +115,10 @@ function insertIfNotExists(PDO $pdo, $table, $checkColumn, $checkValue, $data)
 }
 
 // Seed users
-$hash = password_hash('CHICO123', PASSWORD_BCRYPT);
+$primaryPlainPassword = resolveSeedPassword('SEED_ADMIN_PASSWORD');
+$secondaryPlainPassword = resolveSeedPassword('SEED_SECONDARY_PASSWORD');
+
+$hash = password_hash($primaryPlainPassword, PASSWORD_BCRYPT);
 insertIfNotExists($pdo, 'users', 'email', 'vallejosefrancisco@gmail.com', [
     'name' => 'Valle Jose Francisco',
     'email' => 'vallejosefrancisco@gmail.com',
@@ -114,7 +127,7 @@ insertIfNotExists($pdo, 'users', 'email', 'vallejosefrancisco@gmail.com', [
     'created_at' => date('Y-m-d H:i:s'),
 ]);
 
-$adminHash = password_hash('guivalle', PASSWORD_BCRYPT);
+$adminHash = password_hash($secondaryPlainPassword, PASSWORD_BCRYPT);
 insertIfNotExists($pdo, 'users', 'email', 'admin@safrion.local', [
     'name' => 'admin',
     'email' => 'admin@safrion.local',
@@ -150,5 +163,10 @@ insertIfNotExists($pdo, 'produtos', 'nome', 'Banana', [
     'custo_medio' => 2.50,
 ]);
 
-echo "Seeding complete. Admin credentials: vallejosefrancisco@gmail.com / CHICO123\n";
-echo "Additional login available: admin / guivalle\n";
+echo "Seeding complete.\n";
+echo "Primary admin email: vallejosefrancisco@gmail.com\n";
+echo "Secondary admin email: admin@safrion.local\n";
+echo "Use SEED_ADMIN_PASSWORD and SEED_SECONDARY_PASSWORD env vars to define known passwords.\n";
+echo "Current generated passwords are shown once below for bootstrap only:\n";
+echo " - vallejosefrancisco@gmail.com: {$primaryPlainPassword}\n";
+echo " - admin@safrion.local: {$secondaryPlainPassword}\n";

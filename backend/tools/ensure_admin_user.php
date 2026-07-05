@@ -58,8 +58,12 @@ function parseOption(array $argv, string $name, ?string $default = null): ?strin
 }
 
 $email = parseOption($argv, 'email', 'admin@safrion.local');
-$password = parseOption($argv, 'password', 'guivalle');
+$password = parseOption($argv, 'password', null);
 $name = parseOption($argv, 'name', 'admin');
+
+if ($password === null || trim($password) === '') {
+    $password = getenv('ADMIN_PASSWORD') ?: null;
+}
 
 if ($email === null || $password === null || $name === null || trim($email) === '' || trim($password) === '' || trim($name) === '') {
     fwrite(STDERR, "Usage: php tools/ensure_admin_user.php [--email=...] [--password=...] [--name=...]\n");
@@ -110,7 +114,7 @@ try {
         echo "Created admin user: {$email}\n";
     }
 
-    echo "Credentials ready: {$email} / {$password}\n";
+    echo "Credentials ready for: {$email}\n";
     if (str_contains($email, '@')) {
         $loginAlias = explode('@', $email, 2)[0];
         echo "Login alias available: {$loginAlias}\n";
