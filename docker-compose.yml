@@ -8,8 +8,8 @@ services:
       - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
-      - DB_NAME=${DB_NAME:-hortifrutnectar}
-      - DB_ADMIN_USER=${DB_ADMIN_USER:-mysql}
+      - DB_NAME=${DB_NAME:-}
+      - DB_ADMIN_USER=${DB_ADMIN_USER:-root}
       - DB_ADMIN_PASSWORD=${DB_ADMIN_PASSWORD}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_EMAIL=${ADMIN_EMAIL}
