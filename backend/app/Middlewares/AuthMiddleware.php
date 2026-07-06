@@ -23,12 +23,17 @@ class AuthMiddleware
         }
 
         try {
-            $secret = getenv('JWT_SECRET') ?: 'CHANGE_ME';
+            $secret = getenv('JWT_SECRET');
+            if (!$secret || strlen($secret) < 32) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Erro de configuração do servidor']);
+                exit;
+            }
             $decoded = (array) JWT::decode($token, new Key($secret, 'HS256'));
             return $decoded;
         } catch (\Throwable $e) {
             http_response_code(401);
-            echo json_encode(['error' => 'Token inválido', 'detail' => $e->getMessage()]);
+            echo json_encode(['error' => 'Token inválido ou expirado']);
             exit;
         }
     }

@@ -41,8 +41,10 @@ function resolveDbVar(array $envNames, array $envFile, array $envFileNames, stri
 $host = resolveDbVar(['DB_HOST'], $env, ['DB_HOST'], '127.0.0.1', $isContainer);
 $port = resolveDbVar(['DB_PORT'], $env, ['DB_PORT'], '3306', $isContainer);
 $db   = resolveDbVar(['DB_DATABASE', 'DB_NAME'], $env, ['DB_DATABASE', 'DB_NAME'], 'hortifrutnectar', $isContainer);
-$user = resolveDbVar(['DB_USERNAME', 'DB_USER'], $env, ['DB_USERNAME', 'DB_USER'], 'root', $isContainer);
-$pass = resolveDbVar(['DB_PASSWORD', 'DB_PASS'], $env, ['DB_PASSWORD', 'DB_PASS'], '', $isContainer);
+
+// Use admin/root credentials for CREATE DATABASE — app user has no such privilege on a fresh instance.
+$user = resolveDbVar(['DB_ADMIN_USER', 'DB_USERNAME', 'DB_USER'], $env, ['DB_ADMIN_USER', 'DB_USERNAME', 'DB_USER'], 'root', $isContainer);
+$pass = resolveDbVar(['DB_ADMIN_PASSWORD', 'DB_PASSWORD', 'DB_PASS'], $env, ['DB_ADMIN_PASSWORD', 'DB_PASSWORD', 'DB_PASS'], '', $isContainer);
 
 if ($isContainer && (
     getenv('DB_HOST') === false ||

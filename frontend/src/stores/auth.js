@@ -1,6 +1,20 @@
 import { defineStore } from 'pinia'
 import api from '../services/api'
 
+// SECURITY NOTE: The JWT is currently stored in localStorage, which is
+// accessible to JavaScript and therefore vulnerable to XSS attacks.
+//
+// Migration plan to httpOnly cookie (requires backend changes):
+//   1. Backend login() sets cookie: httpOnly + Secure + SameSite=Strict
+//   2. Backend reads token from cookie (not Authorization header) when present
+//   3. Frontend removes all localStorage.setItem/getItem for token
+//   4. Add CSRF protection (double-submit cookie or synchronizer token)
+//
+// Until migration is complete, reduce risk by:
+//   - Keeping JWT expiry at 8h (already done)
+//   - Enforcing strict CSP to reduce XSS surface (already done in backend)
+//   - Never logging or exposing the token in console/error messages
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: (typeof localStorage !== 'undefined' ? localStorage.getItem('hf_token') : null),
