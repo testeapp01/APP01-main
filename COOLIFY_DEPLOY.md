@@ -1,16 +1,16 @@
 # Deploy no Coolify
 
-Este repositório já inclui um stack pronto para Coolify em `docker-compose.coolify.yml`.
+Este repositório já inclui um stack pronto para Coolify em `docker-compose.yml`.
 
 ## 1) Criar recurso no Coolify
 
 1. Em Coolify, crie um novo recurso do tipo **Docker Compose**.
 2. Conecte este repositório Git.
-3. Selecione o arquivo `docker-compose.coolify.yml`.
+3. Selecione o arquivo `docker-compose.yml`.
 
 ## 2) Configurar variáveis de ambiente
 
-Copie os valores de `.env.coolify.example` para as variáveis do ambiente no Coolify.
+Copie os valores de `.env.example` para as variáveis do ambiente no Coolify.
 
 Variáveis obrigatórias:
 - `DB_HOST` ou `MYSQL_HOST`

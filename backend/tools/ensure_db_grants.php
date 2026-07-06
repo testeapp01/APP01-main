@@ -16,7 +16,7 @@ function envFirst(array $names, string $default = ''): string
 
 $host = envFirst(['DB_HOST', 'MYSQL_HOST'], 'db');
 $port = envFirst(['DB_PORT', 'MYSQL_PORT'], '3306');
-$dbName = envFirst(['DB_NAME', 'DB_DATABASE', 'MYSQL_DATABASE'], 'hortifrutnectar');
+$dbName = envFirst(['DB_NAME', 'DB_DATABASE', 'MYSQL_DATABASE'], 'safrion');
 $appUser = envFirst(['DB_USER', 'DB_USERNAME', 'MYSQL_USER'], 'admin');
 $appPass = envFirst(['DB_PASS', 'DB_PASSWORD', 'MYSQL_PASSWORD'], '');
 

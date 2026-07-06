@@ -13,7 +13,7 @@ class Connection
         if (self::$pdo === null) {
             $host = getenv('DB_HOST') ?: '127.0.0.1';
             $port = getenv('DB_PORT') ?: '3306';
-            $db   = getenv('DB_DATABASE') ?: (getenv('DB_NAME') ?: 'hortifrutnectar');
+            $db   = getenv('DB_DATABASE') ?: (getenv('DB_NAME') ?: 'safrion');
             $user = getenv('DB_USERNAME') ?: (getenv('DB_USER') ?: 'root');
             $pass = getenv('DB_PASSWORD');
             if ($pass === false) {
