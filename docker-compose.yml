@@ -19,18 +19,20 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - OPS_TOKEN=${OPS_TOKEN}
       - TRUSTED_PROXY_CIDR=${TRUSTED_PROXY_CIDR:-172.16.0.0/12}
+      - APP_DOMAIN=${APP_DOMAIN:-safrion.store}
+      - API_DOMAIN=${API_DOMAIN:-api.safrion.store}
     depends_on:
       db:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend_external.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.backend_external.rule=Host(`${API_DOMAIN:-api.safrion.store}`)"
       - "traefik.http.routers.backend_external.priority=90"
       - "traefik.http.routers.backend_external.service=backend"
       - "traefik.http.routers.backend_external.tls=true"
       - "traefik.http.routers.backend_external.tls.certresolver=letsencrypt"
       - "traefik.http.services.backend.loadbalancer.server.port=80"
-      - "traefik.http.routers.backend_api_from_frontend.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend_api_from_frontend.rule=Host(`${APP_DOMAIN:-safrion.store}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.backend_api_from_frontend.priority=100"
       - "traefik.http.routers.backend_api_from_frontend.service=backend"
       - "traefik.http.routers.backend_api_from_frontend.tls=true"
@@ -46,7 +48,7 @@ services:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN:-safrion.store}`)"
       - "traefik.http.routers.frontend.tls=true"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
@@ -56,11 +58,11 @@ services:
     restart: always
     container_name: safrion_v1_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ADMIN_PASSWORD}
       MYSQL_ROOT_HOST: '%'
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-safrion}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-safrion}
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${DB_PASS}
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 5s
