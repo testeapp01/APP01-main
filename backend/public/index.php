@@ -238,151 +238,151 @@ $router->map('DELETE', '/api/v1/vendas/cabecalhos/{id}', static function (array 
     $container->make(SalesController::class)->deleteHeader((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/clientes', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/clientes', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new ClientController($pdo))->index();
+    $container->make(ClientController::class)->index();
 });
-$router->map('POST', '/api/v1/clientes', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/clientes', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new ClientController($pdo))->create();
+    $container->make(ClientController::class)->create();
 });
-$router->map('DELETE', '/api/v1/clientes/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/clientes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new ClientController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(ClientController::class)->delete((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new MotoristaController($pdo))->index();
+    $container->make(MotoristaController::class)->index();
 });
-$router->map('GET', '/api/v1/tipos-caminhao', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/tipos-caminhao', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new MotoristaController($pdo))->listTiposCaminhao();
+    $container->make(MotoristaController::class)->listTiposCaminhao();
 });
-$router->map('POST', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth): void {
-    $ensureAuth();
-    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new MotoristaController($pdo))->create();
-});
-$router->map(['PUT', 'PATCH'], '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/motoristas', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new MotoristaController($pdo))->update((int)($params['id'] ?? 0));
+    $container->make(MotoristaController::class)->create();
 });
-$router->map('DELETE', '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    $container->make(MotoristaController::class)->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/motoristas/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new MotoristaController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(MotoristaController::class)->delete((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new FornecedorController($pdo))->index();
+    $container->make(FornecedorController::class)->index();
 });
-$router->map('POST', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/fornecedores', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new FornecedorController($pdo))->create();
+    $container->make(FornecedorController::class)->create();
 });
-$router->map('DELETE', '/api/v1/fornecedores/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/fornecedores/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new FornecedorController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(FornecedorController::class)->delete((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/produtos', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/produtos', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new ProductController($pdo))->index();
+    $container->make(ProductController::class)->index();
 });
-$router->map('POST', '/api/v1/produtos', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/produtos', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::SENIOR);
-    (new ProductController($pdo))->create();
+    $container->make(ProductController::class)->create();
 });
-$router->map(['PUT', 'PATCH'], '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::SENIOR);
-    (new ProductController($pdo))->update((int)($params['id'] ?? 0));
+    $container->make(ProductController::class)->update((int)($params['id'] ?? 0));
 });
-$router->map('DELETE', '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/produtos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new ProductController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(ProductController::class)->delete((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/relatorios', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/relatorios', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new ReportsController($pdo))->index();
+    $container->make(ReportsController::class)->index();
 });
-$router->map('GET', '/api/v1/relatorios/dashboard', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/relatorios/dashboard', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new ReportsController($pdo))->dashboard();
+    $container->make(ReportsController::class)->dashboard();
 });
-$router->map('GET', '/api/v1/relatorios/compras', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/relatorios/compras', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new ReportsController($pdo))->strategicPurchases();
+    $container->make(ReportsController::class)->strategicPurchases();
 });
-$router->map('GET', '/api/v1/relatorios/compras/export', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/relatorios/compras/export', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     RateLimitMiddleware::check(5, 60);
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new ReportsController($pdo))->exportStrategicPurchases();
+    $container->make(ReportsController::class)->exportStrategicPurchases();
 });
 
-$router->map('GET', '/api/v1/relatorios/abc', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/relatorios/abc', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new ReportsController($pdo))->abc();
+    $container->make(ReportsController::class)->abc();
 });
 
 // === ESTOQUE ===
-$router->map('GET', '/api/v1/estoque', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/estoque', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new EstoqueController($pdo))->index();
+    $container->make(EstoqueController::class)->index();
 });
-$router->map('GET', '/api/v1/estoque/saldos', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/estoque/saldos', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new EstoqueController($pdo))->saldos();
+    $container->make(EstoqueController::class)->saldos();
 });
-$router->map('POST', '/api/v1/estoque', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/estoque', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new EstoqueController($pdo))->create();
+    $container->make(EstoqueController::class)->create();
 });
-$router->map('DELETE', '/api/v1/estoque/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/estoque/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new EstoqueController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(EstoqueController::class)->delete((int)($params['id'] ?? 0));
 });
 
 // === QUEBRAS ===
-$router->map('GET', '/api/v1/quebras', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/quebras', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new QuebrasController($pdo))->index();
+    $container->make(QuebrasController::class)->index();
 });
-$router->map('POST', '/api/v1/quebras', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/quebras', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new QuebrasController($pdo))->create();
+    $container->make(QuebrasController::class)->create();
 });
 
 // === LOTES ===
-$router->map('GET', '/api/v1/lotes', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/lotes', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new LoteController($pdo))->index();
+    $container->make(LoteController::class)->index();
 });
-$router->map('POST', '/api/v1/lotes', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/lotes', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new LoteController($pdo))->create();
+    $container->make(LoteController::class)->create();
 });
-$router->map(['PUT', 'PATCH'], '/api/v1/lotes/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/lotes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
-    (new LoteController($pdo))->update((int)($params['id'] ?? 0));
+    $container->make(LoteController::class)->update((int)($params['id'] ?? 0));
 });
 
 // === HISTÓRICO DE PREÇO ===
@@ -402,40 +402,40 @@ $router->map('GET', '/api/v1/produtos/{id}/historico-precos', static function (a
 });
 
 // === TABELAS DE PREÇO ===
-$router->map('GET', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new TabelaPrecoController($pdo))->index();
+    $container->make(TabelaPrecoController::class)->index();
 });
-$router->map('POST', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new TabelaPrecoController($pdo))->create();
+    $container->make(TabelaPrecoController::class)->create();
 });
-$router->map(['PUT', 'PATCH'], '/api/v1/tabelas-preco/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/tabelas-preco/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new TabelaPrecoController($pdo))->update((int)($params['id'] ?? 0));
+    $container->make(TabelaPrecoController::class)->update((int)($params['id'] ?? 0));
 });
 
-$router->map('GET', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new UserController($pdo))->index();
+    $container->make(UserController::class)->index();
 });
-$router->map('POST', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new UserController($pdo))->create();
+    $container->make(UserController::class)->create();
 });
-$router->map(['PUT', 'PATCH'], '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new UserController($pdo))->update((int)($params['id'] ?? 0));
+    $container->make(UserController::class)->update((int)($params['id'] ?? 0));
 });
-$router->map('DELETE', '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new UserController($pdo))->delete((int)($params['id'] ?? 0));
+    $container->make(UserController::class)->delete((int)($params['id'] ?? 0));
 });
 
 if (!$router->dispatch($method, $uri)) {
