@@ -52,3 +52,8 @@ APP01_conflict_backup_*/
 
 # PHPUnit
 */build/
+
+# Secrets - never commit
+backend/.env
+.env
+*.env.local
