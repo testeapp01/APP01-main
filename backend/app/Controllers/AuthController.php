@@ -97,7 +97,6 @@ class AuthController
         ]);
         echo json_encode(['message' => 'Logout realizado com sucesso']);
     }
-    }
 
     public function me(array $tokenPayload): void
     {
