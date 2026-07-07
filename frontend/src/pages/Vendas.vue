@@ -353,6 +353,17 @@
                 step="0.01"
                 required
               >
+              <!-- Step 4: Margem estimada em tempo real -->
+              <div v-if="item.produto_id && item.valor_unitario > 0" class="mt-1 text-xs flex gap-3">
+                <span class="text-gray-400">Custo: R$ {{ getProductCusto(item.produto_id) }}</span>
+                <span :class="margemClass(item.produto_id, item.valor_unitario)">
+                  Margem: {{ calcMargem(item.produto_id, item.valor_unitario) }}%
+                </span>
+              </div>
+              <!-- Step 6: FEFO hint -->
+              <div v-if="item.produto_id && getLoteFEFO(item.produto_id)" class="mt-1 text-xs text-amber-600 font-semibold">
+                ⚠ Lote vence em {{ getLoteFEFO(item.produto_id).data_validade }} ({{ getLoteFEFO(item.produto_id).dias_para_vencer }} dias)
+              </div>
             </div>
             <div class="md:col-span-1">
               <BaseButton
@@ -500,6 +511,7 @@ export default {
       totalCount: 0,
       clients: [],
       products: [],
+      lotesFEFO: {},
       showCreateModal: false,
       submittingSale: false,
       saleFeedback: { message: '', type: 'info' },
@@ -516,6 +528,11 @@ export default {
         { value: '', label: 'Selecione um produto' },
         ...this.products.filter(p => p.status !== 'inativo').map(p => ({ value: p.id, label: p.nome }))
       ]
+    },
+    productMap() {
+      const m = {}
+      this.products.forEach(p => { m[p.id] = p })
+      return m
     },
     visibleVendas() {
       return (this.vendas || []).filter(v => {
@@ -681,7 +698,12 @@ export default {
           items: items.map(it => ({ produto_id: it.produto_id, quantidade: it.quantidade || 1, valor_unitario: it.valor_unitario || 0 }))
         }
         await api.post('/api/v1/vendas', payload)
-        this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
+        const resData = (await api.post('/api/v1/vendas', payload).catch(() => ({ data: {} }))).data
+        if (resData?.estoque_alerta) {
+          this.saleFeedback = { message: 'Venda criada. ⚠️ Atenção: estoque insuficiente em um ou mais produtos.', type: 'warning' }
+        } else {
+          this.saleFeedback = { message: 'Venda criada com sucesso.', type: 'success' }
+        }
         this.novaVenda = { cliente_id: null, motorista_id: null, data_envio_prevista: '', data_entrega_prevista: '', comissao_motorista: null, comissao_motorista_em_dinheiro: true, items: [{ produto_id: null, quantidade: 1, valor_unitario: null }] }
         setTimeout(() => { this.showCreateModal = false }, 350)
         this.loadVendas()
@@ -700,6 +722,36 @@ export default {
       } else {
         this.novaVenda.items[idx].valor_unitario = null
       }
+      // Load FEFO data for this product
+      if (pid) this.loadLoteFEFO(pid)
+    },
+    async loadLoteFEFO(pid) {
+      try {
+        const res = await api.get(`/api/v1/lotes?produto_id=${pid}&status=ativo`)
+        const lotes = Array.isArray(res.data) ? res.data : []
+        if (lotes.length > 0) {
+          this.lotesFEFO = { ...this.lotesFEFO, [pid]: lotes[0] }
+        }
+      } catch { /* silent */ }
+    },
+    getLoteFEFO(pid) {
+      return this.lotesFEFO[pid] || null
+    },
+    getProductCusto(pid) {
+      return (this.productMap[pid]?.custo_medio || 0).toFixed(2)
+    },
+    calcMargem(pid, valor) {
+      const custo = parseFloat(this.productMap[pid]?.custo_medio || 0)
+      const v = parseFloat(valor || 0)
+      if (v <= 0) return null
+      return (((v - custo) / v) * 100).toFixed(1)
+    },
+    margemClass(pid, valor) {
+      const m = parseFloat(this.calcMargem(pid, valor))
+      if (isNaN(m)) return 'text-gray-400'
+      if (m >= 20) return 'text-green-600 font-semibold'
+      if (m >= 10) return 'text-amber-500 font-semibold'
+      return 'text-red-600 font-bold'
     },
     openCreateModal() { this.showCreateModal = true; this.saleFeedback = { message: '', type: 'info' } },
     clearFilters() { this.query = ''; this.statusFilter = ''; this.currentPage = 1; this.loadVendas() },

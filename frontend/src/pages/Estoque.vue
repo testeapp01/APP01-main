@@ -42,6 +42,12 @@
               Atualizar
             </BaseButton>
             <BaseButton
+              class="btn-secondary w-full sm:w-auto whitespace-nowrap"
+              @click="activeTab = activeTab === 'saldos' ? 'movimentos' : 'saldos'"
+            >
+              {{ activeTab === 'saldos' ? 'Ver Movimentos' : 'Ver Saldos' }}
+            </BaseButton>
+            <BaseButton
               class="btn-primary w-full sm:w-auto whitespace-nowrap"
               @click="openCreateModal"
             >
@@ -91,11 +97,41 @@
     <div class="section-block">
       <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-2">
         <h2 class="text-xl font-semibold text-gray-800 section-title">
-          Movimentação de Estoque
+          {{ activeTab === 'saldos' ? 'Saldo Atual por Produto' : 'Movimentação de Estoque' }}
         </h2>
       </div>
+
+      <!-- Saldos tab -->
+      <div v-if="activeTab === 'saldos'" class="panel-inner content-card">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200">
+              <th class="text-left py-2 px-3 text-gray-500 font-semibold">Produto</th>
+              <th class="text-right py-2 px-3 text-gray-500 font-semibold">Estoque</th>
+              <th class="text-right py-2 px-3 text-gray-500 font-semibold">Reservado</th>
+              <th class="text-right py-2 px-3 text-gray-500 font-semibold">Disponível</th>
+              <th class="text-right py-2 px-3 text-gray-500 font-semibold">Custo Médio</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="s in saldos" :key="s.id" class="border-b border-gray-100 hover:bg-gray-50">
+              <td class="py-2 px-3 font-medium">{{ s.nome }}</td>
+              <td class="py-2 px-3 text-right">{{ s.estoque_atual }} {{ s.unidade }}</td>
+              <td class="py-2 px-3 text-right text-amber-600">{{ s.estoque_reservado }}</td>
+              <td class="py-2 px-3 text-right" :class="parseFloat(s.disponivel) <= 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'">
+                {{ s.disponivel }}
+              </td>
+              <td class="py-2 px-3 text-right text-gray-500">R$ {{ parseFloat(s.custo_medio || 0).toFixed(2) }}</td>
+            </tr>
+            <tr v-if="saldos.length === 0">
+              <td colspan="5" class="py-4 text-center text-gray-400">Nenhum produto cadastrado</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Movimentações tab -->
       <div
-        v-if="visibleEstoque.length > 0"
+        v-if="activeTab === 'movimentos' && visibleEstoque.length > 0"
         class="panel-inner content-card"
       >
         <BaseTable
@@ -245,6 +281,8 @@ export default {
   data() {
     return {
       estoque: [],
+      saldos: [],
+      activeTab: 'movimentos',
       loading: true,
       pageSize: 25,
       currentPage: 1,
@@ -287,8 +325,8 @@ export default {
       })
     },
     hasActiveFilter() { return this.query || this.tipoMovimento },
-    entradasCount() { return this.filteredEstoque.filter(e => e.tipo_movimento === 'entrada').length },
-    saidasCount() { return this.filteredEstoque.filter(e => e.tipo_movimento === 'saida').length },
+    entradasCount() { return this.filteredEstoque.filter(e => ['entrada_compra','ajuste_manual'].includes(e.tipo_movimento)).length },
+    saidasCount() { return this.filteredEstoque.filter(e => ['saida_venda','quebra'].includes(e.tipo_movimento)).length },
     paginatedEstoque() {
       const start = (this.currentPage - 1) * this.pageSize
       return this.filteredEstoque.slice(start, start + this.pageSize)
@@ -296,6 +334,7 @@ export default {
   },
   mounted() {
     this.loadEstoque()
+    this.loadSaldos()
   },
   methods: {
     onQuery() {
@@ -316,10 +355,16 @@ export default {
       if (action === 'editar') this.openEdit(row)
       if (action === 'excluir') this.deleteMovimento(row)
     },
+    async loadSaldos() {
+      try {
+        const res = await api.get('/api/v1/estoque/saldos')
+        this.saldos = Array.isArray(res.data) ? res.data : []
+      } catch { this.saldos = [] }
+    },
     async loadEstoque() {
       this.loading = true
       try {
-        const res = await api.get('/api/v1/estoque')
+        const res = await api.get('/api/v1/estoque', { params: { q: this.query, per_page: 100 } })
         this.estoque = Array.isArray(res.data) ? res.data : (res.data.items || [])
         this.currentPage = 1
       } catch (e) {

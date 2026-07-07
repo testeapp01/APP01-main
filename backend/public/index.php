@@ -23,6 +23,10 @@ use App\Controllers\MotoristaController;
 use App\Controllers\ProductController;
 use App\Controllers\FornecedorController;
 use App\Controllers\UserController;
+use App\Controllers\EstoqueController;
+use App\Controllers\QuebrasController;
+use App\Controllers\LoteController;
+use App\Controllers\TabelaPrecoController;
 
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -325,6 +329,89 @@ $router->map('GET', '/api/v1/relatorios/compras/export', static function () use 
     RateLimitMiddleware::check(5, 60);
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     (new ReportsController($pdo))->exportStrategicPurchases();
+});
+
+$router->map('GET', '/api/v1/relatorios/abc', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new ReportsController($pdo))->abc();
+});
+
+// === ESTOQUE ===
+$router->map('GET', '/api/v1/estoque', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new EstoqueController($pdo))->index();
+});
+$router->map('GET', '/api/v1/estoque/saldos', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new EstoqueController($pdo))->saldos();
+});
+$router->map('POST', '/api/v1/estoque', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    (new EstoqueController($pdo))->create();
+});
+$router->map('DELETE', '/api/v1/estoque/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new EstoqueController($pdo))->delete((int)($params['id'] ?? 0));
+});
+
+// === QUEBRAS ===
+$router->map('GET', '/api/v1/quebras', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new QuebrasController($pdo))->index();
+});
+$router->map('POST', '/api/v1/quebras', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    (new QuebrasController($pdo))->create();
+});
+
+// === LOTES ===
+$router->map('GET', '/api/v1/lotes', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new LoteController($pdo))->index();
+});
+$router->map('POST', '/api/v1/lotes', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    (new LoteController($pdo))->create();
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/lotes/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    (new LoteController($pdo))->update((int)($params['id'] ?? 0));
+});
+
+// === HISTÓRICO DE PREÇO ===
+$router->map('GET', '/api/v1/produtos/{id}/historico-precos', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    $pid = (int)($params['id'] ?? 0);
+    $stmt = $pdo->prepare(
+        'SELECT hpp.id, hpp.valor_unitario, hpp.data_referencia, f.razao_social AS fornecedor
+         FROM historico_preco_produto hpp
+         LEFT JOIN fornecedores f ON f.id = hpp.fornecedor_id
+         WHERE hpp.produto_id = :pid
+         ORDER BY hpp.data_referencia DESC
+         LIMIT 90'
+    );
+    $stmt->execute(['pid' => $pid]);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+});
+
+// === TABELAS DE PREÇO ===
+$router->map('GET', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    (new TabelaPrecoController($pdo))->index();
+});
+$router->map('POST', '/api/v1/tabelas-preco', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new TabelaPrecoController($pdo))->create();
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/tabelas-preco/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new TabelaPrecoController($pdo))->update((int)($params['id'] ?? 0));
 });
 
 $router->map('GET', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth): void {

@@ -280,6 +280,11 @@
             class="w-full"
             @update:model-value="onProdutoChange"
           />
+          <!-- Step 7: Último preço pago -->
+          <div v-if="ultimoPreco && ultimoPreco.produto_id === novaCompra.produto_id" class="mt-1 text-xs text-blue-600">
+            💡 Último preço: R$ {{ parseFloat(ultimoPreco.valor).toFixed(2) }} em {{ ultimoPreco.data }}
+            <span v-if="ultimoPreco.fornecedor"> — {{ ultimoPreco.fornecedor }}</span>
+          </div>
         </div>
 
         <div v-if="novaCompra.tipo === 'revenda'">
@@ -665,6 +670,7 @@ export default {
       pageSize: 25,
       currentPage: 1,
       totalCount: 0,
+      ultimoPreco: null,
     }
   },
   computed: {
@@ -874,6 +880,19 @@ export default {
       if (prod && prod.custo_medio !== undefined) {
         this.novaCompra.valor_unitario = parseFloat(prod.custo_medio)
       }
+      // Step 7: Load price history for this product
+      if (pid) this.loadHistoricoPreco(pid)
+    },
+    async loadHistoricoPreco(pid) {
+      try {
+        const res = await api.get(`/api/v1/produtos/${pid}/historico-precos`)
+        const items = Array.isArray(res.data) ? res.data : []
+        if (items.length > 0) {
+          this.ultimoPreco = { produto_id: pid, valor: items[0].valor_unitario, data: items[0].data_referencia, fornecedor: items[0].fornecedor }
+        } else {
+          this.ultimoPreco = null
+        }
+      } catch { this.ultimoPreco = null }
     },
     toInputDate(value) {
       if (!value) return ''

@@ -65,15 +65,27 @@ class SalesCreationService
                 );
             }
 
+            $productRepo   = new ProductRepository($this->pdo);
+            $estoqueAlertas = [];
+
             foreach ($data['items'] as $item) {
                 if (empty($item['produto_id'])) {
                     continue;
                 }
+                $pid = (int)$item['produto_id'];
+                $qty = (float)($item['quantidade'] ?? 0);
+
+                // Step 5: Reserve stock (non-blocking — warns but allows sale)
+                $reserva = $productRepo->reservarEstoque($pid, $qty);
+                if ($reserva['alerta']) {
+                    $estoqueAlertas[] = $pid;
+                }
+
                 $saleData = [
                     'venda_cabecalho_id' => $cabecalhoId,
                     'cliente_id' => $data['cliente_id'],
-                    'produto_id' => (int)$item['produto_id'],
-                    'quantidade' => (float)($item['quantidade'] ?? 0),
+                    'produto_id' => $pid,
+                    'quantidade' => $qty,
                     'valor_unitario' => (float)($item['valor_unitario'] ?? 0),
                     'status' => $statusPedido,
                     'data_envio_prevista' => $data['data_envio_prevista'],
@@ -87,9 +99,11 @@ class SalesCreationService
             }
 
             return [
-                'id' => $createdIds[0],
-                'ids' => $createdIds,
-                'cabecalho_id' => $cabecalhoId,
+                'id'              => $createdIds[0],
+                'ids'             => $createdIds,
+                'cabecalho_id'    => $cabecalhoId,
+                'estoque_alerta'  => !empty($estoqueAlertas),
+                'produtos_sem_estoque' => $estoqueAlertas,
             ];
         }
 

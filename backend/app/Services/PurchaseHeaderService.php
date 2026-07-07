@@ -53,6 +53,60 @@ class PurchaseHeaderService
                 $this->confirmItemReceiveById((int)$row['id']);
             }
 
+            // Step 1 & 7: Update estoque + historico_preco for each item
+            $itemsData = $this->pdo->prepare(
+                'SELECT produto_id, quantidade, valor_unitario, fornecedor_id FROM compras WHERE compra_cabecalho_id = :id'
+            );
+            $itemsData->execute(['id' => $id]);
+            $compraItems = $itemsData->fetchAll(\PDO::FETCH_ASSOC);
+
+            $productRepo = new \App\Repositories\ProductRepository($this->pdo);
+            $authUser    = $GLOBALS['AUTH_USER'] ?? [];
+            $userId      = (int)($authUser['sub'] ?? 0) ?: null;
+
+            foreach ($compraItems as $ci) {
+                $pid = (int)$ci['produto_id'];
+                $qty = (float)$ci['quantidade'];
+                $vu  = (float)$ci['valor_unitario'];
+                $fid = isset($ci['fornecedor_id']) ? (int)$ci['fornecedor_id'] : null;
+
+                // Get current saldo for movement record
+                $saldoStmt = $this->pdo->prepare('SELECT estoque_atual FROM produtos WHERE id = :id LIMIT 1');
+                $saldoStmt->execute(['id' => $pid]);
+                $saldoAntes = (float)($saldoStmt->fetchColumn() ?: 0);
+
+                $productRepo->updateStockOnReceive($pid, $qty, $vu);
+
+                // Record in movimentacoes_estoque
+                if ($this->tabelaExiste('movimentacoes_estoque')) {
+                    $insMov = $this->pdo->prepare(
+                        'INSERT INTO movimentacoes_estoque
+                         (produto_id, tipo, quantidade, valor_unitario, saldo_antes, saldo_depois, referencia_id, referencia_tipo, usuario_id)
+                         VALUES (:pid, :tipo, :qty, :vu, :sa, :sd, :rid, :rt, :uid)'
+                    );
+                    $insMov->execute([
+                        'pid'  => $pid,
+                        'tipo' => 'entrada_compra',
+                        'qty'  => $qty,
+                        'vu'   => $vu,
+                        'sa'   => $saldoAntes,
+                        'sd'   => $saldoAntes + $qty,
+                        'rid'  => $id,
+                        'rt'   => 'compra_cabecalho',
+                        'uid'  => $userId,
+                    ]);
+                }
+
+                // Record price history
+                if ($this->tabelaExiste('historico_preco_produto')) {
+                    $insHp = $this->pdo->prepare(
+                        'INSERT INTO historico_preco_produto (produto_id, fornecedor_id, valor_unitario, data_referencia, compra_id)
+                         VALUES (:pid, :fid, :vu, CURDATE(), :cid)'
+                    );
+                    $insHp->execute(['pid' => $pid, 'fid' => $fid, 'vu' => $vu, 'cid' => $id]);
+                }
+            }
+
             $this->marcarCabecalhoComoRecebido($id, $currentUserId);
             $this->pdo->commit();
 
@@ -462,5 +516,16 @@ class PurchaseHeaderService
 
         $snapshot = $this->buildPurchaseSnapshot($headerId);
         $this->registrarHistoricoStatusCompra($headerId, $usuarioId, $statusId, $snapshot);
+    }
+
+    private function tabelaExiste(string $tabela): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT 1 FROM {$tabela} LIMIT 1");
+            $stmt->execute();
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

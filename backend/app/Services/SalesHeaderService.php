@@ -59,6 +59,46 @@ class SalesHeaderService
                 $salesService->confirmDelivery((int)$row['id']);
             }
 
+            // Step 1: Update estoque_atual on sales delivery
+            $itemsData = $this->pdo->prepare(
+                'SELECT produto_id, quantidade FROM vendas WHERE venda_cabecalho_id = :id'
+            );
+            $itemsData->execute(['id' => $headerId]);
+            $vendaItems = $itemsData->fetchAll(\PDO::FETCH_ASSOC);
+
+            $productRepo = new \App\Repositories\ProductRepository($this->pdo);
+            $authUser    = $GLOBALS['AUTH_USER'] ?? [];
+            $userId      = (int)($authUser['sub'] ?? 0) ?: null;
+
+            foreach ($vendaItems as $vi) {
+                $pid = (int)$vi['produto_id'];
+                $qty = (float)$vi['quantidade'];
+
+                $saldoStmt = $this->pdo->prepare('SELECT estoque_atual FROM produtos WHERE id = :id LIMIT 1');
+                $saldoStmt->execute(['id' => $pid]);
+                $saldoAntes = (float)($saldoStmt->fetchColumn() ?: 0);
+
+                $productRepo->updateStockOnDeliver($pid, $qty);
+
+                if ($this->tabelaExiste('movimentacoes_estoque')) {
+                    $insMov = $this->pdo->prepare(
+                        'INSERT INTO movimentacoes_estoque
+                         (produto_id, tipo, quantidade, valor_unitario, saldo_antes, saldo_depois, referencia_id, referencia_tipo, usuario_id)
+                         VALUES (:pid, :tipo, :qty, 0, :sa, :sd, :rid, :rt, :uid)'
+                    );
+                    $insMov->execute([
+                        'pid'  => $pid,
+                        'tipo' => 'saida_venda',
+                        'qty'  => $qty,
+                        'sa'   => $saldoAntes,
+                        'sd'   => max(0, $saldoAntes - $qty),
+                        'rid'  => $headerId,
+                        'rt'   => 'venda_cabecalho',
+                        'uid'  => $userId,
+                    ]);
+                }
+            }
+
             $this->marcarCabecalhoComoEntregue($headerId, $currentUserId);
             $this->pdo->commit();
 
@@ -445,5 +485,16 @@ class SalesHeaderService
 
         $snapshot = $this->buildSalesSnapshot($headerId);
         $this->registrarHistoricoStatus($headerId, $usuarioId, $statusId, $snapshot);
+    }
+
+    private function tabelaExiste(string $tabela): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT 1 FROM {$tabela} LIMIT 1");
+            $stmt->execute();
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

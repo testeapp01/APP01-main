@@ -212,6 +212,61 @@ class ReportsController
         }
     }
 
+    /** GET /api/v1/relatorios/abc — Curva ABC de produtos por receita */
+    public function abc(): void
+    {
+        $dias  = max(1, (int)($_GET['dias'] ?? 90));
+        $from  = date('Y-m-d', strtotime("-{$dias} days"));
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT v.produto_id, p.nome AS produto, p.unidade,
+                        SUM(v.receita_total)  AS receita_total,
+                        SUM(v.quantidade)     AS quantidade_vendida,
+                        COUNT(DISTINCT v.id)  AS num_vendas
+                 FROM vendas v
+                 JOIN produtos p ON p.id = v.produto_id
+                 WHERE v.status = 'ENTREGUE'
+                   AND v.data_venda >= :from
+                 GROUP BY v.produto_id, p.nome, p.unidade
+                 ORDER BY receita_total DESC"
+            );
+            $stmt->execute(['from' => $from]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            echo json_encode(['items' => [], 'total_receita' => 0]);
+            return;
+        }
+
+        $totalReceita = array_sum(array_column($rows, 'receita_total'));
+        $acumulado    = 0;
+        $resultado    = [];
+
+        foreach ($rows as $row) {
+            $receita       = (float)$row['receita_total'];
+            $percentual    = $totalReceita > 0 ? ($receita / $totalReceita) * 100 : 0;
+            $acumulado    += $percentual;
+
+            $classe = 'C';
+            if ($acumulado <= 80)       $classe = 'A';
+            elseif ($acumulado <= 95)   $classe = 'B';
+
+            $resultado[] = [
+                'produto_id'        => (int)$row['produto_id'],
+                'produto'           => $row['produto'],
+                'unidade'           => $row['unidade'],
+                'receita_total'     => round($receita, 2),
+                'quantidade_vendida'=> (float)$row['quantidade_vendida'],
+                'num_vendas'        => (int)$row['num_vendas'],
+                'percentual'        => round($percentual, 2),
+                'acumulado'         => round($acumulado, 2),
+                'classe'            => $classe,
+            ];
+        }
+
+        echo json_encode(['items' => $resultado, 'total_receita' => round($totalReceita, 2), 'dias' => $dias]);
+    }
+
     private function buildLineSeries(
         string $fromDate,
         string $groupBy,

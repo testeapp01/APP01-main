@@ -193,6 +193,44 @@
       </div>
     </div>
 
+    <!-- Step 9: Curva ABC de Produtos -->
+    <div v-if="abcItems.length > 0" class="mt-6">
+      <div class="panel-inner content-card">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-semibold text-slate-700">Curva ABC — Produtos por Receita ({{ abcDias }}d)</h3>
+          <div class="flex gap-1">
+            <button v-for="d in [30, 90, 180]" :key="d"
+              :class="['px-2 py-1 text-xs rounded-lg border transition-colors', abcDias === d ? 'bg-green-600 text-white border-green-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50']"
+              @click="loadABC(d)">{{ d }}d</button>
+          </div>
+        </div>
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-slate-200">
+              <th class="text-left py-1.5 px-2 text-slate-400 font-semibold">Classe</th>
+              <th class="text-left py-1.5 px-2 text-slate-400 font-semibold">Produto</th>
+              <th class="text-right py-1.5 px-2 text-slate-400 font-semibold">Receita</th>
+              <th class="text-right py-1.5 px-2 text-slate-400 font-semibold">%</th>
+              <th class="text-right py-1.5 px-2 text-slate-400 font-semibold">Acum.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in abcItems.slice(0, 15)" :key="item.produto_id" class="border-b border-slate-100">
+              <td class="py-1.5 px-2">
+                <span :class="['inline-block w-5 h-5 rounded text-xs font-bold text-center leading-5', item.classe === 'A' ? 'bg-green-100 text-green-700' : item.classe === 'B' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500']">
+                  {{ item.classe }}
+                </span>
+              </td>
+              <td class="py-1.5 px-2 font-medium text-slate-700">{{ item.produto }}</td>
+              <td class="py-1.5 px-2 text-right text-slate-600">R$ {{ item.receita_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }}</td>
+              <td class="py-1.5 px-2 text-right text-slate-500">{{ item.percentual }}%</td>
+              <td class="py-1.5 px-2 text-right text-slate-400">{{ item.acumulado }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div
       v-if="errorMessage"
       class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
@@ -446,9 +484,22 @@ export default {
       }
     }
 
+    // Step 9: Curva ABC
+    const abcItems = ref([])
+    const abcDias = ref(90)
+
+    const loadABC = async (dias = 90) => {
+      abcDias.value = dias
+      try {
+        const res = await api.get('/relatorios/abc', { params: { dias } })
+        abcItems.value = Array.isArray(res.data?.items) ? res.data.items : []
+      } catch { abcItems.value = [] }
+    }
+
     onMounted(async () => {
       await nextTick()
       await loadDashboard()
+      loadABC(90)
       window.addEventListener('focus', handleWindowFocus)
       document.addEventListener('visibilitychange', handleVisibilityChange)
       autoRefreshTimer = window.setInterval(() => {
@@ -480,6 +531,9 @@ export default {
       applySuggestedPeriod,
       asMoney,
       loadDashboard,
+      abcItems,
+      abcDias,
+      loadABC,
     }
   }
 }
