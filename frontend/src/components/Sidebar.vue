@@ -90,6 +90,15 @@
               <span>Produtos</span>
             </router-link>
             <router-link
+              to="/motoristas"
+              class="nav-link"
+              active-class="active"
+              @click="closeOnMobile"
+            >
+              <IconSet name="motoristas" :size="18" class="flex-shrink-0" />
+              <span>Motoristas</span>
+            </router-link>
+            <router-link
               to="/usuarios"
               class="nav-link"
               active-class="active"

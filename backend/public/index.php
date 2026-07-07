@@ -22,6 +22,7 @@ use App\Controllers\ClientController;
 use App\Controllers\MotoristaController;
 use App\Controllers\ProductController;
 use App\Controllers\FornecedorController;
+use App\Controllers\UserController;
 
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -318,6 +319,27 @@ $router->map('GET', '/api/v1/relatorios/compras/export', static function () use 
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     (new ReportsController($pdo))->exportStrategicPurchases();
+});
+
+$router->map('GET', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new UserController($pdo))->index();
+});
+$router->map('POST', '/api/v1/usuarios', static function () use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new UserController($pdo))->create();
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new UserController($pdo))->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/usuarios/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    (new UserController($pdo))->delete((int)($params['id'] ?? 0));
 });
 
 if (!$router->dispatch($method, $uri)) {
