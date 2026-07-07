@@ -514,7 +514,7 @@ export default {
     productOptions() {
       return [
         { value: '', label: 'Selecione um produto' },
-        ...this.products.map(p => ({ value: p.id, label: p.nome }))
+        ...this.products.filter(p => p.status !== 'inativo').map(p => ({ value: p.id, label: p.nome }))
       ]
     },
     visibleVendas() {

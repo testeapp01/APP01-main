@@ -253,95 +253,43 @@
 
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1">Fornecedor</label>
-          <select
-            v-model.number="novaCompra.fornecedor_id"
-            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
-            required
-          >
-            <option
-              :value="null"
-              disabled
-            >
-              Escolha um fornecedor
-            </option>
-            <option
-              v-for="f in fornecedores"
-              :key="f.id"
-              :value="f.id"
-            >
-              {{ f.razao_social }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="novaCompra.fornecedor_id"
+            :options="fornecedorOptions"
+            placeholder="Escolha um fornecedor"
+            class="w-full"
+          />
         </div>
 
         <div v-if="novaCompra.tipo === 'revenda'">
           <label class="block text-sm font-semibold text-gray-700 mb-1">Cliente</label>
-          <select
-            v-model.number="novaCompra.cliente_id"
-            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
-            required
-          >
-            <option
-              :value="null"
-              disabled
-            >
-              Escolha um cliente
-            </option>
-            <option
-              v-for="c in clientes"
-              :key="c.id"
-              :value="c.id"
-            >
-              {{ c.nome }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="novaCompra.cliente_id"
+            :options="clienteOptions"
+            placeholder="Escolha um cliente"
+            class="w-full"
+          />
         </div>
 
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1">Produto</label>
-          <select
-            v-model.number="novaCompra.produto_id"
-            class="p-3 border border-gray-300 rounded-xl estilo-select w-full"
-            required
-            @change="onProdutoChange"
-          >
-            <option
-              :value="null"
-              disabled
-            >
-              Escolha um produto
-            </option>
-            <option
-              v-for="p in produtos"
-              :key="p.id"
-              :value="p.id"
-            >
-              {{ p.nome }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="novaCompra.produto_id"
+            :options="produtoOptions"
+            placeholder="Escolha um produto"
+            class="w-full"
+            @update:model-value="onProdutoChange"
+          />
         </div>
 
         <div v-if="novaCompra.tipo === 'revenda'">
           <label class="text-sm text-gray-600 mb-1 block">Motorista</label>
-          <select
-            v-model.number="novaCompra.motorista_id"
-            class="p-3 border border-gray-300 rounded-xl estilo-select"
-            required
-          >
-            <option
-              :value="null"
-              disabled
-            >
-              Escolha um motorista
-            </option>
-            <option
-              v-for="m in motoristas"
-              :key="m.id"
-              :value="m.id"
-            >
-              {{ m.nome }}
-            </option>
-          </select>
+          <CustomSelect
+            v-model="novaCompra.motorista_id"
+            :options="motoristaOptions"
+            placeholder="Escolha um motorista"
+            class="w-full"
+          />
         </div>
 
         <!-- Quantidade e Valor Unitário lado a lado -->
@@ -669,10 +617,11 @@ import FormFeedback from '../components/ui/FormFeedback.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import PaginationPremium from '../components/ui/PaginationPremium.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
+import CustomSelect from '../components/ui/CustomSelect.vue'
 import { useFormat } from '../composables/useFormat'
 
 export default {
-  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback, ActionDropdown, PaginationPremium, EmptyState },
+  components: { BaseButton, BaseTable, SideDrawer, PageHero, ListState, FormFeedback, ActionDropdown, PaginationPremium, EmptyState, CustomSelect },
   data() {
     return {
       compras: [],
@@ -747,6 +696,18 @@ export default {
     },
     hasActiveFilter() {
       return String(this.statusFilter || '').trim() !== ''
+    },
+    fornecedorOptions() {
+      return [{ value: null, label: 'Escolha um fornecedor' }, ...this.fornecedores.map(f => ({ value: f.id, label: f.razao_social }))]
+    },
+    clienteOptions() {
+      return [{ value: null, label: 'Escolha um cliente' }, ...this.clientes.map(c => ({ value: c.id, label: c.nome }))]
+    },
+    produtoOptions() {
+      return [{ value: null, label: 'Escolha um produto' }, ...this.produtos.filter(p => p.status !== 'inativo').map(p => ({ value: p.id, label: p.nome }))]
+    },
+    motoristaOptions() {
+      return [{ value: null, label: 'Escolha um motorista' }, ...this.motoristas.map(m => ({ value: m.id, label: m.nome }))]
     },
     totalPages() { return Math.max(1, Math.ceil(this.filteredCompras.length / this.pageSize)) },
     paginatedCompras() { return this.filteredCompras },

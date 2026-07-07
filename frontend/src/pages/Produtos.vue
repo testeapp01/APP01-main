@@ -269,6 +269,7 @@ export default {
           tipo: item.tipo ?? '',
           unidade: item.unidade ?? '',
           custo_medio: Number(item.custo_medio ?? 0),
+          status: item.status ?? 'ativo',
         }))
         const parsedTotal = Number(res.data?.total)
         totalCount.value = Number.isFinite(parsedTotal) ? parsedTotal : produtos.value.length
@@ -302,8 +303,8 @@ export default {
     })
 
     const hasActiveFilter = computed(() => query.value)
-    const activeProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status !== false).length)
-    const inactiveProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status === false).length)
+    const activeProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status === 'ativo').length)
+    const inactiveProdutosCount = computed(() => filteredProdutos.value.filter(p => p.status === 'inativo').length)
 
     const totalPages = computed(() => Math.max(1, Math.ceil(filteredProdutos.value.length / pageSize.value)))
     const paginatedProdutos = computed(() => {
@@ -337,7 +338,7 @@ export default {
     }
 
     function openCreateModal() { editMode.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' }; showCreateModal.value = true }
-    function openEdit(row) { editMode.value = true; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { ...row }; showCreateModal.value = true }
+    function openEdit(row) { editMode.value = true; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { ...row, status: row.status ?? 'ativo' }; showCreateModal.value = true }
     function closeCreateModal() { showCreateModal.value = false; submittingProduct.value = false; productFeedback.value = { message: '', type: 'info' }; produtoForm.value = { id: null, nome: '', tipo: '', unidade: '', custo_medio: 0, status: 'ativo' } }
 
     async function submitProduto() {

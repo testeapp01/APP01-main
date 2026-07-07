@@ -30,7 +30,7 @@ class ProductController
         $stmt->execute($params);
         $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT id, nome, tipo, unidade, custo_medio FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT id, nome, tipo, unidade, custo_medio, status FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $k => $v) $stmt->bindValue($k, $v);
         $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
@@ -58,13 +58,16 @@ class ProductController
             return;
         }
 
-        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio) VALUES (:nome, :tipo, :unidade, :custo_medio)');
+        $status = in_array($data['status'] ?? 'ativo', ['ativo', 'inativo'], true) ? $data['status'] : 'ativo';
+
+        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio, status) VALUES (:nome, :tipo, :unidade, :custo_medio, :status)');
         try {
             $stmt->execute([
                 'nome' => $nome,
                 'tipo' => $data['tipo'] ?? null,
                 'unidade' => $data['unidade'] ?? 'saco',
                 'custo_medio' => $custoMedio,
+                'status' => $status,
             ]);
         } catch (\PDOException $e) {
             http_response_code(500);
@@ -101,18 +104,23 @@ class ProductController
             return;
         }
 
+        $status = in_array($data['status'] ?? '', ['ativo', 'inativo'], true) ? $data['status'] : null;
+
+        $statusSql = $status !== null ? ', status = :status' : '';
         $stmt = $this->pdo->prepare(
-            'UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, custo_medio = :custo_medio WHERE id = :id'
+            "UPDATE produtos SET nome = :nome, tipo = :tipo, unidade = :unidade, custo_medio = :custo_medio{$statusSql} WHERE id = :id"
         );
 
         try {
-            $stmt->execute([
+            $params = [
                 'id' => $id,
                 'nome' => $nome,
                 'tipo' => $data['tipo'] ?? null,
                 'unidade' => $data['unidade'] ?? 'saco',
                 'custo_medio' => $custoMedio,
-            ]);
+            ];
+            if ($status !== null) $params['status'] = $status;
+            $stmt->execute($params);
         } catch (\PDOException $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Falha ao atualizar produto.']);

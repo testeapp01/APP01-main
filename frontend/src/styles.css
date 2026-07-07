@@ -528,8 +528,8 @@ select:focus { border-color: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12);
 
 .saas-context-grid {
 	display: grid;
-	grid-template-columns: repeat(1, minmax(0, 1fr));
-	gap: 1rem;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
 	margin-bottom: 1.5rem;
 }
 
@@ -774,7 +774,7 @@ label {
 	}
 
 	.saas-context-grid {
-		grid-template-columns: repeat(1, minmax(0, 1fr));
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.panel-inner {
