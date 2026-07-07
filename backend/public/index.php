@@ -27,6 +27,7 @@ use App\Controllers\EstoqueController;
 use App\Controllers\QuebrasController;
 use App\Controllers\LoteController;
 use App\Controllers\TabelaPrecoController;
+use App\Bootstrap\Container;
 
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
@@ -64,6 +65,8 @@ set_error_handler(static function (int $severity, string $message, string $file,
 Dotenv::createImmutable(__DIR__ . '/..')->safeLoad();
 
 $pdo = Connection::getPdo();
+
+$container = new Container($pdo);
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -172,67 +175,67 @@ $router->map('GET', '/api/v1/auth/me', static function () use ($pdo, $ensureAuth
     (new AuthController($pdo))->me((array)$authUser);
 });
 
-$router->map('POST', '/api/v1/compras', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/compras', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::SENIOR);
-    (new PurchaseController($pdo))->create();
+    $container->make(PurchaseController::class)->create();
 });
-$router->map('POST', '/api/v1/compras/receive', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/compras/receive', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::SENIOR);
-    (new PurchaseController($pdo))->receive();
+    $container->make(PurchaseController::class)->receive();
 });
-$router->map('GET', '/api/v1/compras', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/compras', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new PurchaseController($pdo))->index();
+    $container->make(PurchaseController::class)->index();
 });
-$router->map('GET', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new PurchaseController($pdo))->showHeader((int)($params['id'] ?? 0));
+    $container->make(PurchaseController::class)->showHeader((int)($params['id'] ?? 0));
 });
-$router->map('GET', '/api/v1/compras/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/compras/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new PurchaseController($pdo))->printHeaderPdf((int)($params['id'] ?? 0));
+    $container->make(PurchaseController::class)->printHeaderPdf((int)($params['id'] ?? 0));
 });
-$router->map(['PUT', 'PATCH'], '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map(['PUT', 'PATCH'], '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::SENIOR);
-    (new PurchaseController($pdo))->updateHeader((int)($params['id'] ?? 0));
+    $container->make(PurchaseController::class)->updateHeader((int)($params['id'] ?? 0));
 });
-$router->map('DELETE', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/compras/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new PurchaseController($pdo))->deleteHeader((int)($params['id'] ?? 0));
+    $container->make(PurchaseController::class)->deleteHeader((int)($params['id'] ?? 0));
 });
-$router->map('POST', '/api/v1/compras/cabecalhos/{id}/confirmar-entrega', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/compras/cabecalhos/{id}/confirmar-entrega', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new PurchaseController($pdo))->confirmHeaderDelivery((int)($params['id'] ?? 0));
+    $container->make(PurchaseController::class)->confirmHeaderDelivery((int)($params['id'] ?? 0));
 });
 
-$router->map('POST', '/api/v1/vendas', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/vendas', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new SalesController($pdo))->create();
+    $container->make(SalesController::class)->create();
 });
-$router->map('POST', '/api/v1/vendas/deliver', static function () use ($pdo, $ensureAuth): void {
+$router->map('POST', '/api/v1/vendas/deliver', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new SalesController($pdo))->deliver();
+    $container->make(SalesController::class)->deliver();
 });
-$router->map('GET', '/api/v1/vendas', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/vendas', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new SalesController($pdo))->index();
+    $container->make(SalesController::class)->index();
 });
-$router->map('GET', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new SalesController($pdo))->showHeader((int)($params['id'] ?? 0));
+    $container->make(SalesController::class)->showHeader((int)($params['id'] ?? 0));
 });
-$router->map('GET', '/api/v1/vendas/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/vendas/cabecalhos/{id}/pdf', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    (new SalesController($pdo))->printHeaderPdf((int)($params['id'] ?? 0));
+    $container->make(SalesController::class)->printHeaderPdf((int)($params['id'] ?? 0));
 });
-$router->map('DELETE', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth): void {
+$router->map('DELETE', '/api/v1/vendas/cabecalhos/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
-    (new SalesController($pdo))->deleteHeader((int)($params['id'] ?? 0));
+    $container->make(SalesController::class)->deleteHeader((int)($params['id'] ?? 0));
 });
 
 $router->map('GET', '/api/v1/clientes', static function () use ($pdo, $ensureAuth): void {
