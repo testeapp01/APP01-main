@@ -528,8 +528,8 @@ select:focus { border-color: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12);
 
 .saas-context-grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 0.75rem;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem;
 	margin-bottom: 1.5rem;
 }
 
@@ -537,7 +537,7 @@ select:focus { border-color: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12);
 	background: #FFFFFF;
 	border: 1px solid #E2E8F0;
 	border-radius: 12px;
-	padding: 1.5rem;
+	padding: 0.75rem;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 	transition: all 0.3s ease;
 }
@@ -557,11 +557,11 @@ select:focus { border-color: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.12);
 }
 
 .saas-kpi-value {
-	font-size: 1.875rem;
+	font-size: 1.25rem;
 	font-weight: 800;
 	color: #0F172A;
 	line-height: 1.2;
-	margin-bottom: 0.5rem;
+	margin-bottom: 0.25rem;
 }
 
 .saas-kpi-help {
@@ -774,7 +774,8 @@ label {
 	}
 
 	.saas-context-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.5rem;
 	}
 
 	.panel-inner {
@@ -810,7 +811,17 @@ label {
 
 @media (min-width: 768px) {
 	.saas-context-grid {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.saas-kpi-card {
+		padding: 1.5rem;
+	}
+
+	.saas-kpi-value {
+		font-size: 1.875rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.settings-grid {
