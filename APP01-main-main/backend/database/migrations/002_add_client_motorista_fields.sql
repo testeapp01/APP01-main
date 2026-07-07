@@ -1,0 +1,10 @@
+-- Migration: add extra columns for clients and drivers
+ALTER TABLE clientes ADD COLUMN cpf_cnpj VARCHAR(50) NULL AFTER nome;
+ALTER TABLE clientes ADD COLUMN email VARCHAR(150) NULL AFTER telefone;
+ALTER TABLE clientes ADD COLUMN uf VARCHAR(2) NULL AFTER email;
+ALTER TABLE clientes ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1 AFTER uf;
+
+ALTER TABLE motoristas ADD COLUMN placa VARCHAR(50) NULL AFTER nome;
+ALTER TABLE motoristas ADD COLUMN veiculo VARCHAR(150) NULL AFTER placa;
+ALTER TABLE motoristas ADD COLUMN uf VARCHAR(2) NULL AFTER veiculo;
+ALTER TABLE motoristas ADD COLUMN status TINYINT(1) NOT NULL DEFAULT 1 AFTER uf;
