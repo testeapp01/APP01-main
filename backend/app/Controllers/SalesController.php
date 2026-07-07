@@ -14,8 +14,15 @@ class SalesController
     private ?bool $hasStatusPedidoCache = null;
     private ?bool $hasHistoricoStatusPedidoCache = null;
 
-    public function __construct(private PDO $pdo)
+    private SalesCreationService $creationService;
+    private SalesHeaderService $headerService;
+    private OrderPdfService $pdfService;
+
+    public function __construct(private PDO $pdo, ?SalesCreationService $creationService = null, ?SalesHeaderService $headerService = null, ?OrderPdfService $pdfService = null)
     {
+        $this->creationService = $creationService ?? new SalesCreationService($this->pdo);
+        $this->headerService = $headerService ?? new SalesHeaderService($this->pdo);
+        $this->pdfService = $pdfService ?? new OrderPdfService($this->pdo);
     }
 
     private function vendasColumns(): array
@@ -290,8 +297,7 @@ class SalesController
     {
         $data = \App\Helpers\Request::body();
         try {
-            $service = new SalesCreationService($this->pdo);
-            $result = $service->create($data);
+            $result = $this->creationService->create($data);
             http_response_code(201);
             echo json_encode($result);
         } catch (\Throwable $e) {
@@ -413,8 +419,7 @@ class SalesController
         }
 
         try {
-            $service = new OrderPdfService($this->pdo);
-            $pdf = $service->renderSalesHeaderPdf($id);
+            $pdf = $this->pdfService->renderSalesHeaderPdf($id);
             if ($pdf === null) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Pedido de venda não encontrado']);
@@ -435,7 +440,7 @@ class SalesController
     {
         $data = \App\Helpers\Request::body();
         $headerId = $data['venda_cabecalho_id'] ?? null;
-        $workflow = new SalesHeaderService($this->pdo);
+        $workflow = $this->headerService;
 
         if ($headerId && $this->hasVendasCabecalhoTable()) {
             try {
@@ -476,8 +481,7 @@ class SalesController
     public function deleteHeader(int $id): void
     {
         try {
-            $workflow = new SalesHeaderService($this->pdo);
-            $result = $workflow->deleteHeader($id);
+            $result = $this->headerService->deleteHeader($id);
             echo json_encode($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();

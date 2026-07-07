@@ -26,7 +26,19 @@ class Container
         // Simple known mappings to avoid reflection and keep DI explicit
         switch ($class) {
             case \App\Controllers\PurchaseController::class:
+                return new \App\Controllers\PurchaseController(
+                    $this->pdo,
+                    new \App\Services\PurchaseCreationService($this->pdo),
+                    new \App\Services\PurchaseHeaderService($this->pdo),
+                    new \App\Services\OrderPdfService($this->pdo)
+                );
             case \App\Controllers\SalesController::class:
+                return new \App\Controllers\SalesController(
+                    $this->pdo,
+                    new \App\Services\SalesCreationService($this->pdo),
+                    new \App\Services\SalesHeaderService($this->pdo),
+                    new \App\Services\OrderPdfService($this->pdo)
+                );
             case \App\Controllers\AuthController::class:
             case \App\Controllers\ClientController::class:
             case \App\Controllers\MotoristaController::class:

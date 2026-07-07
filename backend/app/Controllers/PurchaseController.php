@@ -15,8 +15,15 @@ class PurchaseController
     private ?bool $hasStatusCompraCache = null;
     private ?bool $hasHistoricoStatusCompraCache = null;
 
-    public function __construct(private PDO $pdo)
+    private PurchaseCreationService $creationService;
+    private PurchaseHeaderService $headerService;
+    private OrderPdfService $pdfService;
+
+    public function __construct(private PDO $pdo, ?PurchaseCreationService $creationService = null, ?PurchaseHeaderService $headerService = null, ?OrderPdfService $pdfService = null)
     {
+        $this->creationService = $creationService ?? new PurchaseCreationService($this->pdo);
+        $this->headerService = $headerService ?? new PurchaseHeaderService($this->pdo);
+        $this->pdfService = $pdfService ?? new OrderPdfService($this->pdo);
     }
 
     private function comprasColumns(): array
@@ -305,8 +312,7 @@ class PurchaseController
     {
         $data = Request::body();
         try {
-            $service = new PurchaseCreationService($this->pdo);
-            $result = $service->create($data);
+            $result = $this->creationService->create($data);
             http_response_code(201);
             echo json_encode($result);
         } catch (\RuntimeException $e) {
@@ -421,8 +427,7 @@ class PurchaseController
         }
 
         try {
-            $service = new OrderPdfService($this->pdo);
-            $pdf = $service->renderPurchaseHeaderPdf($id);
+            $pdf = $this->pdfService->renderPurchaseHeaderPdf($id);
             if ($pdf === null) {
                 http_response_code(404);
                 echo json_encode(['error' => 'Pedido de compra não encontrado']);
@@ -563,8 +568,7 @@ class PurchaseController
     public function deleteHeader(int $id): void
     {
         try {
-            $service = new PurchaseHeaderService($this->pdo);
-            $result = $service->deleteHeader($id);
+            $result = $this->headerService->deleteHeader($id);
             echo json_encode($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
@@ -604,8 +608,7 @@ class PurchaseController
     public function confirmHeaderDelivery(int $id): void
     {
         try {
-            $service = new PurchaseHeaderService($this->pdo);
-            $result = $service->confirmHeaderDelivery($id, $this->currentUserId());
+            $result = $this->headerService->confirmHeaderDelivery($id, $this->currentUserId());
             echo json_encode($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
@@ -621,8 +624,7 @@ class PurchaseController
     public function confirmItemDelivery(int $id): void
     {
         try {
-            $service = new PurchaseHeaderService($this->pdo);
-            $res = $service->confirmItemDelivery($id, $this->currentUserId());
+            $res = $this->headerService->confirmItemDelivery($id, $this->currentUserId());
             echo json_encode($res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
@@ -656,8 +658,7 @@ class PurchaseController
         }
 
         try {
-            $service = new PurchaseHeaderService($this->pdo);
-            $res = $service->confirmItemReceiveById((int)$id);
+            $res = $this->headerService->confirmItemReceiveById((int)$id);
             echo json_encode(['message' => 'Compra marcada como RECEBIDA'] + $res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
