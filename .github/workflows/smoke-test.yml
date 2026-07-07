@@ -1,0 +1,44 @@
+name: Backend Smoke Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      OPS_TOKEN: ci-smoke-token
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install composer deps
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Start PHP built-in server
+        run: |
+          # export OPS_TOKEN so the PHP process sees it
+          export OPS_TOKEN=${OPS_TOKEN}
+          php -S 127.0.0.1:8000 -t backend/public > /tmp/php.log 2>&1 &
+          sleep 2
+
+      - name: Smoke test /api/v1/health
+        run: |
+          set -e
+          echo "Testing health endpoint"
+          for i in 1 2 3 4 5; do
+            if curl -sS "http://127.0.0.1:8000/api/v1/health?ops_token=${OPS_TOKEN}" | jq . >/dev/null 2>&1; then
+              echo "health ok"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Health endpoint failed" && tail -n +1 /tmp/php.log && exit 1
