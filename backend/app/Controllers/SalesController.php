@@ -319,6 +319,12 @@ class SalesController
             return;
         }
 
+        // IDOR protection
+        $authUser    = $GLOBALS['AUTH_USER'] ?? [];
+        $userRole    = strtolower(trim((string)($authUser['role'] ?? '')));
+        $userId      = (int)($authUser['sub'] ?? 0);
+        $isPrivileged = in_array($userRole, ['admin', 'gerente'], true);
+
         $headerStatusSelect = "CASE
                                    WHEN sp.nome IS NOT NULL THEN UPPER(sp.nome)
                                    WHEN UPPER(IFNULL(h.status, '')) = 'ENTREGUE' THEN 'ENTREGUE'
@@ -345,6 +351,14 @@ class SalesController
         if (!$header) {
             http_response_code(404);
             echo json_encode(['error' => 'Pedido não encontrado']);
+            return;
+        }
+
+        // Enforce ownership
+        $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
+        if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado']);
             return;
         }
 

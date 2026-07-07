@@ -56,9 +56,16 @@ class UserController
         $role  = trim((string)($data['role'] ?? 'operador'));
         $password = (string)($data['password'] ?? '');
 
-        $allowed = ['admin', 'gerente', 'suporte', 'vendedor', 'operador'];
-        if (!in_array($role, $allowed, true)) {
-            $role = 'operador';
+        // Role hierarchy: admin can create any role; gerente can create up to vendedor
+        $callerRole = strtolower(trim((string)(($GLOBALS['AUTH_USER'] ?? [])['role'] ?? '')));
+        $allowedByAdmin   = ['admin', 'gerente', 'suporte', 'vendedor', 'operador'];
+        $allowedByGerente = ['suporte', 'vendedor', 'operador'];
+        $allowedRoles = $callerRole === 'admin' ? $allowedByAdmin : $allowedByGerente;
+
+        if (!in_array($role, $allowedRoles, true)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Você não tem permissão para criar usuários com essa função.']);
+            return;
         }
 
         $check = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
@@ -152,7 +159,7 @@ class UserController
             return;
         }
 
-        $stmt = $this->pdo->prepare('DELETE FROM users WHERE id = :id');
+        $stmt = $this->pdo->prepare('UPDATE users SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL');
         $stmt->execute(['id' => $id]);
 
         if ($stmt->rowCount() === 0) {

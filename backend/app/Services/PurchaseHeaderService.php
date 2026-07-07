@@ -88,10 +88,10 @@ class PurchaseHeaderService
         try {
             $this->pdo->beginTransaction();
 
-            $delItems = $this->pdo->prepare('DELETE FROM compras WHERE compra_cabecalho_id = :id');
+            $delItems = $this->pdo->prepare('UPDATE compras SET deleted_at = NOW() WHERE compra_cabecalho_id = :id AND deleted_at IS NULL');
             $delItems->execute(['id' => $id]);
 
-            $delHeader = $this->pdo->prepare('DELETE FROM compras_cabecalho WHERE id = :id');
+            $delHeader = $this->pdo->prepare('UPDATE compras_cabecalho SET deleted_at = NOW() WHERE id = :id');
             $delHeader->execute(['id' => $id]);
 
             $this->pdo->commit();

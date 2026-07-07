@@ -230,9 +230,8 @@ export default {
       localStorage.setItem('safrion-theme', this.isDark ? 'dark' : 'light')
     },
     logout() {
-      localStorage.removeItem('hf_token')
-      localStorage.removeItem('hf_mock_email')
-      this.$router.push('/login')
+      const { useAuthStore } = require('../stores/auth')
+      useAuthStore().logout()
     },
   },
   mounted() {

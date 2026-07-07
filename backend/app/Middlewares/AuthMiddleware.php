@@ -8,18 +8,21 @@ class AuthMiddleware
 {
     public static function authenticate(): ?array
     {
-        $headers = getallheaders();
-        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? null;
-        if (!$auth) {
+        // Prefer httpOnly cookie; fall back to Authorization header (API/mobile)
+        $token = $_COOKIE['auth_token'] ?? null;
+
+        if (!$token) {
+            $headers = getallheaders();
+            $auth = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+            if ($auth) {
+                $token = str_starts_with($auth, 'Bearer ') ? substr($auth, 7) : $auth;
+            }
+        }
+
+        if (!$token) {
             http_response_code(401);
             echo json_encode(['error' => 'Token não fornecido']);
             exit;
-        }
-
-        if (str_starts_with($auth, 'Bearer ')) {
-            $token = substr($auth, 7);
-        } else {
-            $token = $auth;
         }
 
         try {

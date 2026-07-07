@@ -324,6 +324,12 @@ class PurchaseController
             return;
         }
 
+        // IDOR protection: non-privileged users can only see their own records
+        $authUser  = $GLOBALS['AUTH_USER'] ?? [];
+        $userRole  = strtolower(trim((string)($authUser['role'] ?? '')));
+        $userId    = (int)($authUser['sub'] ?? 0);
+        $isPrivileged = in_array($userRole, ['admin', 'gerente'], true);
+
         $headerStatusSelect = "CASE
                                    WHEN sc.nome IS NOT NULL THEN UPPER(sc.nome)
                                    WHEN UPPER(IFNULL(h.status, '')) = 'RECEBIDA' THEN 'RECEBIDA'
@@ -353,6 +359,14 @@ class PurchaseController
         if (!$header) {
             http_response_code(404);
             echo json_encode(['error' => 'Pedido de compra não encontrado']);
+            return;
+        }
+
+        // Enforce ownership: non-privileged user can only see their own records (or pre-migration NULLs)
+        $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
+        if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Acesso negado']);
             return;
         }
 

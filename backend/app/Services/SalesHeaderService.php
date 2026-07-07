@@ -126,10 +126,10 @@ class SalesHeaderService
         try {
             $this->pdo->beginTransaction();
 
-            $delItems = $this->pdo->prepare('DELETE FROM vendas WHERE venda_cabecalho_id = :id');
+            $delItems = $this->pdo->prepare('UPDATE vendas SET deleted_at = NOW() WHERE venda_cabecalho_id = :id AND deleted_at IS NULL');
             $delItems->execute(['id' => $id]);
 
-            $delHeader = $this->pdo->prepare('DELETE FROM vendas_cabecalho WHERE id = :id');
+            $delHeader = $this->pdo->prepare('UPDATE vendas_cabecalho SET deleted_at = NOW() WHERE id = :id');
             $delHeader->execute(['id' => $id]);
 
             $this->pdo->commit();

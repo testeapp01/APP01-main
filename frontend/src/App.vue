@@ -107,9 +107,8 @@ export default {
           document.documentElement.classList.contains('dark') ? 'dark' : 'light'
         )
       } else if (action === 'logout') {
-        localStorage.removeItem('hf_token')
-        localStorage.removeItem('hf_mock_email')
-        this.$router.push('/login')
+        const { useAuthStore } = require('./stores/auth')
+        useAuthStore().logout()
       }
     },
     handleKeyboardShortcuts(e) {

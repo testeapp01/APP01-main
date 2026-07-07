@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
   { path: '/', name: 'Dashboard', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true } },
@@ -27,9 +28,14 @@ const router = createRouter({
   scrollBehavior() { return { top: 0 } }
 })
 
-router.beforeEach((to) => {
-  const token = (typeof localStorage !== 'undefined') ? localStorage.getItem('hf_token') : null
-  const isAuthenticated = !!token
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  if (!auth.hydrated) {
+    await auth.hydrateSession()
+  }
+
+  const isAuthenticated = auth.isAuthenticated
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath } }

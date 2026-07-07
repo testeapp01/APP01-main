@@ -136,7 +136,7 @@ export function useAuth() {
   )
 
   onMounted(() => {
-    if (auth?.token) {
+    if (auth?.isAuthenticated) {
       router.replace('/')
       return
     }

@@ -125,7 +125,7 @@ class ClientRepository
 
     public function delete(int $id): bool
     {
-        $stmt = $this->pdo->prepare('DELETE FROM clientes WHERE id = :id');
+        $stmt = $this->pdo->prepare('UPDATE clientes SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL');
         return $stmt->execute(['id' => $id]);
     }
 }

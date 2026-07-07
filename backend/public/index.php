@@ -103,7 +103,8 @@ Metrics::increment('http_requests_total');
 $router = new Router();
 
 $publicRoute = static function () use ($uri, $method): bool {
-    return ($uri === '/api/v1/auth/login' && $method === 'POST');
+    return ($uri === '/api/v1/auth/login' && $method === 'POST')
+        || ($uri === '/api/v1/auth/logout' && $method === 'POST');
 };
 
 $ensureAuth = static function () use ($publicRoute): ?array {
@@ -156,6 +157,10 @@ $router->map('GET', '/api/v1/metrics', static function (): void {
 
 $router->map('POST', '/api/v1/auth/login', static function () use ($pdo): void {
     (new AuthController($pdo))->login();
+});
+
+$router->map('POST', '/api/v1/auth/logout', static function () use ($pdo): void {
+    (new AuthController($pdo))->logout();
 });
 
 $router->map('GET', '/api/v1/auth/me', static function () use ($pdo, $ensureAuth): void {
@@ -317,6 +322,7 @@ $router->map('GET', '/api/v1/relatorios/compras', static function () use ($pdo, 
 });
 $router->map('GET', '/api/v1/relatorios/compras/export', static function () use ($pdo, $ensureAuth): void {
     $ensureAuth();
+    RateLimitMiddleware::check(5, 60);
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     (new ReportsController($pdo))->exportStrategicPurchases();
 });

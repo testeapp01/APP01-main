@@ -216,6 +216,7 @@ const createMockAdapter = () => {
 const api = axios.create({
   baseURL: MOCK_MODE ? 'http://mock-api' : API_BASE_URL,
   timeout: 15000,
+  withCredentials: true,
 });
 
 if (MOCK_MODE) {
@@ -230,18 +231,11 @@ api.interceptors.request.use(config => {
       config.url = config.url.replace('api/v1', '')
     }
   }
-
-  // attach auth token if exists
-  const token = localStorage.getItem('hf_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 }, error => Promise.reject(error));
 
 api.interceptors.response.use(response => response, error => {
-  // global error handling
   if (error.response && error.response.status === 401) {
-    // example: redirect to login or emit event
-    localStorage.removeItem('hf_token');
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
       window.location.assign('/login');
     }

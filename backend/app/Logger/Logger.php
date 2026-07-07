@@ -16,7 +16,7 @@ class Logger
             $log = new MonoLogger($name);
             $dir = __DIR__ . '/../../storage/logs';
             if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+                mkdir($dir, 0750, true);
             }
             $path = $dir . '/app.log';
             $handler = new RotatingFileHandler($path, 7, MonoLogger::DEBUG);

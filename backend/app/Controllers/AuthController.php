@@ -72,7 +72,31 @@ class AuthController
         }
         $jwt = JWT::encode($payload, $secret, 'HS256');
 
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                 || (int)($_SERVER['SERVER_PORT'] ?? 80) === 443;
+
+        setcookie('auth_token', $jwt, [
+            'expires'  => time() + (60 * 60 * 8),
+            'path'     => '/',
+            'secure'   => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+
         echo json_encode(['token' => $jwt, 'user' => ['id' => $user['id'], 'name' => $user['name'], 'role' => $userRole]]);
+    }
+
+    public function logout(): void
+    {
+        setcookie('auth_token', '', [
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+        echo json_encode(['message' => 'Logout realizado com sucesso']);
+    }
     }
 
     public function me(array $tokenPayload): void
