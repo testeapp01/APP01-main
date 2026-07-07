@@ -4,6 +4,7 @@ namespace App\Controllers;
 use PDO;
 use App\Helpers\Request;
 use App\Helpers\SchemaValidator;
+use App\Helpers\Response;
 
 class UserController
 {
@@ -13,23 +14,25 @@ class UserController
 
     public function index(): void
     {
-        $stmt = $this->pdo->query(
-            'SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC'
-        );
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->query('SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC');
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $result = array_map(static function (array $u): array {
-            return [
-                'id'         => $u['id'],
-                'nome'       => $u['name'],
-                'email'      => $u['email'],
-                'role'       => $u['role'],
-                'status'     => true,
-                'created_at' => $u['created_at'],
-            ];
-        }, $rows);
+            $result = array_map(static function (array $u): array {
+                return [
+                    'id'         => $u['id'],
+                    'nome'       => $u['name'],
+                    'email'      => $u['email'],
+                    'role'       => $u['role'],
+                    'status'     => true,
+                    'created_at' => $u['created_at'],
+                ];
+            }, $rows);
 
-        echo json_encode($result);
+            Response::json($result);
+        } catch (\Throwable $e) {
+            Response::error('Erro ao buscar usuários', 500);
+        }
     }
 
     public function create(): void
@@ -46,8 +49,7 @@ class UserController
         ]);
 
         if (!empty($errors)) {
-            http_response_code(422);
-            echo json_encode(['error' => 'Payload inválido', 'details' => $errors]);
+            Response::error('Payload inválido', 422, ['details' => $errors]);
             return;
         }
 
@@ -63,39 +65,42 @@ class UserController
         $allowedRoles = $callerRole === 'admin' ? $allowedByAdmin : $allowedByGerente;
 
         if (!in_array($role, $allowedRoles, true)) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Você não tem permissão para criar usuários com essa função.']);
+            Response::error('Você não tem permissão para criar usuários com essa função.', 403);
             return;
         }
 
-        $check = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
-        $check->execute(['email' => $email]);
-        if ($check->fetch()) {
-            http_response_code(409);
-            echo json_encode(['error' => 'Email já cadastrado.']);
+        try {
+            $check = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+            $check->execute(['email' => $email]);
+            if ($check->fetch()) {
+                Response::error('Email já cadastrado.', 409);
+                return;
+            }
+        } catch (\Throwable $e) {
+            Response::error('Erro ao verificar email', 500);
             return;
         }
 
         $hash = password_hash($password, PASSWORD_BCRYPT);
         if ($hash === false) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Erro ao processar senha.']);
+            Response::error('Erro ao processar senha.', 500);
             return;
         }
 
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO users (name, email, password, role, created_at) VALUES (:name, :email, :password, :role, NOW())'
-        );
-        $stmt->execute([
-            'name'     => $nome,
-            'email'    => $email,
-            'password' => $hash,
-            'role'     => $role,
-        ]);
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO users (name, email, password, role, created_at) VALUES (:name, :email, :password, :role, NOW())');
+            $stmt->execute([
+                'name'     => $nome,
+                'email'    => $email,
+                'password' => $hash,
+                'role'     => $role,
+            ]);
 
-        $id = (int)$this->pdo->lastInsertId();
-        http_response_code(201);
-        echo json_encode(['id' => $id, 'nome' => $nome, 'email' => $email, 'role' => $role]);
+            $id = (int)$this->pdo->lastInsertId();
+            Response::json(['id' => $id, 'nome' => $nome, 'email' => $email, 'role' => $role], 201);
+        } catch (\Throwable $e) {
+            Response::error('Erro ao criar usuário', 500);
+        }
     }
 
     public function update(int $id): void
@@ -132,42 +137,46 @@ class UserController
         }
 
         if (empty($sets)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Nenhum campo para atualizar.']);
+            Response::error('Nenhum campo para atualizar.', 400);
             return;
         }
 
-        $sql = 'UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = :id';
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
+        try {
+            $sql = 'UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = :id';
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
-        if ($stmt->rowCount() === 0) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Usuário não encontrado.']);
-            return;
+            if ($stmt->rowCount() === 0) {
+                Response::error('Usuário não encontrado.', 404);
+                return;
+            }
+
+            Response::json(['success' => true]);
+        } catch (\Throwable $e) {
+            Response::error('Erro ao atualizar usuário', 500);
         }
-
-        echo json_encode(['success' => true]);
     }
 
     public function delete(int $id): void
     {
         $authUser = $GLOBALS['AUTH_USER'] ?? [];
         if ((int)($authUser['sub'] ?? 0) === $id) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Não é possível excluir o próprio usuário.']);
+            Response::error('Não é possível excluir o próprio usuário.', 400);
             return;
         }
 
-        $stmt = $this->pdo->prepare('UPDATE users SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL');
-        $stmt->execute(['id' => $id]);
+        try {
+            $stmt = $this->pdo->prepare('UPDATE users SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL');
+            $stmt->execute(['id' => $id]);
 
-        if ($stmt->rowCount() === 0) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Usuário não encontrado.']);
-            return;
+            if ($stmt->rowCount() === 0) {
+                Response::error('Usuário não encontrado.', 404);
+                return;
+            }
+
+            Response::json(['success' => true]);
+        } catch (\Throwable $e) {
+            Response::error('Erro ao excluir usuário', 500);
         }
-
-        echo json_encode(['success' => true]);
     }
 }

@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use PDO;
 use App\Helpers\Request;
+use App\Helpers\Response;
 
 class EstoqueController
 {
@@ -63,7 +64,7 @@ class EstoqueController
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['items' => $items, 'total' => $total]);
+        Response::json(['items' => $items, 'total' => $total]);
     }
 
     /** GET /api/v1/estoque/saldos — saldo atual por produto */
@@ -89,7 +90,7 @@ class EstoqueController
              ORDER BY p.nome ASC"
         );
         $stmt->execute($params);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** POST /api/v1/estoque — ajuste manual de estoque */
@@ -104,7 +105,7 @@ class EstoqueController
 
         if ($produtoId <= 0 || $quantidade <= 0) {
             http_response_code(422);
-            echo json_encode(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
+            Response::json(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
             return;
         }
 
@@ -119,7 +120,7 @@ class EstoqueController
 
         if (!$prod) {
             http_response_code(404);
-            echo json_encode(['error' => 'Produto não encontrado']);
+            Response::json(['error' => 'Produto não encontrado']);
             return;
         }
 
@@ -154,11 +155,11 @@ class EstoqueController
 
             $this->pdo->commit();
             http_response_code(201);
-            echo json_encode(['success' => true, 'saldo' => $saldoDepois]);
+            Response::json(['success' => true, 'saldo' => $saldoDepois]);
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['error' => 'Falha ao registrar movimentação']);
+            Response::json(['error' => 'Falha ao registrar movimentação']);
         }
     }
 
@@ -166,6 +167,6 @@ class EstoqueController
     public function delete(int $id): void
     {
         http_response_code(400);
-        echo json_encode(['error' => 'Movimentações automáticas não podem ser excluídas. Registre um ajuste manual para corrigir.']);
+        Response::json(['error' => 'Movimentações automáticas não podem ser excluídas. Registre um ajuste manual para corrigir.']);
     }
 }

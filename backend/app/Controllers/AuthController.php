@@ -5,6 +5,7 @@ use PDO;
 use Firebase\JWT\JWT;
 use App\Helpers\Request;
 use App\Helpers\SchemaValidator;
+use App\Helpers\Response;
 
 class AuthController
 {
@@ -25,8 +26,7 @@ class AuthController
             ],
         ]);
         if (!empty($errors)) {
-            http_response_code(422);
-            echo json_encode(['error' => 'Payload inválido', 'details' => $errors]);
+            Response::error('Payload inválido', 422, ['details' => $errors]);
             return;
         }
 
@@ -34,8 +34,7 @@ class AuthController
         $password = (string)($data['password'] ?? '');
 
         if ($login === '' || $password === '') {
-            http_response_code(400);
-            echo json_encode(['error' => 'Login e senha são obrigatórios']);
+            Response::error('Login e senha são obrigatórios', 400);
             return;
         }
 
@@ -43,14 +42,12 @@ class AuthController
 
         [$user, $queryFailed] = $this->findUserForLogin($login);
         if ($queryFailed) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível autenticar no momento.']);
+            Response::error('Não foi possível autenticar no momento.', 500);
             return;
         }
 
         if (!$user || !$this->passwordMatchesAndMaybeUpgrade((int)$user['id'], (string)($user['password'] ?? ''), $password)) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Credenciais inválidas']);
+            Response::error('Credenciais inválidas', 401);
             return;
         }
 
@@ -66,8 +63,7 @@ class AuthController
 
         $secret = getenv('JWT_SECRET');
         if (!$secret || strlen($secret) < 32) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Erro de configuração do servidor']);
+            Response::error('Erro de configuração do servidor', 500);
             return;
         }
         $jwt = JWT::encode($payload, $secret, 'HS256');
@@ -83,7 +79,7 @@ class AuthController
             'samesite' => 'Strict',
         ]);
 
-        echo json_encode(['token' => $jwt, 'user' => ['id' => $user['id'], 'name' => $user['name'], 'role' => $userRole]]);
+        Response::json(['token' => $jwt, 'user' => ['id' => $user['id'], 'name' => $user['name'], 'role' => $userRole]]);
     }
 
     public function logout(): void
@@ -95,34 +91,31 @@ class AuthController
             'httponly' => true,
             'samesite' => 'Strict',
         ]);
-        echo json_encode(['message' => 'Logout realizado com sucesso']);
+        Response::json(['message' => 'Logout realizado com sucesso']);
     }
 
     public function me(array $tokenPayload): void
     {
         $userId = (int) ($tokenPayload['sub'] ?? 0);
         if ($userId <= 0) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Sessão inválida']);
+            Response::error('Sessão inválida', 401);
             return;
         }
 
         [$user, $queryFailed] = $this->findUserById($userId);
         if ($queryFailed) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível carregar os dados do usuário']);
+            Response::error('Não foi possível carregar os dados do usuário', 500);
             return;
         }
 
         if (!$user) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Usuário não encontrado']);
+            Response::error('Usuário não encontrado', 401);
             return;
         }
 
         $user['role'] = $this->normalizeRole($user['role'] ?? ($tokenPayload['role'] ?? null));
 
-        echo json_encode(['user' => $user]);
+        Response::json(['user' => $user]);
     }
 
     private function findUserForLogin(string $login): array

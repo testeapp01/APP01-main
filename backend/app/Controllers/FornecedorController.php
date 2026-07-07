@@ -1,14 +1,18 @@
 <?php
 namespace App\Controllers;
 
+use App\Helpers\Response;
 use PDO;
 
 class FornecedorController
 {
     private ?array $fornecedorColumnsCache = null;
 
-    public function __construct(private PDO $pdo)
+    private \App\Repositories\FornecedorRepository $repo;
+
+    public function __construct(private PDO $pdo, ?\App\Repositories\FornecedorRepository $repo = null)
     {
+        $this->repo = $repo ?? new \App\Repositories\FornecedorRepository($this->pdo);
     }
 
     private function fornecedorColumns(): array
@@ -46,8 +50,8 @@ class FornecedorController
         }, $wanted);
 
         $stmt = $this->pdo->query('SELECT ' . implode(', ', $select) . ' FROM fornecedores ORDER BY razao_social ASC');
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode($items);
+        $items = $this->repo->allSelectable($select);
+        Response::json($items);
     }
 
     public function create(): void
@@ -55,7 +59,7 @@ class FornecedorController
         $data = \App\Helpers\Request::body();
         if (empty($data['razao_social'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Razão social obrigatória']);
+            Response::json(['error' => 'Razão social obrigatória']);
             return;
         }
         if (isset($data['status'])) {
@@ -76,7 +80,7 @@ class FornecedorController
             $cnpjDigits = preg_replace('/\D/', '', (string)$data['cnpj']);
             if (strlen($cnpjDigits) !== 14 || !\Validator::validateCNPJ($cnpjDigits)) {
                 http_response_code(400);
-                echo json_encode(['error' => 'CNPJ inválido']);
+                Response::json(['error' => 'CNPJ inválido']);
                 return;
             }
             $data['cnpj'] = $cnpjDigits;
@@ -84,13 +88,13 @@ class FornecedorController
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Telefone inválido']);
+            Response::json(['error' => 'Telefone inválido']);
             return;
         }
 
         if ($data['email'] && !\Validator::validateEmail($data['email'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Email inválido']);
+            Response::json(['error' => 'Email inválido']);
             return;
         }
         $possible = [
@@ -116,7 +120,7 @@ class FornecedorController
 
         if (empty($insertData)) {
             http_response_code(500);
-            echo json_encode(['error' => 'Tabela fornecedores sem colunas compatíveis para inserção.']);
+            Response::json(['error' => 'Tabela fornecedores sem colunas compatíveis para inserção.']);
             return;
         }
 
@@ -129,28 +133,25 @@ class FornecedorController
         } catch (\PDOException $e) {
             if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
                 http_response_code(409);
-                echo json_encode(['error' => 'CNPJ já cadastrado.']);
+                Response::json(['error' => 'CNPJ já cadastrado.']);
                 return;
             }
-
             http_response_code(500);
-            echo json_encode(['error' => 'Falha ao salvar fornecedor.']);
+            Response::json(['error' => 'Falha ao salvar fornecedor.']);
             return;
         }
-
         http_response_code(201);
-        echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
     }
 
     public function delete(int $id): void
     {
         try {
-            $stmt = $this->pdo->prepare('DELETE FROM fornecedores WHERE id = :id');
-            $stmt->execute(['id' => $id]);
-            echo json_encode(['message' => 'Fornecedor removido com sucesso']);
+            $this->repo->delete($id);
+            Response::json(['message' => 'Fornecedor removido com sucesso']);
         } catch (\PDOException $e) {
             http_response_code(409);
-            echo json_encode(['error' => 'Não foi possível excluir o fornecedor. Verifique vínculos com compras.']);
+            Response::json(['error' => 'Não foi possível excluir o fornecedor. Verifique vínculos com compras.']);
         }
     }
 }

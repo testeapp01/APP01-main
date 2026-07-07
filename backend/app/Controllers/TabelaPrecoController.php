@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use PDO;
 use App\Helpers\Request;
+use App\Helpers\Response;
 
 class TabelaPrecoController
 {
@@ -16,7 +17,7 @@ class TabelaPrecoController
         $stmt = $this->pdo->query(
             'SELECT id, nome, tipo, desconto_percentual, ativa, created_at FROM tabelas_preco ORDER BY nome ASC'
         );
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** POST /api/v1/tabelas-preco */
@@ -27,7 +28,7 @@ class TabelaPrecoController
 
         if ($nome === '') {
             http_response_code(422);
-            echo json_encode(['error' => 'Nome é obrigatório']);
+            Response::json(['error' => 'Nome é obrigatório']);
             return;
         }
 
@@ -44,7 +45,7 @@ class TabelaPrecoController
         $stmt->execute(['nome' => $nome, 'tipo' => $tipo, 'desc' => $desconto, 'ativa' => $ativa]);
 
         http_response_code(201);
-        echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
     }
 
     /** PUT /api/v1/tabelas-preco/{id} */
@@ -69,7 +70,7 @@ class TabelaPrecoController
 
         if (empty($sets)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Nenhum campo para atualizar']);
+            Response::json(['error' => 'Nenhum campo para atualizar']);
             return;
         }
 
@@ -78,10 +79,10 @@ class TabelaPrecoController
 
         if ($stmt->rowCount() === 0) {
             http_response_code(404);
-            echo json_encode(['error' => 'Tabela de preço não encontrada']);
+            Response::json(['error' => 'Tabela de preço não encontrada']);
             return;
         }
 
-        echo json_encode(['success' => true]);
+        Response::json(['success' => true]);
     }
 }

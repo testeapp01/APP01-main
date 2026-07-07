@@ -3,20 +3,23 @@ namespace App\Controllers;
 
 use App\Repositories\ClientRepository;
 use App\Helpers\SchemaValidator;
+use App\Helpers\Response;
 use PDO;
 
 class ClientController
 {
-    public function __construct(private PDO $pdo)
+    private ClientRepository $repo;
+
+    public function __construct(private PDO $pdo, ?ClientRepository $repo = null)
     {
+        $this->repo = $repo ?? new ClientRepository($this->pdo);
     }
 
 
     public function index(): void
     {
-        $repo = new ClientRepository($this->pdo);
-        $items = $repo->all();
-        echo json_encode($items);
+        $items = $this->repo->all();
+        Response::json($items);
     }
 
     public function create(): void
@@ -34,13 +37,13 @@ class ClientController
         ]);
         if (!empty($errors)) {
             http_response_code(422);
-            echo json_encode(['error' => 'Payload inválido', 'details' => $errors]);
+            Response::json(['error' => 'Payload inválido', 'details' => $errors]);
             return;
         }
 
         if (empty($data['nome'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Nome obrigatório']);
+            Response::json(['error' => 'Nome obrigatório']);
             return;
         }
         // Normalize status, uf, and ensure all fields are present
@@ -60,26 +63,25 @@ class ClientController
             $cpfCnpjDigits = preg_replace('/\D/', '', (string)$data['cpf_cnpj']);
             if (strlen($cpfCnpjDigits) !== 11 && strlen($cpfCnpjDigits) !== 14) {
                 http_response_code(400);
-                echo json_encode(['error' => 'CPF/CNPJ inválido']);
+                Response::json(['error' => 'CPF/CNPJ inválido']);
                 return;
             }
 
             if (strlen($cpfCnpjDigits) === 11 && !\Validator::validateCPF($cpfCnpjDigits)) {
                 http_response_code(400);
-                echo json_encode(['error' => 'CPF inválido']);
+                Response::json(['error' => 'CPF inválido']);
                 return;
             }
 
             if (strlen($cpfCnpjDigits) === 14 && !\Validator::validateCNPJ($cpfCnpjDigits)) {
                 http_response_code(400);
-                echo json_encode(['error' => 'CNPJ inválido']);
+                Response::json(['error' => 'CNPJ inválido']);
                 return;
             }
 
-            $repoCheck = new ClientRepository($this->pdo);
-            if ($repoCheck->hasCpfCnpj($cpfCnpjDigits)) {
+            if ($this->repo->hasCpfCnpj($cpfCnpjDigits)) {
                 http_response_code(409);
-                echo json_encode([
+                Response::json([
                     'error' => strlen($cpfCnpjDigits) === 11
                         ? 'CPF já cadastrado.'
                         : 'CNPJ já cadastrado.'
@@ -92,13 +94,13 @@ class ClientController
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Telefone inválido']);
+            Response::json(['error' => 'Telefone inválido']);
             return;
         }
 
         if ($data['email'] && !\Validator::validateEmail($data['email'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Email inválido']);
+            Response::json(['error' => 'Email inválido']);
             return;
         }
         if (isset($data['status'])) {
@@ -106,21 +108,19 @@ class ClientController
         } else {
             $data['status'] = 1;
         }
-        $repo = new ClientRepository($this->pdo);
-        $id = $repo->create($data);
+        $id = $this->repo->create($data);
         http_response_code(201);
-        echo json_encode(['id' => $id]);
+        Response::json(['id' => $id]);
     }
 
     public function delete(int $id): void
     {
         try {
-            $repo = new ClientRepository($this->pdo);
-            $repo->delete($id);
-            echo json_encode(['message' => 'Cliente removido com sucesso']);
+            $this->repo->delete($id);
+            Response::json(['message' => 'Cliente removido com sucesso']);
         } catch (\PDOException $e) {
             http_response_code(409);
-            echo json_encode(['error' => 'Não foi possível excluir o cliente. Verifique vínculos com vendas.']);
+            Response::json(['error' => 'Não foi possível excluir o cliente. Verifique vínculos com vendas.']);
         }
     }
 }

@@ -6,6 +6,7 @@ use App\Services\PurchaseCreationService;
 use App\Services\PurchaseHeaderService;
 use App\Services\OrderPdfService;
 use App\Helpers\Request;
+use App\Helpers\Response;
 
 class PurchaseController
 {
@@ -32,31 +33,14 @@ class PurchaseController
             return $this->comprasColumnsCache;
         }
 
-        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($driver === 'sqlite') {
-            $stmt = $this->pdo->query('PRAGMA table_info(compras)');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->comprasColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['name'] ?? null,
-                $cols
-            )));
-
-            return $this->comprasColumnsCache;
-        }
-
-        $stmt = $this->pdo->query('SHOW COLUMNS FROM compras');
-        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $this->comprasColumnsCache = array_values(array_filter(array_map(
-            static fn(array $row) => $row['Field'] ?? null,
-            $cols
-        )));
-
+        $cols = \App\Helpers\Schema::tableColumns($this->pdo, 'compras');
+        $this->comprasColumnsCache = $cols;
         return $this->comprasColumnsCache;
     }
 
     private function hasComprasColumn(string $column): bool
     {
-        return in_array($column, $this->comprasColumns(), true);
+        return \App\Helpers\Schema::hasColumn($this->pdo, 'compras', $column);
     }
 
     private function comprasCabecalhoColumns(): array
@@ -65,34 +49,19 @@ class PurchaseController
             return $this->comprasCabecalhoColumnsCache;
         }
 
-        if (!$this->hasComprasCabecalhoTable()) {
+        if (!\App\Helpers\Schema::hasTable($this->pdo, 'compras_cabecalho')) {
             $this->comprasCabecalhoColumnsCache = [];
             return $this->comprasCabecalhoColumnsCache;
         }
 
-        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($driver === 'sqlite') {
-            $stmt = $this->pdo->query('PRAGMA table_info(compras_cabecalho)');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->comprasCabecalhoColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['name'] ?? null,
-                $cols
-            )));
-        } else {
-            $stmt = $this->pdo->query('SHOW COLUMNS FROM compras_cabecalho');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->comprasCabecalhoColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['Field'] ?? null,
-                $cols
-            )));
-        }
-
+        $cols = \App\Helpers\Schema::tableColumns($this->pdo, 'compras_cabecalho');
+        $this->comprasCabecalhoColumnsCache = $cols;
         return $this->comprasCabecalhoColumnsCache;
     }
 
     private function hasComprasCabecalhoColumn(string $column): bool
     {
-        return in_array($column, $this->comprasCabecalhoColumns(), true);
+        return \App\Helpers\Schema::hasColumn($this->pdo, 'compras_cabecalho', $column);
     }
 
     private function hasComprasCabecalhoTable(): bool
@@ -101,22 +70,8 @@ class PurchaseController
             return $this->hasComprasCabecalhoCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='compras_cabecalho' LIMIT 1");
-                $stmt->execute();
-                $this->hasComprasCabecalhoCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasComprasCabecalhoCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'compras_cabecalho'");
-            $this->hasComprasCabecalhoCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasComprasCabecalhoCache;
-        } catch (\Throwable $e) {
-            $this->hasComprasCabecalhoCache = false;
-            return false;
-        }
+        $this->hasComprasCabecalhoCache = \App\Helpers\Schema::hasTable($this->pdo, 'compras_cabecalho');
+        return $this->hasComprasCabecalhoCache;
     }
 
     private function hasStatusCompraTable(): bool
@@ -125,22 +80,8 @@ class PurchaseController
             return $this->hasStatusCompraCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='status_compra' LIMIT 1");
-                $stmt->execute();
-                $this->hasStatusCompraCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasStatusCompraCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'status_compra'");
-            $this->hasStatusCompraCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasStatusCompraCache;
-        } catch (\Throwable $e) {
-            $this->hasStatusCompraCache = false;
-            return false;
-        }
+        $this->hasStatusCompraCache = \App\Helpers\Schema::hasTable($this->pdo, 'status_compra');
+        return $this->hasStatusCompraCache;
     }
 
     private function hasHistoricoStatusCompraTable(): bool
@@ -149,22 +90,8 @@ class PurchaseController
             return $this->hasHistoricoStatusCompraCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='historico_status_compra' LIMIT 1");
-                $stmt->execute();
-                $this->hasHistoricoStatusCompraCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasHistoricoStatusCompraCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'historico_status_compra'");
-            $this->hasHistoricoStatusCompraCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasHistoricoStatusCompraCache;
-        } catch (\Throwable $e) {
-            $this->hasHistoricoStatusCompraCache = false;
-            return false;
-        }
+        $this->hasHistoricoStatusCompraCache = \App\Helpers\Schema::hasTable($this->pdo, 'historico_status_compra');
+        return $this->hasHistoricoStatusCompraCache;
     }
 
     private function normalizeStatusCompraLabel(?string $status): string
@@ -227,7 +154,7 @@ class PurchaseController
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
             http_response_code(500);
-            echo json_encode(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
+            Response::json(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
             return;
         }
 
@@ -305,7 +232,7 @@ class PurchaseController
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['items' => $items, 'total' => $total]);
+        Response::json(['items' => $items, 'total' => $total]);
     }
 
     public function create(): void
@@ -314,11 +241,11 @@ class PurchaseController
         try {
             $result = $this->creationService->create($data);
             http_response_code(201);
-            echo json_encode($result);
+            Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 400);
-            echo json_encode(['error' => $e->getMessage()]);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 
@@ -326,7 +253,7 @@ class PurchaseController
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
             http_response_code(500);
-            echo json_encode(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
+            Response::json(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
             return;
         }
 
@@ -364,7 +291,7 @@ class PurchaseController
 
         if (!$header) {
             http_response_code(404);
-            echo json_encode(['error' => 'Pedido de compra não encontrado']);
+            Response::json(['error' => 'Pedido de compra não encontrado']);
             return;
         }
 
@@ -372,7 +299,7 @@ class PurchaseController
         $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
         if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
             http_response_code(403);
-            echo json_encode(['error' => 'Acesso negado']);
+            Response::json(['error' => 'Acesso negado']);
             return;
         }
 
@@ -411,7 +338,7 @@ class PurchaseController
             $historico = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        echo json_encode([
+        Response::json([
             'header' => $header,
             'items' => $items,
             'historico_statuscompra' => $historico,
@@ -422,7 +349,7 @@ class PurchaseController
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
             http_response_code(404);
-            echo json_encode(['error' => 'Impressão de compra não disponível neste ambiente.']);
+            Response::json(['error' => 'Impressão de compra não disponível neste ambiente.']);
             return;
         }
 
@@ -430,7 +357,7 @@ class PurchaseController
             $pdf = $this->pdfService->renderPurchaseHeaderPdf($id);
             if ($pdf === null) {
                 http_response_code(404);
-                echo json_encode(['error' => 'Pedido de compra não encontrado']);
+                Response::json(['error' => 'Pedido de compra não encontrado']);
                 return;
             }
 
@@ -440,7 +367,7 @@ class PurchaseController
             echo $pdf;
         } catch (\Throwable $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível gerar o PDF de compra.']);
+            Response::json(['error' => 'Não foi possível gerar o PDF de compra.']);
         }
     }
 
@@ -448,21 +375,21 @@ class PurchaseController
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
             http_response_code(404);
-            echo json_encode(['error' => 'Edição por cabeçalho não disponível neste ambiente.']);
+            Response::json(['error' => 'Edição por cabeçalho não disponível neste ambiente.']);
             return;
         }
 
         $currentStatus = $this->currentHeaderStatusCompra($id);
         if ($currentStatus === null) {
             http_response_code(404);
-            echo json_encode(['error' => 'Pedido de compra não encontrado']);
+            Response::json(['error' => 'Pedido de compra não encontrado']);
             return;
         }
 
         $data = Request::body();
         if ($currentStatus === 'RECEBIDA') {
             http_response_code(409);
-            echo json_encode(['error' => 'Não é permitido editar pedido de compra recebido']);
+            Response::json(['error' => 'Não é permitido editar pedido de compra recebido']);
             return;
         }
 
@@ -470,13 +397,13 @@ class PurchaseController
             $nextStatus = $this->normalizeStatusCompraLabel($data['status']);
             if (!$this->canTransitionCompra($currentStatus, $nextStatus)) {
                 http_response_code(409);
-                echo json_encode(['error' => 'Transição de status inválida para este pedido de compra']);
+                Response::json(['error' => 'Transição de status inválida para este pedido de compra']);
                 return;
             }
 
             if ($currentStatus !== $nextStatus && $nextStatus === 'RECEBIDA') {
                 http_response_code(409);
-                echo json_encode(['error' => 'Use a confirmação de entrega para finalizar o pedido de compra']);
+                Response::json(['error' => 'Use a confirmação de entrega para finalizar o pedido de compra']);
                 return;
             }
         }
@@ -504,7 +431,7 @@ class PurchaseController
 
         if (empty($set)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Nenhum campo válido para atualização']);
+            Response::json(['error' => 'Nenhum campo válido para atualização']);
             return;
         }
 
@@ -526,7 +453,7 @@ class PurchaseController
             $syncStmt->execute($syncParams);
         }
 
-        echo json_encode(['message' => 'Cabeçalho de compra atualizado']);
+        Response::json(['message' => 'Cabeçalho de compra atualizado']);
     }
 
     public function updateItem(int $id): void
@@ -545,7 +472,7 @@ class PurchaseController
 
         if (empty($set)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Nenhum campo válido para atualização']);
+            Response::json(['error' => 'Nenhum campo válido para atualização']);
             return;
         }
 
@@ -562,18 +489,18 @@ class PurchaseController
             }
         }
 
-        echo json_encode(['message' => 'Item de compra atualizado']);
+        Response::json(['message' => 'Item de compra atualizado']);
     }
 
     public function deleteHeader(int $id): void
     {
         try {
             $result = $this->headerService->deleteHeader($id);
-            echo json_encode($result);
+            Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 500);
-            echo json_encode(['error' => $e->getMessage()]);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 
@@ -602,22 +529,18 @@ class PurchaseController
             }
         }
 
-        echo json_encode(['message' => 'Item de compra excluído']);
+        Response::json(['message' => 'Item de compra excluído']);
     }
 
     public function confirmHeaderDelivery(int $id): void
     {
         try {
             $result = $this->headerService->confirmHeaderDelivery($id, $this->currentUserId());
-            echo json_encode($result);
+            Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 400);
-            if ($code === 409 || $code === 404 || $code === 500) {
-                echo json_encode(['error' => $e->getMessage()]);
-                return;
-            }
-            echo json_encode(['error' => 'Não foi possível confirmar a entrega do pedido de compra.']);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 
@@ -625,11 +548,11 @@ class PurchaseController
     {
         try {
             $res = $this->headerService->confirmItemDelivery($id, $this->currentUserId());
-            echo json_encode($res);
+            Response::json($res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 400);
-            echo json_encode(['error' => $e->getMessage()]);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 
@@ -653,17 +576,17 @@ class PurchaseController
         $id = $data['compra_id'] ?? null;
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['error' => 'compra_id obrigatório']);
+            Response::json(['error' => 'compra_id obrigatório']);
             return;
         }
 
         try {
             $res = $this->headerService->confirmItemReceiveById((int)$id);
-            echo json_encode(['message' => 'Compra marcada como RECEBIDA'] + $res);
+            Response::json(['message' => 'Compra marcada como RECEBIDA'] + $res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 400);
-            echo json_encode(['error' => $e->getMessage()]);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 }

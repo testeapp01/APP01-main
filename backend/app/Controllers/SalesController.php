@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Services\SalesCreationService;
 use App\Services\SalesHeaderService;
 use App\Services\OrderPdfService;
+use App\Helpers\Response;
 use PDO;
 
 class SalesController
@@ -31,31 +32,14 @@ class SalesController
             return $this->vendasColumnsCache;
         }
 
-        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($driver === 'sqlite') {
-            $stmt = $this->pdo->query('PRAGMA table_info(vendas)');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->vendasColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['name'] ?? null,
-                $cols
-            )));
-
-            return $this->vendasColumnsCache;
-        }
-
-        $stmt = $this->pdo->query('SHOW COLUMNS FROM vendas');
-        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $this->vendasColumnsCache = array_values(array_filter(array_map(
-            static fn(array $row) => $row['Field'] ?? null,
-            $cols
-        )));
-
+        $cols = \App\Helpers\Schema::tableColumns($this->pdo, 'vendas');
+        $this->vendasColumnsCache = $cols;
         return $this->vendasColumnsCache;
     }
 
     private function hasVendasColumn(string $column): bool
     {
-        return in_array($column, $this->vendasColumns(), true);
+        return \App\Helpers\Schema::hasColumn($this->pdo, 'vendas', $column);
     }
 
     private function vendasCabecalhoColumns(): array
@@ -64,34 +48,19 @@ class SalesController
             return $this->vendasCabecalhoColumnsCache;
         }
 
-        if (!$this->hasVendasCabecalhoTable()) {
+        if (!\App\Helpers\Schema::hasTable($this->pdo, 'vendas_cabecalho')) {
             $this->vendasCabecalhoColumnsCache = [];
             return $this->vendasCabecalhoColumnsCache;
         }
 
-        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        if ($driver === 'sqlite') {
-            $stmt = $this->pdo->query('PRAGMA table_info(vendas_cabecalho)');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->vendasCabecalhoColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['name'] ?? null,
-                $cols
-            )));
-        } else {
-            $stmt = $this->pdo->query('SHOW COLUMNS FROM vendas_cabecalho');
-            $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $this->vendasCabecalhoColumnsCache = array_values(array_filter(array_map(
-                static fn(array $row) => $row['Field'] ?? null,
-                $cols
-            )));
-        }
-
+        $cols = \App\Helpers\Schema::tableColumns($this->pdo, 'vendas_cabecalho');
+        $this->vendasCabecalhoColumnsCache = $cols;
         return $this->vendasCabecalhoColumnsCache;
     }
 
     private function hasVendasCabecalhoColumn(string $column): bool
     {
-        return in_array($column, $this->vendasCabecalhoColumns(), true);
+        return \App\Helpers\Schema::hasColumn($this->pdo, 'vendas_cabecalho', $column);
     }
 
     private function hasVendasCabecalhoTable(): bool
@@ -100,22 +69,8 @@ class SalesController
             return $this->hasVendasCabecalhoCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vendas_cabecalho' LIMIT 1");
-                $stmt->execute();
-                $this->hasVendasCabecalhoCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasVendasCabecalhoCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'vendas_cabecalho'");
-            $this->hasVendasCabecalhoCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasVendasCabecalhoCache;
-        } catch (\Throwable $e) {
-            $this->hasVendasCabecalhoCache = false;
-            return false;
-        }
+        $this->hasVendasCabecalhoCache = \App\Helpers\Schema::hasTable($this->pdo, 'vendas_cabecalho');
+        return $this->hasVendasCabecalhoCache;
     }
 
     private function hasStatusPedidoTable(): bool
@@ -124,22 +79,8 @@ class SalesController
             return $this->hasStatusPedidoCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='status_pedido' LIMIT 1");
-                $stmt->execute();
-                $this->hasStatusPedidoCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasStatusPedidoCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'status_pedido'");
-            $this->hasStatusPedidoCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasStatusPedidoCache;
-        } catch (\Throwable $e) {
-            $this->hasStatusPedidoCache = false;
-            return false;
-        }
+        $this->hasStatusPedidoCache = \App\Helpers\Schema::hasTable($this->pdo, 'status_pedido');
+        return $this->hasStatusPedidoCache;
     }
 
     private function hasHistoricoStatusPedidoTable(): bool
@@ -148,22 +89,8 @@ class SalesController
             return $this->hasHistoricoStatusPedidoCache;
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='historico_status_pedido' LIMIT 1");
-                $stmt->execute();
-                $this->hasHistoricoStatusPedidoCache = (bool)$stmt->fetch(PDO::FETCH_ASSOC);
-                return $this->hasHistoricoStatusPedidoCache;
-            }
-
-            $stmt = $this->pdo->query("SHOW TABLES LIKE 'historico_status_pedido'");
-            $this->hasHistoricoStatusPedidoCache = (bool)$stmt->fetch(PDO::FETCH_NUM);
-            return $this->hasHistoricoStatusPedidoCache;
-        } catch (\Throwable $e) {
-            $this->hasHistoricoStatusPedidoCache = false;
-            return false;
-        }
+        $this->hasHistoricoStatusPedidoCache = \App\Helpers\Schema::hasTable($this->pdo, 'historico_status_pedido');
+        return $this->hasHistoricoStatusPedidoCache;
     }
 
     private function currentUserId(): ?int
@@ -221,7 +148,7 @@ class SalesController
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['items' => $items, 'total' => $total]);
+        Response::json(['items' => $items, 'total' => $total]);
     }
 
     private function indexHeaders(): void
@@ -290,7 +217,7 @@ class SalesController
         $stmt->execute();
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['items' => $items, 'total' => $total]);
+        Response::json(['items' => $items, 'total' => $total]);
     }
 
     public function create(): void
@@ -299,7 +226,7 @@ class SalesController
         try {
             $result = $this->creationService->create($data);
             http_response_code(201);
-            echo json_encode($result);
+            Response::json($result);
         } catch (\Throwable $e) {
             $statusCode = (int)$e->getCode();
             if ($statusCode < 400 || $statusCode > 599) {
@@ -313,7 +240,7 @@ class SalesController
 
             http_response_code($statusCode);
             error_log('[SalesController::create] ' . $e->getMessage());
-            echo json_encode(['error' => $message]);
+            Response::json(['error' => $message]);
         }
     }
 
@@ -321,7 +248,7 @@ class SalesController
     {
         if (!$this->hasVendasCabecalhoTable()) {
             http_response_code(404);
-            echo json_encode(['error' => 'Cabeçalho de venda não disponível neste ambiente.']);
+            Response::json(['error' => 'Cabeçalho de venda não disponível neste ambiente.']);
             return;
         }
 
@@ -356,7 +283,7 @@ class SalesController
 
         if (!$header) {
             http_response_code(404);
-            echo json_encode(['error' => 'Pedido não encontrado']);
+            Response::json(['error' => 'Pedido não encontrado']);
             return;
         }
 
@@ -364,7 +291,7 @@ class SalesController
         $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
         if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
             http_response_code(403);
-            echo json_encode(['error' => 'Acesso negado']);
+            Response::json(['error' => 'Acesso negado']);
             return;
         }
 
@@ -403,7 +330,7 @@ class SalesController
             $historico = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        echo json_encode([
+        Response::json([
             'header' => $header,
             'items' => $items,
             'historico_statuspedido' => $historico,
@@ -414,7 +341,7 @@ class SalesController
     {
         if (!$this->hasVendasCabecalhoTable()) {
             http_response_code(404);
-            echo json_encode(['error' => 'Impressão de venda não disponível neste ambiente.']);
+            Response::json(['error' => 'Impressão de venda não disponível neste ambiente.']);
             return;
         }
 
@@ -422,7 +349,7 @@ class SalesController
             $pdf = $this->pdfService->renderSalesHeaderPdf($id);
             if ($pdf === null) {
                 http_response_code(404);
-                echo json_encode(['error' => 'Pedido de venda não encontrado']);
+                Response::json(['error' => 'Pedido de venda não encontrado']);
                 return;
             }
 
@@ -432,7 +359,7 @@ class SalesController
             echo $pdf;
         } catch (\Throwable $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível gerar o PDF de venda.']);
+            Response::json(['error' => 'Não foi possível gerar o PDF de venda.']);
         }
     }
 
@@ -445,18 +372,18 @@ class SalesController
         if ($headerId && $this->hasVendasCabecalhoTable()) {
             try {
                 $result = $workflow->deliverHeader((int)$headerId, $this->currentUserId());
-                echo json_encode($result);
+                Response::json($result);
                 return;
             } catch (\RuntimeException $e) {
                 $code = (int)$e->getCode();
                 if ($code === 404 || $code === 409) {
                     http_response_code($code);
-                    echo json_encode(['error' => $e->getMessage()]);
+                    Response::json(['error' => $e->getMessage()]);
                     return;
                 }
                 http_response_code(400);
                 error_log('[SalesController::deliverHeader] ' . $e->getMessage());
-                echo json_encode(['error' => 'Não foi possível confirmar a entrega do pedido.']);
+                Response::json(['error' => 'Não foi possível confirmar a entrega do pedido.']);
                 return;
             }
         }
@@ -464,17 +391,17 @@ class SalesController
         $id = $data['venda_id'] ?? null;
         if (!$id) {
             http_response_code(400);
-            echo json_encode(['error' => 'venda_id obrigatório']);
+            Response::json(['error' => 'venda_id obrigatório']);
             return;
         }
 
         try {
             $res = $workflow->deliverItem((int)$id, $this->currentUserId());
-            echo json_encode($res);
+            Response::json($res);
         } catch (\RuntimeException $e) {
             http_response_code(400);
             error_log('[SalesController::deliver] ' . $e->getMessage());
-            echo json_encode(['error' => 'Não foi possível confirmar a entrega.']);
+            Response::json(['error' => 'Não foi possível confirmar a entrega.']);
         }
     }
 
@@ -482,11 +409,11 @@ class SalesController
     {
         try {
             $result = $this->headerService->deleteHeader($id);
-            echo json_encode($result);
+            Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
             http_response_code($code >= 400 ? $code : 500);
-            echo json_encode(['error' => $e->getMessage()]);
+            Response::json(['error' => $e->getMessage()]);
         }
     }
 

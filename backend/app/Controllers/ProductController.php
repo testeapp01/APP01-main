@@ -2,11 +2,15 @@
 namespace App\Controllers;
 
 use PDO;
+use App\Helpers\Response;
 
 class ProductController
 {
-    public function __construct(private PDO $pdo)
+    private \App\Repositories\ProductRepository $repo;
+
+    public function __construct(private PDO $pdo, ?\App\Repositories\ProductRepository $repo = null)
     {
+        $this->repo = $repo ?? new \App\Repositories\ProductRepository($this->pdo);
     }
 
 
@@ -25,20 +29,24 @@ class ProductController
             $params[':q'] = "%{$q}%";
         }
 
-        $countSql = "SELECT COUNT(*) as total FROM produtos {$where}";
-        $stmt = $this->pdo->prepare($countSql);
-        $stmt->execute($params);
-        $total = (int)$stmt->fetchColumn();
+        try {
+            $countSql = "SELECT COUNT(*) as total FROM produtos {$where}";
+            $stmt = $this->pdo->prepare($countSql);
+            $stmt->execute($params);
+            $total = (int)$stmt->fetchColumn();
 
-        $sql = "SELECT id, nome, tipo, unidade, custo_medio, status FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $sql = "SELECT id, nome, tipo, unidade, custo_medio, status FROM produtos {$where} ORDER BY id DESC LIMIT :limit OFFSET :offset";
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+            $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['items' => $items, 'total' => $total]);
+            Response::json(['items' => $items, 'total' => $total]);
+        } catch (\Throwable $e) {
+            Response::error('Falha ao listar produtos', 500);
+        }
     }
 
     public function create(): void
@@ -46,22 +54,20 @@ class ProductController
         $data = \App\Helpers\Request::body();
         $nome = isset($data['nome']) ? trim((string)$data['nome']) : '';
         if ($nome === '') {
-            http_response_code(400);
-            echo json_encode(['error' => 'Nome obrigatório']);
+            Response::error('Nome obrigatório', 400);
             return;
         }
 
         $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
         if ($custoMedio < 0) {
-            http_response_code(400);
-            echo json_encode(['error' => 'custo_medio não pode ser negativo']);
+            Response::error('custo_medio não pode ser negativo', 400);
             return;
         }
 
         $status = in_array($data['status'] ?? 'ativo', ['ativo', 'inativo'], true) ? $data['status'] : 'ativo';
 
-        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio, status) VALUES (:nome, :tipo, :unidade, :custo_medio, :status)');
         try {
+            $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio, status) VALUES (:nome, :tipo, :unidade, :custo_medio, :status)');
             $stmt->execute([
                 'nome' => $nome,
                 'tipo' => $data['tipo'] ?? null,
@@ -69,38 +75,32 @@ class ProductController
                 'custo_medio' => $custoMedio,
                 'status' => $status,
             ]);
-        } catch (\PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Falha ao salvar produto.']);
+
+            Response::json(['id' => (int)$this->pdo->lastInsertId()], 201);
+        } catch (\Throwable $e) {
+            Response::error('Falha ao salvar produto.', 500);
             return;
         }
-
-        http_response_code(201);
-        echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
     }
 
     public function update(int $id): void
     {
-        $existsStmt = $this->pdo->prepare('SELECT id FROM produtos WHERE id = :id LIMIT 1');
-        $existsStmt->execute(['id' => $id]);
-        if (!$existsStmt->fetch(PDO::FETCH_ASSOC)) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Produto não encontrado']);
+        $found = $this->repo->findById($id);
+        if (!$found) {
+            Response::error('Produto não encontrado', 404);
             return;
         }
 
         $data = \App\Helpers\Request::body();
         $nome = isset($data['nome']) ? trim((string)$data['nome']) : '';
         if ($nome === '') {
-            http_response_code(400);
-            echo json_encode(['error' => 'Nome obrigatório']);
+            Response::error('Nome obrigatório', 400);
             return;
         }
 
         $custoMedio = isset($data['custo_medio']) ? (float)$data['custo_medio'] : 0;
         if ($custoMedio < 0) {
-            http_response_code(400);
-            echo json_encode(['error' => 'custo_medio não pode ser negativo']);
+            Response::error('custo_medio não pode ser negativo', 400);
             return;
         }
 
@@ -121,26 +121,28 @@ class ProductController
             ];
             if ($status !== null) $params['status'] = $status;
             $stmt->execute($params);
-        } catch (\PDOException $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Falha ao atualizar produto.']);
+
+            Response::json(['success' => true]);
+        } catch (\Throwable $e) {
+            Response::error('Falha ao atualizar produto.', 500);
             return;
         }
-
-        echo json_encode(['success' => true]);
     }
 
     public function delete(int $id): void
     {
-        $stmt = $this->pdo->prepare('DELETE FROM produtos WHERE id = :id');
-        $stmt->execute(['id' => $id]);
+        try {
+            $stmt = $this->pdo->prepare('DELETE FROM produtos WHERE id = :id');
+            $stmt->execute(['id' => $id]);
 
-        if ($stmt->rowCount() < 1) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Produto não encontrado']);
-            return;
+            if ($stmt->rowCount() < 1) {
+                Response::error('Produto não encontrado', 404);
+                return;
+            }
+
+            Response::noContent();
+        } catch (\Throwable $e) {
+            Response::error('Falha ao excluir produto', 500);
         }
-
-        http_response_code(204);
     }
 }

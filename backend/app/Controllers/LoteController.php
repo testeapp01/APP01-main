@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use PDO;
 use App\Helpers\Request;
+use App\Helpers\Response;
 
 class LoteController
 {
@@ -45,7 +46,7 @@ class LoteController
              ORDER BY l.data_validade ASC, l.id ASC"
         );
         $stmt->execute($params);
-        echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** POST /api/v1/lotes — cria um novo lote */
@@ -59,7 +60,7 @@ class LoteController
 
         if ($produtoId <= 0 || $dataValidade === '' || $quantidade <= 0) {
             http_response_code(422);
-            echo json_encode(['error' => 'produto_id, data_validade e quantidade_entrada são obrigatórios']);
+            Response::json(['error' => 'produto_id, data_validade e quantidade_entrada são obrigatórios']);
             return;
         }
 
@@ -84,7 +85,7 @@ class LoteController
         ]);
 
         http_response_code(201);
-        echo json_encode(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
     }
 
     /** PUT /api/v1/lotes/{id} — atualiza status ou quantidade atual */
@@ -115,7 +116,7 @@ class LoteController
 
         if (empty($sets)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Nenhum campo para atualizar']);
+            Response::json(['error' => 'Nenhum campo para atualizar']);
             return;
         }
 
@@ -124,10 +125,9 @@ class LoteController
 
         if ($stmt->rowCount() === 0) {
             http_response_code(404);
-            echo json_encode(['error' => 'Lote não encontrado']);
+            Response::json(['error' => 'Lote não encontrado']);
             return;
         }
-
-        echo json_encode(['success' => true]);
+        Response::json(['success' => true]);
     }
 }

@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Repositories\PurchaseReportRepository;
 use App\Services\PurchaseReportService;
+use App\Helpers\Response;
 use PDO;
 
 class ReportsController
@@ -28,15 +29,17 @@ class ReportsController
             $stmt = $this->pdo->query('SELECT IFNULL(SUM(receita_total),0) as faturamento FROM vendas');
             $fat = $stmt->fetch(PDO::FETCH_ASSOC) ?: $fat;
         } catch (\Throwable $e) {
+            $fat = $fat;
         }
 
         try {
             $stmt2 = $this->pdo->query('SELECT IFNULL(SUM(comissao_total),0) as total_comissao FROM compras');
             $com = $stmt2->fetch(PDO::FETCH_ASSOC) ?: $com;
         } catch (\Throwable $e) {
+            $com = $com;
         }
 
-        echo json_encode(['faturamento_total' => (float)$fat['faturamento'], 'comissao_total_paga' => (float)$com['total_comissao']]);
+        Response::json(['faturamento_total' => (float)$fat['faturamento'], 'comissao_total_paga' => (float)$com['total_comissao']]);
     }
 
     public function dashboard(): void
@@ -164,7 +167,7 @@ class ReportsController
         );
         $pie = $this->buildPieSeries($fromDate, $salesTable, $salesDateColumn, $salesStatusColumn);
 
-        echo json_encode([
+        Response::json([
             'filters' => [
                 'period' => $period,
                 'metric' => $metric,
@@ -182,10 +185,9 @@ class ReportsController
         try {
             $service = new PurchaseReportService(new PurchaseReportRepository($this->pdo));
             $payload = $service->strategic($_GET);
-            echo json_encode($payload);
+            Response::json($payload);
         } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível montar o relatório estratégico de compras.']);
+            Response::error('Não foi possível montar o relatório estratégico de compras.', 500);
         }
     }
 
@@ -194,7 +196,7 @@ class ReportsController
         $format = strtolower((string)($_GET['format'] ?? 'csv'));
         if (!in_array($format, ['csv', 'xlsx'], true)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Formato de exportação inválido.']);
+            Response::json(['error' => 'Formato de exportação inválido.']);
             return;
         }
 
@@ -207,8 +209,7 @@ class ReportsController
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             echo $export['body'];
         } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Não foi possível exportar o relatório estratégico de compras.']);
+            Response::error('Não foi possível exportar o relatório estratégico de compras.', 500);
         }
     }
 
@@ -234,7 +235,7 @@ class ReportsController
             $stmt->execute(['from' => $from]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Throwable) {
-            echo json_encode(['items' => [], 'total_receita' => 0]);
+            Response::json(['items' => [], 'total_receita' => 0]);
             return;
         }
 
@@ -264,7 +265,7 @@ class ReportsController
             ];
         }
 
-        echo json_encode(['items' => $resultado, 'total_receita' => round($totalReceita, 2), 'dias' => $dias]);
+        Response::json(['items' => $resultado, 'total_receita' => round($totalReceita, 2), 'dias' => $dias]);
     }
 
     private function buildLineSeries(
@@ -475,27 +476,8 @@ class ReportsController
             return $this->columnsCache[$table];
         }
 
-        try {
-            $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-            if ($driver === 'sqlite') {
-                $stmt = $this->pdo->query("PRAGMA table_info({$table})");
-                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-                $this->columnsCache[$table] = array_values(array_filter(array_map(
-                    static fn(array $row) => $row['name'] ?? null,
-                    $rows
-                )));
-            } else {
-                $stmt = $this->pdo->query("SHOW COLUMNS FROM {$table}");
-                $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-                $this->columnsCache[$table] = array_values(array_filter(array_map(
-                    static fn(array $row) => $row['Field'] ?? null,
-                    $rows
-                )));
-            }
-        } catch (\Throwable $e) {
-            $this->columnsCache[$table] = [];
-        }
-
+        $cols = \App\Helpers\Schema::tableColumns($this->pdo, $table);
+        $this->columnsCache[$table] = $cols;
         return $this->columnsCache[$table];
     }
 }

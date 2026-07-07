@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use PDO;
 use App\Helpers\Request;
+use App\Helpers\Response;
 
 class QuebrasController
 {
@@ -35,7 +36,7 @@ class QuebrasController
         $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        echo json_encode(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total]);
+        Response::json(['items' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total]);
     }
 
     /** POST /api/v1/quebras — registra perda e desconta do estoque */
@@ -50,7 +51,7 @@ class QuebrasController
 
         if ($produtoId <= 0 || $quantidade <= 0) {
             http_response_code(422);
-            echo json_encode(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
+            Response::json(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
             return;
         }
 
@@ -63,7 +64,7 @@ class QuebrasController
 
         if (!$prod) {
             http_response_code(404);
-            echo json_encode(['error' => 'Produto não encontrado']);
+            Response::json(['error' => 'Produto não encontrado']);
             return;
         }
 
@@ -81,7 +82,7 @@ class QuebrasController
 
         if ($userId <= 0) {
             http_response_code(401);
-            echo json_encode(['error' => 'Usuário não autenticado']);
+            Response::json(['error' => 'Usuário não autenticado']);
             return;
         }
 
@@ -138,11 +139,11 @@ class QuebrasController
 
             $this->pdo->commit();
             http_response_code(201);
-            echo json_encode(['id' => $quebraId, 'valor_total' => $valorTotal, 'saldo_atual' => $saldoDepois]);
+            Response::json(['id' => $quebraId, 'valor_total' => $valorTotal, 'saldo_atual' => $saldoDepois]);
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['error' => 'Falha ao registrar quebra']);
+            Response::json(['error' => 'Falha ao registrar quebra']);
         }
     }
 
