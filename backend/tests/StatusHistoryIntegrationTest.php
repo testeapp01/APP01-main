@@ -2,6 +2,13 @@
 use PHPUnit\Framework\TestCase;
 use App\Controllers\SalesController;
 use App\Controllers\PurchaseController;
+use App\Repositories\SalesRepository;
+use App\Repositories\PurchaseRepository;
+use App\Services\SalesCreationService;
+use App\Services\SalesHeaderService;
+use App\Services\PurchaseCreationService;
+use App\Services\PurchaseHeaderService;
+use App\Services\OrderPdfService;
 
 final class StatusHistoryIntegrationTest extends TestCase
 {
@@ -65,7 +72,13 @@ final class StatusHistoryIntegrationTest extends TestCase
 
         $GLOBALS['AUTH_USER'] = ['sub' => 9];
 
-        $controller = new PurchaseController($pdo);
+        $controller = new PurchaseController(
+            $pdo,
+            new PurchaseRepository($pdo),
+            new PurchaseCreationService($pdo),
+            new PurchaseHeaderService($pdo),
+            new OrderPdfService($pdo)
+        );
         ob_start();
         $controller->confirmHeaderDelivery(1);
         $raw = (string)ob_get_clean();
@@ -95,7 +108,13 @@ final class StatusHistoryIntegrationTest extends TestCase
 
         $GLOBALS['SANITIZED_INPUT'] = ['status' => 'RECEBIDA'];
 
-        $controller = new PurchaseController($pdo);
+        $controller = new PurchaseController(
+            $pdo,
+            new PurchaseRepository($pdo),
+            new PurchaseCreationService($pdo),
+            new PurchaseHeaderService($pdo),
+            new OrderPdfService($pdo)
+        );
         ob_start();
         $controller->updateHeader(1);
         $raw = (string)ob_get_clean();
@@ -116,7 +135,13 @@ final class StatusHistoryIntegrationTest extends TestCase
         $pdo->exec("INSERT INTO compras_cabecalho (id, tipo_operacao, fornecedor_id, valor_total, status, id_statuscompra) VALUES (1, 'revenda', 1, 20, 'RECEBIDA', 2)");
         $pdo->exec("INSERT INTO compras (id, compra_cabecalho_id, status) VALUES (1, 1, 'RECEBIDA')");
 
-        $controller = new PurchaseController($pdo);
+        $controller = new PurchaseController(
+            $pdo,
+            new PurchaseRepository($pdo),
+            new PurchaseCreationService($pdo),
+            new PurchaseHeaderService($pdo),
+            new OrderPdfService($pdo)
+        );
         ob_start();
         $controller->deleteHeader(1);
         $raw = (string)ob_get_clean();
@@ -138,7 +163,13 @@ final class StatusHistoryIntegrationTest extends TestCase
         $pdo->exec("INSERT INTO vendas_cabecalho (id, tipo, cliente_id, valor_total, status, id_statuspedido) VALUES (1, 'venda', 1, 10, 'ENTREGUE', 2)");
         $pdo->exec("INSERT INTO vendas (id, venda_cabecalho_id, status) VALUES (1, 1, 'ENTREGUE')");
 
-        $controller = new SalesController($pdo);
+        $controller = new SalesController(
+            $pdo,
+            new SalesRepository($pdo),
+            new SalesCreationService($pdo),
+            new SalesHeaderService($pdo),
+            new OrderPdfService($pdo)
+        );
         ob_start();
         $controller->deleteHeader(1);
         $raw = (string)ob_get_clean();

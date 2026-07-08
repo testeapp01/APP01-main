@@ -24,7 +24,7 @@ class FornecedorRepository
         return $this->colsCache;
     }
 
-    private function hasColumn(string $col): bool
+    public function hasColumn(string $col): bool
     {
         return in_array($col, $this->columns(), true);
     }
@@ -46,6 +46,40 @@ class FornecedorRepository
             if ($current !== '' && $current === $cnpjDigits) return true;
         }
         return false;
+    }
+
+    public function create(array $data): int
+    {
+        $possible = [
+            'razao_social' => $data['razao_social'] ?? null,
+            'endereco' => $data['endereco'] ?? null,
+            'numero' => $data['numero'] ?? null,
+            'complemento' => $data['complemento'] ?? null,
+            'bairro' => $data['bairro'] ?? null,
+            'cep' => $data['cep'] ?? null,
+            'cidade' => $data['cidade'] ?? null,
+            'cnpj' => $data['cnpj'] ?? null,
+            'email' => $data['email'] ?? null,
+            'telefone' => $data['telefone'] ?? null,
+            'status' => $data['status'] ?? 1,
+            'uf' => $data['uf'] ?? null,
+        ];
+
+        $insertData = array_filter(
+            $possible,
+            fn($value, $column) => $this->hasColumn((string)$column),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        if (empty($insertData)) {
+            throw new \RuntimeException('Tabela fornecedores sem colunas compatíveis para inserção.');
+        }
+
+        $columns = array_keys($insertData);
+        $placeholders = array_map(static fn(string $column) => ':' . $column, $columns);
+        $stmt = $this->pdo->prepare('INSERT INTO fornecedores (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+        $stmt->execute($insertData);
+        return (int)$this->pdo->lastInsertId();
     }
 
     public function delete(int $id): bool

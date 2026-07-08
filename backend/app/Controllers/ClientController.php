@@ -10,9 +10,9 @@ class ClientController
 {
     private ClientRepository $repo;
 
-    public function __construct(private PDO $pdo, ?ClientRepository $repo = null)
+    public function __construct(private PDO $pdo, ClientRepository $repo)
     {
-        $this->repo = $repo ?? new ClientRepository($this->pdo);
+        $this->repo = $repo;
     }
 
 

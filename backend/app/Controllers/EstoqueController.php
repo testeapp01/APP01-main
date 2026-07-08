@@ -1,14 +1,18 @@
 <?php
 namespace App\Controllers;
 
+use App\Repositories\EstoqueRepository;
 use PDO;
 use App\Helpers\Request;
 use App\Helpers\Response;
 
 class EstoqueController
 {
-    public function __construct(private PDO $pdo)
+    private EstoqueRepository $repo;
+
+    public function __construct(private PDO $pdo, EstoqueRepository $repo)
     {
+        $this->repo = $repo;
     }
 
     /** GET /api/v1/estoque — movimentações com nome do produto */
@@ -38,31 +42,9 @@ class EstoqueController
 
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
-        $countStmt = $this->pdo->prepare(
-            "SELECT COUNT(*) FROM movimentacoes_estoque me
-             JOIN produtos p ON p.id = me.produto_id
-             {$whereSql}"
-        );
-        $countStmt->execute($params);
-        $total = (int)$countStmt->fetchColumn();
-
-        $stmt = $this->pdo->prepare(
-            "SELECT me.id, me.produto_id, p.nome AS produto, p.unidade,
-                    me.tipo AS tipo_movimento, me.quantidade, me.valor_unitario,
-                    me.saldo_antes, me.saldo_depois,
-                    me.referencia_id, me.referencia_tipo, me.observacao,
-                    me.created_at AS data
-             FROM movimentacoes_estoque me
-             JOIN produtos p ON p.id = me.produto_id
-             {$whereSql}
-             ORDER BY me.created_at DESC, me.id DESC
-             LIMIT :lim OFFSET :off"
-        );
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->bindValue(':lim', $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':off', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $filters = ['tipo' => $tipo !== '' ? $tipo : null, 'q' => $q];
+        $total = $this->repo->countMovimentacoes($filters);
+        $items = $this->repo->fetchMovimentacoes($filters, $perPage, $offset);
 
         Response::json(['items' => $items, 'total' => $total]);
     }
@@ -79,18 +61,7 @@ class EstoqueController
             $params[':q']   = "%{$q}%";
         }
 
-        $stmt = $this->pdo->prepare(
-            "SELECT p.id, p.nome, p.unidade, p.status,
-                    p.estoque_atual,
-                    p.estoque_reservado,
-                    GREATEST(0, p.estoque_atual - p.estoque_reservado) AS disponivel,
-                    p.custo_medio
-             FROM produtos p
-             {$where}
-             ORDER BY p.nome ASC"
-        );
-        $stmt->execute($params);
-        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($this->repo->fetchSaldos($q));
     }
 
     /** POST /api/v1/estoque — ajuste manual de estoque */
@@ -114,9 +85,7 @@ class EstoqueController
             $tipo = 'ajuste_manual';
         }
 
-        $prodStmt = $this->pdo->prepare('SELECT id, estoque_atual, custo_medio FROM produtos WHERE id = :id LIMIT 1');
-        $prodStmt->execute(['id' => $produtoId]);
-        $prod = $prodStmt->fetch(PDO::FETCH_ASSOC);
+        $prod = $this->repo->findProduto($produtoId);
 
         if (!$prod) {
             http_response_code(404);
@@ -131,26 +100,20 @@ class EstoqueController
 
         $this->pdo->beginTransaction();
         try {
-            $upProd = $this->pdo->prepare('UPDATE produtos SET estoque_atual = :s WHERE id = :id');
-            $upProd->execute(['s' => $saldoDepois, 'id' => $produtoId]);
+            $this->repo->updateProdutoEstoque($produtoId, $saldoDepois);
 
             $authUser = $GLOBALS['AUTH_USER'] ?? [];
             $userId   = (int)($authUser['sub'] ?? 0) ?: null;
 
-            $ins = $this->pdo->prepare(
-                'INSERT INTO movimentacoes_estoque
-                 (produto_id, tipo, quantidade, valor_unitario, saldo_antes, saldo_depois, observacao, usuario_id)
-                 VALUES (:pid, :tipo, :qty, :vunit, :sa, :sd, :obs, :uid)'
-            );
-            $ins->execute([
-                'pid'  => $produtoId,
+            $this->repo->insertMovimentacao([
+                'produto_id' => $produtoId,
                 'tipo' => $tipo,
-                'qty'  => $quantidade,
-                'vunit'=> $valorUnit,
-                'sa'   => $saldoAntes,
-                'sd'   => $saldoDepois,
-                'obs'  => $obs ?: null,
-                'uid'  => $userId,
+                'quantidade' => $quantidade,
+                'valor_unitario' => $valorUnit,
+                'saldo_antes' => $saldoAntes,
+                'saldo_depois' => $saldoDepois,
+                'observacao' => $obs ?: null,
+                'usuario_id' => $userId,
             ]);
 
             $this->pdo->commit();

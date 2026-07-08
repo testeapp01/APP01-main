@@ -1,18 +1,20 @@
 <?php
 namespace App\Controllers;
 
-use PDO;
 use Firebase\JWT\JWT;
 use App\Helpers\Request;
 use App\Helpers\SchemaValidator;
 use App\Helpers\Response;
+use App\Repositories\UserRepository;
 
 class AuthController
 {
     private ?string $lastLookupError = null;
+    private UserRepository $repo;
 
-    public function __construct(private PDO $pdo)
+    public function __construct(UserRepository $repo)
     {
+        $this->repo = $repo;
     }
 
     public function login(): void
@@ -121,12 +123,8 @@ class AuthController
     private function findUserForLogin(string $login): array
     {
         try {
-            $stmt = $this->pdo->prepare(
-                'SELECT id, password, name, role FROM users WHERE email = :email LIMIT 1'
-            );
-            $stmt->execute(['email' => $login]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            return [$user ?: null, false];
+            $user = $this->repo->findByEmail($login);
+            return [$user, false];
         } catch (\Throwable $e) {
             $this->lastLookupError = $e->getMessage();
             return [null, true];
@@ -136,12 +134,8 @@ class AuthController
     private function findUserById(int $userId): array
     {
         try {
-            $stmt = $this->pdo->prepare(
-                'SELECT id, name, role FROM users WHERE id = :id LIMIT 1'
-            );
-            $stmt->execute(['id' => $userId]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            return [$user ?: null, false];
+            $user = $this->repo->findById($userId);
+            return [$user, false];
         } catch (\Throwable $e) {
             $this->lastLookupError = $e->getMessage();
             return [null, true];
@@ -178,8 +172,7 @@ class AuthController
         }
 
         try {
-            $stmt = $this->pdo->prepare('UPDATE users SET password = :password WHERE id = :id');
-            $stmt->execute(['password' => $hash, 'id' => $userId]);
+            $this->repo->updatePassword($userId, $hash);
         } catch (\Throwable) {
             // Keep login successful even if hash upgrade fails.
         }

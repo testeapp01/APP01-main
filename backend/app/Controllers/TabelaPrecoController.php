@@ -1,23 +1,24 @@
 <?php
 namespace App\Controllers;
 
+use App\Repositories\TabelaPrecoRepository;
 use PDO;
 use App\Helpers\Request;
 use App\Helpers\Response;
 
 class TabelaPrecoController
 {
-    public function __construct(private PDO $pdo)
+    private TabelaPrecoRepository $repo;
+
+    public function __construct(private PDO $pdo, TabelaPrecoRepository $repo)
     {
+        $this->repo = $repo;
     }
 
     /** GET /api/v1/tabelas-preco */
     public function index(): void
     {
-        $stmt = $this->pdo->query(
-            'SELECT id, nome, tipo, desconto_percentual, ativa, created_at FROM tabelas_preco ORDER BY nome ASC'
-        );
-        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($this->repo->all());
     }
 
     /** POST /api/v1/tabelas-preco */
@@ -39,13 +40,15 @@ class TabelaPrecoController
         $allowed = ['atacado','varejo','especial','padrao'];
         if (!in_array($tipo, $allowed, true)) $tipo = 'padrao';
 
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO tabelas_preco (nome, tipo, desconto_percentual, ativa) VALUES (:nome, :tipo, :desc, :ativa)'
-        );
-        $stmt->execute(['nome' => $nome, 'tipo' => $tipo, 'desc' => $desconto, 'ativa' => $ativa]);
+        $id = $this->repo->create([
+            'nome' => $nome,
+            'tipo' => $tipo,
+            'desconto_percentual' => $desconto,
+            'ativa' => $ativa,
+        ]);
 
         http_response_code(201);
-        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => $id]);
     }
 
     /** PUT /api/v1/tabelas-preco/{id} */
@@ -74,10 +77,9 @@ class TabelaPrecoController
             return;
         }
 
-        $stmt = $this->pdo->prepare('UPDATE tabelas_preco SET ' . implode(', ', $sets) . ' WHERE id = :id');
-        $stmt->execute($params);
+        $updated = $this->repo->update($id, $params);
 
-        if ($stmt->rowCount() === 0) {
+        if (!$updated) {
             http_response_code(404);
             Response::json(['error' => 'Tabela de preço não encontrada']);
             return;

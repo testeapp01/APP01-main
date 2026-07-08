@@ -1,23 +1,25 @@
 <?php
 namespace App\Controllers;
 
-use PDO;
 use App\Helpers\Request;
 use App\Helpers\SchemaValidator;
 use App\Helpers\Response;
+use App\Repositories\UserRepository;
+use PDO;
 
 class UserController
 {
-    public function __construct(private PDO $pdo)
+    private UserRepository $repo;
+
+    public function __construct(private PDO $pdo, UserRepository $repo)
     {
+        $this->repo = $repo;
     }
 
     public function index(): void
     {
         try {
-            $stmt = $this->pdo->query('SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC');
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+            $rows = $this->repo->all();
             $result = array_map(static function (array $u): array {
                 return [
                     'id'         => $u['id'],
@@ -70,9 +72,7 @@ class UserController
         }
 
         try {
-            $check = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
-            $check->execute(['email' => $email]);
-            if ($check->fetch()) {
+            if ($this->repo->findByEmail($email) !== null) {
                 Response::error('Email já cadastrado.', 409);
                 return;
             }
@@ -88,15 +88,13 @@ class UserController
         }
 
         try {
-            $stmt = $this->pdo->prepare('INSERT INTO users (name, email, password, role, created_at) VALUES (:name, :email, :password, :role, NOW())');
-            $stmt->execute([
-                'name'     => $nome,
-                'email'    => $email,
+            $id = $this->repo->create([
+                'name' => $nome,
+                'email' => $email,
                 'password' => $hash,
-                'role'     => $role,
+                'role' => $role,
             ]);
 
-            $id = (int)$this->pdo->lastInsertId();
             Response::json(['id' => $id, 'nome' => $nome, 'email' => $email, 'role' => $role], 201);
         } catch (\Throwable $e) {
             Response::error('Erro ao criar usuário', 500);
@@ -117,36 +115,28 @@ class UserController
             }
         }
 
-        $sets  = [];
-        $params = ['id' => $id];
-
+        $fields = [];
         if ($nome !== null && $nome !== '') {
-            $sets[] = 'name = :name';
-            $params['name'] = $nome;
+            $fields['name'] = $nome;
         }
         if ($role !== null) {
-            $sets[] = 'role = :role';
-            $params['role'] = $role;
+            $fields['role'] = $role;
         }
         if (isset($data['password']) && trim((string)$data['password']) !== '') {
             $hash = password_hash((string)$data['password'], PASSWORD_BCRYPT);
             if ($hash !== false) {
-                $sets[] = 'password = :password';
-                $params['password'] = $hash;
+                $fields['password'] = $hash;
             }
         }
 
-        if (empty($sets)) {
+        if (empty($fields)) {
             Response::error('Nenhum campo para atualizar.', 400);
             return;
         }
 
         try {
-            $sql = 'UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = :id';
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($params);
-
-            if ($stmt->rowCount() === 0) {
+            $updated = $this->repo->update($id, $fields);
+            if (!$updated) {
                 Response::error('Usuário não encontrado.', 404);
                 return;
             }
@@ -166,10 +156,8 @@ class UserController
         }
 
         try {
-            $stmt = $this->pdo->prepare('UPDATE users SET deleted_at = NOW() WHERE id = :id AND deleted_at IS NULL');
-            $stmt->execute(['id' => $id]);
-
-            if ($stmt->rowCount() === 0) {
+            $deleted = $this->repo->delete($id);
+            if (!$deleted) {
                 Response::error('Usuário não encontrado.', 404);
                 return;
             }

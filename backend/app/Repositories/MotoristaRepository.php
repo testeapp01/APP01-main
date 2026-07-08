@@ -60,4 +60,10 @@ class MotoristaRepository
         $stmt = $this->pdo->prepare('DELETE FROM motoristas WHERE id = :id');
         return $stmt->execute(['id' => $id]);
     }
+
+    public function listTiposCaminhao(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, nome FROM tipos_caminhao ORDER BY nome');
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
 }

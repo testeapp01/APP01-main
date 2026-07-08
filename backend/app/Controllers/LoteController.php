@@ -1,14 +1,18 @@
 <?php
 namespace App\Controllers;
 
+use App\Repositories\LoteRepository;
 use PDO;
 use App\Helpers\Request;
 use App\Helpers\Response;
 
 class LoteController
 {
-    public function __construct(private PDO $pdo)
+    private LoteRepository $repo;
+
+    public function __construct(private PDO $pdo, LoteRepository $repo)
     {
+        $this->repo = $repo;
     }
 
     /** GET /api/v1/lotes?produto_id=X — lista lotes (por produto, FEFO) */
@@ -17,36 +21,17 @@ class LoteController
         $produtoId = isset($_GET['produto_id']) ? (int)$_GET['produto_id'] : 0;
         $status    = trim($_GET['status'] ?? '');
 
-        $where  = [];
-        $params = [];
-
-        if ($produtoId > 0) {
-            $where[]           = 'l.produto_id = :pid';
-            $params[':pid']    = $produtoId;
-        }
-
         if ($status !== '') {
             $allowed = ['ativo','quarentena','vencido','descartado'];
-            if (in_array($status, $allowed, true)) {
-                $where[]          = 'l.status = :status';
-                $params[':status'] = $status;
+            if (!in_array($status, $allowed, true)) {
+                $status = '';
             }
         }
 
-        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-
-        $stmt = $this->pdo->prepare(
-            "SELECT l.*, p.nome AS produto_nome, p.unidade,
-                    f.razao_social AS fornecedor_nome,
-                    DATEDIFF(l.data_validade, CURDATE()) AS dias_para_vencer
-             FROM lotes l
-             JOIN produtos p ON p.id = l.produto_id
-             LEFT JOIN fornecedores f ON f.id = l.fornecedor_id
-             {$whereSql}
-             ORDER BY l.data_validade ASC, l.id ASC"
-        );
-        $stmt->execute($params);
-        Response::json($stmt->fetchAll(PDO::FETCH_ASSOC));
+        Response::json($this->repo->fetchAll([
+            'produto_id' => $produtoId,
+            'status' => $status !== '' ? $status : null,
+        ]));
     }
 
     /** POST /api/v1/lotes — cria um novo lote */
@@ -64,28 +49,21 @@ class LoteController
             return;
         }
 
-        $stmt = $this->pdo->prepare(
-            'INSERT INTO lotes
-             (produto_id, fornecedor_id, compra_cabecalho_id, codigo_lote, data_validade,
-              data_colheita, origem, quantidade_entrada, quantidade_atual, custo_unitario, status)
-             VALUES (:pid, :fid, :cid, :cod, :dv, :dc, :orig, :qe, :qa, :cu, :st)'
-        );
-        $stmt->execute([
-            'pid'  => $produtoId,
-            'fid'  => $data['fornecedor_id'] ?? null,
-            'cid'  => $data['compra_cabecalho_id'] ?? null,
-            'cod'  => $data['codigo_lote'] ?? null,
-            'dv'   => $dataValidade,
-            'dc'   => $data['data_colheita'] ?? null,
-            'orig' => $data['origem'] ?? null,
-            'qe'   => $quantidade,
-            'qa'   => $quantidade,
-            'cu'   => (float)($data['custo_unitario'] ?? 0),
-            'st'   => 'ativo',
+        $id = $this->repo->create([
+            'produto_id' => $produtoId,
+            'fornecedor_id' => $data['fornecedor_id'] ?? null,
+            'compra_cabecalho_id' => $data['compra_cabecalho_id'] ?? null,
+            'codigo_lote' => $data['codigo_lote'] ?? null,
+            'data_validade' => $dataValidade,
+            'data_colheita' => $data['data_colheita'] ?? null,
+            'origem' => $data['origem'] ?? null,
+            'quantidade_entrada' => $quantidade,
+            'custo_unitario' => (float)($data['custo_unitario'] ?? 0),
+            'status' => 'ativo',
         ]);
 
         http_response_code(201);
-        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => $id]);
     }
 
     /** PUT /api/v1/lotes/{id} — atualiza status ou quantidade atual */
@@ -120,14 +98,14 @@ class LoteController
             return;
         }
 
-        $stmt = $this->pdo->prepare('UPDATE lotes SET ' . implode(', ', $sets) . ' WHERE id = :id');
-        $stmt->execute($params);
+        $updated = $this->repo->update($id, $data);
 
-        if ($stmt->rowCount() === 0) {
+        if (!$updated) {
             http_response_code(404);
             Response::json(['error' => 'Lote não encontrado']);
             return;
         }
+
         Response::json(['success' => true]);
     }
 }

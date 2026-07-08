@@ -30,6 +30,7 @@ class Container
             case \App\Controllers\PurchaseController::class:
                 return new \App\Controllers\PurchaseController(
                     $this->pdo,
+                    $this->get(\App\Repositories\PurchaseRepository::class),
                     $this->get(\App\Services\PurchaseCreationService::class),
                     $this->get(\App\Services\PurchaseHeaderService::class),
                     $this->get(\App\Services\OrderPdfService::class)
@@ -37,12 +38,15 @@ class Container
             case \App\Controllers\SalesController::class:
                 return new \App\Controllers\SalesController(
                     $this->pdo,
+                    $this->get(\App\Repositories\SalesRepository::class),
                     $this->get(\App\Services\SalesCreationService::class),
                     $this->get(\App\Services\SalesHeaderService::class),
                     $this->get(\App\Services\OrderPdfService::class)
                 );
             case \App\Controllers\AuthController::class:
-                return new \App\Controllers\AuthController($this->pdo);
+                return new \App\Controllers\AuthController(
+                    $this->get(\App\Repositories\UserRepository::class)
+                );
             case \App\Controllers\ClientController::class:
                 return new \App\Controllers\ClientController($this->pdo, $this->get(\App\Repositories\ClientRepository::class));
             case \App\Controllers\MotoristaController::class:
@@ -52,12 +56,19 @@ class Container
             case \App\Controllers\ProductController::class:
                 return new \App\Controllers\ProductController($this->pdo, $this->get(\App\Repositories\ProductRepository::class));
             case \App\Controllers\ReportsController::class:
+                return new \App\Controllers\ReportsController(
+                    $this->get(\App\Services\PurchaseReportService::class)
+                );
             case \App\Controllers\EstoqueController::class:
+                return new \App\Controllers\EstoqueController($this->pdo, $this->get(\App\Repositories\EstoqueRepository::class));
             case \App\Controllers\QuebrasController::class:
+                return new \App\Controllers\QuebrasController($this->pdo, $this->get(\App\Repositories\QuebraRepository::class));
             case \App\Controllers\LoteController::class:
+                return new \App\Controllers\LoteController($this->pdo, $this->get(\App\Repositories\LoteRepository::class));
             case \App\Controllers\TabelaPrecoController::class:
+                return new \App\Controllers\TabelaPrecoController($this->pdo, $this->get(\App\Repositories\TabelaPrecoRepository::class));
             case \App\Controllers\UserController::class:
-                return new $class($this->pdo);
+                return new \App\Controllers\UserController($this->pdo, $this->get(\App\Repositories\UserRepository::class));
             case \App\Helpers\Schema::class:
                 return $this->get(\App\Helpers\Schema::class);
             default:
@@ -98,6 +109,12 @@ class Container
                 break;
             case \App\Services\SalesHeaderService::class:
                 $inst = new \App\Services\SalesHeaderService($this->pdo);
+                break;
+            case \App\Services\PurchaseReportService::class:
+                $inst = new \App\Services\PurchaseReportService(
+                    $this->pdo,
+                    $this->get(\App\Repositories\PurchaseReportRepository::class)
+                );
                 break;
             case \App\Helpers\Schema::class:
                 $inst = new \App\Helpers\Schema($this->pdo);

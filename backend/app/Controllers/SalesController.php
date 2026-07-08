@@ -1,6 +1,7 @@
 <?php
 namespace App\Controllers;
 
+use App\Repositories\SalesRepository;
 use App\Services\SalesCreationService;
 use App\Services\SalesHeaderService;
 use App\Services\OrderPdfService;
@@ -15,15 +16,17 @@ class SalesController
     private ?bool $hasStatusPedidoCache = null;
     private ?bool $hasHistoricoStatusPedidoCache = null;
 
+    private SalesRepository $repo;
     private SalesCreationService $creationService;
     private SalesHeaderService $headerService;
     private OrderPdfService $pdfService;
 
-    public function __construct(private PDO $pdo, ?SalesCreationService $creationService = null, ?SalesHeaderService $headerService = null, ?OrderPdfService $pdfService = null)
+    public function __construct(private PDO $pdo, SalesRepository $repo, SalesCreationService $creationService, SalesHeaderService $headerService, OrderPdfService $pdfService)
     {
-        $this->creationService = $creationService ?? new SalesCreationService($this->pdo);
-        $this->headerService = $headerService ?? new SalesHeaderService($this->pdo);
-        $this->pdfService = $pdfService ?? new OrderPdfService($this->pdo);
+        $this->repo = $repo;
+        $this->creationService = $creationService;
+        $this->headerService = $headerService;
+        $this->pdfService = $pdfService;
     }
 
     private function vendasColumns(): array
@@ -114,39 +117,10 @@ class SalesController
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
         $per = isset($_GET['per_page']) ? max(1, (int)$_GET['per_page']) : 25;
         $q = isset($_GET['q']) ? trim($_GET['q']) : '';
-
         $offset = ($page - 1) * $per;
 
-        $where = '';
-        $params = [];
-        if ($q !== '') {
-            $where = 'WHERE c.nome LIKE :q OR p.nome LIKE :q';
-            $params[':q'] = "%{$q}%";
-        }
-
-        // total
-        $countSql = "SELECT COUNT(*) as total FROM vendas v LEFT JOIN clientes c ON v.cliente_id = c.id LEFT JOIN produtos p ON v.produto_id = p.id {$where}";
-        $stmt = $this->pdo->prepare($countSql);
-        $stmt->execute($params);
-        $total = (int)$stmt->fetchColumn();
-
-        $envioCol = $this->hasVendasColumn('data_envio_prevista') ? 'v.data_envio_prevista' : 'NULL AS data_envio_prevista';
-        $entregaCol = $this->hasVendasColumn('data_entrega_prevista') ? 'v.data_entrega_prevista' : 'NULL AS data_entrega_prevista';
-        $sql = "SELECT v.id, c.nome AS cliente, p.nome AS produto, v.quantidade, v.valor_unitario,
-                   CASE WHEN UPPER(IFNULL(v.status, '')) = 'ENTREGUE' THEN 'ENTREGUE' ELSE 'AGUARDANDO' END AS status,
-                   v.data_venda, {$envioCol}, {$entregaCol}
-            FROM vendas v
-            LEFT JOIN clientes c ON v.cliente_id = c.id
-            LEFT JOIN produtos p ON v.produto_id = p.id
-            {$where}
-            ORDER BY v.id DESC
-            LIMIT :limit OFFSET :offset";
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $k => $v) $stmt->bindValue($k, $v);
-        $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $total = $this->repo->countSimpleSales($q);
+        $items = $this->repo->findSimpleSales($q, $per, $offset);
 
         Response::json(['items' => $items, 'total' => $total]);
     }
@@ -158,64 +132,11 @@ class SalesController
         $q = isset($_GET['q']) ? trim($_GET['q']) : '';
         $offset = ($page - 1) * $per;
 
-        $where = '';
-        $params = [];
-        if ($q !== '') {
-            $where = "WHERE c.nome LIKE :q OR EXISTS (
-                SELECT 1
-                FROM vendas vv
-                LEFT JOIN produtos pp ON pp.id = vv.produto_id
-                WHERE vv.venda_cabecalho_id = h.id AND pp.nome LIKE :q
-            )";
-            $params[':q'] = "%{$q}%";
-        }
+        $hasStatusPedidoTable = $this->hasStatusPedidoTable();
+        $hasIdStatusPedidoColumn = $this->hasVendasCabecalhoColumn('id_statuspedido');
 
-        $countSql = "SELECT COUNT(*)
-                     FROM vendas_cabecalho h
-                     LEFT JOIN clientes c ON c.id = h.cliente_id
-                     {$where}";
-        $countStmt = $this->pdo->prepare($countSql);
-        $countStmt->execute($params);
-        $total = (int)$countStmt->fetchColumn();
-
-        $statusSelect = "CASE
-                            WHEN sp.nome IS NOT NULL THEN UPPER(sp.nome)
-                            WHEN UPPER(IFNULL(h.status, '')) = 'ENTREGUE' THEN 'ENTREGUE'
-                            ELSE 'AGUARDANDO'
-                        END";
-        $statusJoin = '';
-        if (!($this->hasStatusPedidoTable() && $this->hasVendasCabecalhoColumn('id_statuspedido'))) {
-            $statusSelect = "CASE WHEN UPPER(IFNULL(h.status, '')) = 'ENTREGUE' THEN 'ENTREGUE' ELSE 'AGUARDANDO' END";
-        } else {
-            $statusJoin = 'LEFT JOIN status_pedido sp ON sp.id = h.id_statuspedido';
-        }
-
-        $sql = "SELECT
-                    h.id,
-                    h.tipo,
-                    c.nome AS cliente,
-                    IFNULL(COUNT(v.id), 0) AS itens_count,
-                    IFNULL(h.valor_total, 0) AS valor_total,
-                    {$statusSelect} AS status,
-                    h.data_inicio_prevista AS data_envio_prevista,
-                    h.data_fim_prevista AS data_entrega_prevista
-                FROM vendas_cabecalho h
-                LEFT JOIN clientes c ON c.id = h.cliente_id
-                {$statusJoin}
-                LEFT JOIN vendas v ON v.venda_cabecalho_id = h.id
-                {$where}
-                GROUP BY h.id, h.tipo, c.nome, h.valor_total, {$statusSelect}, h.data_inicio_prevista, h.data_fim_prevista
-                ORDER BY h.id DESC
-                LIMIT :limit OFFSET :offset";
-
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $total = $this->repo->countHeaderList($q, $hasStatusPedidoTable, $hasIdStatusPedidoColumn);
+        $items = $this->repo->findHeaderList($q, $per, $offset, $hasStatusPedidoTable, $hasIdStatusPedidoColumn);
 
         Response::json(['items' => $items, 'total' => $total]);
     }
@@ -258,28 +179,10 @@ class SalesController
         $userId      = (int)($authUser['sub'] ?? 0);
         $isPrivileged = in_array($userRole, ['admin', 'gerente'], true);
 
-        $headerStatusSelect = "CASE
-                                   WHEN sp.nome IS NOT NULL THEN UPPER(sp.nome)
-                                   WHEN UPPER(IFNULL(h.status, '')) = 'ENTREGUE' THEN 'ENTREGUE'
-                                   ELSE 'AGUARDANDO'
-                               END";
-        $headerStatusJoin = '';
-        if (!($this->hasStatusPedidoTable() && $this->hasVendasCabecalhoColumn('id_statuspedido'))) {
-            $headerStatusSelect = "CASE WHEN UPPER(IFNULL(h.status, '')) = 'ENTREGUE' THEN 'ENTREGUE' ELSE 'AGUARDANDO' END";
-        } else {
-            $headerStatusJoin = 'LEFT JOIN status_pedido sp ON sp.id = h.id_statuspedido';
-        }
+        $hasStatusPedidoTable = $this->hasStatusPedidoTable();
+        $hasIdStatusPedidoColumn = $this->hasVendasCabecalhoColumn('id_statuspedido');
 
-        $headerSql = "SELECT h.id, h.tipo, h.valor_total, {$headerStatusSelect} AS status,
-                             h.data_inicio_prevista, h.data_fim_prevista, c.nome AS cliente
-                      FROM vendas_cabecalho h
-                      LEFT JOIN clientes c ON c.id = h.cliente_id
-                      {$headerStatusJoin}
-                      WHERE h.id = :id
-                      LIMIT 1";
-        $headerStmt = $this->pdo->prepare($headerSql);
-        $headerStmt->execute(['id' => $id]);
-        $header = $headerStmt->fetch(PDO::FETCH_ASSOC);
+        $header = $this->repo->findHeaderById($id, $hasStatusPedidoTable, $hasIdStatusPedidoColumn);
 
         if (!$header) {
             http_response_code(404);
@@ -295,40 +198,9 @@ class SalesController
             return;
         }
 
-        $itemsStmt = $this->pdo->prepare(
-              "SELECT v.id, p.nome AS produto, v.quantidade, v.valor_unitario,
-                    CASE WHEN UPPER(IFNULL(v.status, '')) = 'ENTREGUE' THEN 'ENTREGUE' ELSE 'AGUARDANDO' END AS status,
-                    v.data_venda
-             FROM vendas v
-             LEFT JOIN produtos p ON p.id = v.produto_id
-             WHERE v.venda_cabecalho_id = :id
-               ORDER BY v.id ASC"
-        );
-        $itemsStmt->execute(['id' => $id]);
-        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $historico = [];
-        if ($this->hasHistoricoStatusPedidoTable()) {
-            $historyJoin = $this->hasStatusPedidoTable()
-                ? 'LEFT JOIN status_pedido sp ON sp.id = hsp.id_statuspedido'
-                : '';
-            $historyStatusSelect = $this->hasStatusPedidoTable()
-                ? "CASE WHEN sp.nome IS NOT NULL THEN UPPER(sp.nome) WHEN hsp.id_statuspedido = 2 THEN 'ENTREGUE' ELSE 'AGUARDANDO' END"
-                : "CASE WHEN hsp.id_statuspedido = 2 THEN 'ENTREGUE' ELSE 'AGUARDANDO' END";
-
-            $historySql = "SELECT hsp.usuario_id, hsp.id_statuspedido,
-                                  {$historyStatusSelect} AS status,
-                              u.name AS usuario_nome,
-                                  hsp.confirmado_em
-                           FROM historico_status_pedido hsp
-                          LEFT JOIN users u ON u.id = hsp.usuario_id
-                           {$historyJoin}
-                           WHERE hsp.venda_cabecalho_id = :id
-                           ORDER BY hsp.confirmado_em DESC, hsp.id DESC";
-            $historyStmt = $this->pdo->prepare($historySql);
-            $historyStmt->execute(['id' => $id]);
-            $historico = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
+        $hasStatusPedidoTable = $this->hasStatusPedidoTable();
+        $items = $this->repo->findHeaderItemsById($id);
+        $historico = $this->repo->findHeaderHistoryById($id, $hasStatusPedidoTable);
 
         Response::json([
             'header' => $header,

@@ -162,17 +162,17 @@ $router->map('GET', '/api/v1/metrics', static function (): void {
     echo json_encode(Metrics::snapshot());
 });
 
-$router->map('POST', '/api/v1/auth/login', static function () use ($pdo): void {
-    (new AuthController($pdo))->login();
+$router->map('POST', '/api/v1/auth/login', static function () use ($pdo, $container): void {
+    $container->make(AuthController::class)->login();
 });
 
-$router->map('POST', '/api/v1/auth/logout', static function () use ($pdo): void {
-    (new AuthController($pdo))->logout();
+$router->map('POST', '/api/v1/auth/logout', static function () use ($pdo, $container): void {
+    $container->make(AuthController::class)->logout();
 });
 
-$router->map('GET', '/api/v1/auth/me', static function () use ($pdo, $ensureAuth): void {
+$router->map('GET', '/api/v1/auth/me', static function () use ($pdo, $ensureAuth, $container): void {
     $authUser = $ensureAuth() ?? [];
-    (new AuthController($pdo))->me((array)$authUser);
+    $container->make(AuthController::class)->me((array)$authUser);
 });
 
 $router->map('POST', '/api/v1/compras', static function () use ($pdo, $ensureAuth, $container): void {

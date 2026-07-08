@@ -17,6 +17,101 @@ class ProductRepository
         return $r ?: null;
     }
 
+    public function count(array $filters): int
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $where[] = 'nome LIKE :q';
+            $params['q'] = '%' . $filters['q'] . '%';
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM produtos {$whereSql}");
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public function search(array $filters, int $limit, int $offset): array
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $where[] = 'nome LIKE :q';
+            $params['q'] = '%' . $filters['q'] . '%';
+        }
+
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+        $sql = "SELECT id, nome, tipo, unidade, custo_medio, status FROM produtos {$whereSql} ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function create(array $data): int
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO produtos (nome, tipo, unidade, custo_medio, status) VALUES (:nome, :tipo, :unidade, :custo_medio, :status)');
+        $stmt->execute([
+            'nome' => $data['nome'],
+            'tipo' => $data['tipo'] ?? null,
+            'unidade' => $data['unidade'] ?? 'saco',
+            'custo_medio' => $data['custo_medio'],
+            'status' => $data['status'],
+        ]);
+
+        return (int)$this->pdo->lastInsertId();
+    }
+
+    public function update(int $id, array $data): bool
+    {
+        $sets = [];
+        $params = ['id' => $id];
+
+        if (isset($data['nome'])) {
+            $sets[] = 'nome = :nome';
+            $params['nome'] = $data['nome'];
+        }
+        if (array_key_exists('tipo', $data)) {
+            $sets[] = 'tipo = :tipo';
+            $params['tipo'] = $data['tipo'];
+        }
+        if (array_key_exists('unidade', $data)) {
+            $sets[] = 'unidade = :unidade';
+            $params['unidade'] = $data['unidade'];
+        }
+        if (array_key_exists('custo_medio', $data)) {
+            $sets[] = 'custo_medio = :custo_medio';
+            $params['custo_medio'] = $data['custo_medio'];
+        }
+        if (array_key_exists('status', $data)) {
+            $sets[] = 'status = :status';
+            $params['status'] = $data['status'];
+        }
+
+        if (empty($sets)) {
+            return false;
+        }
+
+        $stmt = $this->pdo->prepare('UPDATE produtos SET ' . implode(', ', $sets) . ' WHERE id = :id');
+        $stmt->execute($params);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function delete(int $id): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM produtos WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
     /**
      * Update estoque_atual and recalculate custo_medio (weighted average) on purchase receive.
      */

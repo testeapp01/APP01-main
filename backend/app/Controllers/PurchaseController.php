@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use PDO;
+use App\Repositories\PurchaseRepository;
 use App\Services\PurchaseCreationService;
 use App\Services\PurchaseHeaderService;
 use App\Services\OrderPdfService;
@@ -16,15 +17,17 @@ class PurchaseController
     private ?bool $hasStatusCompraCache = null;
     private ?bool $hasHistoricoStatusCompraCache = null;
 
+    private PurchaseRepository $repo;
     private PurchaseCreationService $creationService;
     private PurchaseHeaderService $headerService;
     private OrderPdfService $pdfService;
 
-    public function __construct(private PDO $pdo, ?PurchaseCreationService $creationService = null, ?PurchaseHeaderService $headerService = null, ?OrderPdfService $pdfService = null)
+    public function __construct(private PDO $pdo, PurchaseRepository $repo, PurchaseCreationService $creationService, PurchaseHeaderService $headerService, OrderPdfService $pdfService)
     {
-        $this->creationService = $creationService ?? new PurchaseCreationService($this->pdo);
-        $this->headerService = $headerService ?? new PurchaseHeaderService($this->pdo);
-        $this->pdfService = $pdfService ?? new OrderPdfService($this->pdo);
+        $this->repo = $repo;
+        $this->creationService = $creationService;
+        $this->headerService = $headerService;
+        $this->pdfService = $pdfService;
     }
 
     private function comprasColumns(): array
@@ -102,15 +105,7 @@ class PurchaseController
 
     private function statusCompraIdByNome(string $nome): ?int
     {
-        if (!$this->hasStatusCompraTable()) {
-            return null;
-        }
-
-        $stmt = $this->pdo->prepare('SELECT id FROM status_compra WHERE UPPER(nome) = :nome LIMIT 1');
-        $stmt->execute(['nome' => strtoupper($nome)]);
-        $id = $stmt->fetchColumn();
-
-        return $id !== false ? (int)$id : null;
+        return $this->repo->getStatusCompraIdByNome($nome);
     }
 
     private function currentUserId(): ?int
@@ -126,19 +121,8 @@ class PurchaseController
 
     private function currentHeaderStatusCompra(int $headerId): ?string
     {
-        if (!$this->hasComprasCabecalhoTable()) {
-            return null;
-        }
-
-        $stmt = $this->pdo->prepare('SELECT status FROM compras_cabecalho WHERE id = :id LIMIT 1');
-        $stmt->execute(['id' => $headerId]);
-        $status = $stmt->fetchColumn();
-
-        if ($status === false) {
-            return null;
-        }
-
-        return $this->normalizeStatusCompraLabel((string)$status);
+        $status = $this->repo->getHeaderStatus($headerId);
+        return $status === null ? null : $this->normalizeStatusCompraLabel($status);
     }
 
     private function canTransitionCompra(string $from, string $to): bool
@@ -179,15 +163,7 @@ class PurchaseController
             $params[':q'] = "%{$q}%";
         }
 
-        $countSql = "SELECT COUNT(*)
-                     FROM compras_cabecalho h
-                     LEFT JOIN fornecedores f ON f.id = h.fornecedor_id
-                     LEFT JOIN clientes cl ON cl.id = h.cliente_id
-                     LEFT JOIN motoristas m ON m.id = h.motorista_id
-                     {$where}";
-        $countStmt = $this->pdo->prepare($countSql);
-        $countStmt->execute($params);
-        $total = (int)$countStmt->fetchColumn();
+        $total = $this->repo->countHeaders($q);
 
         $statusSelect = "CASE
                             WHEN sc.nome IS NOT NULL THEN UPPER(sc.nome)
@@ -223,15 +199,7 @@ class PurchaseController
                 ORDER BY h.id DESC
                 LIMIT :limit OFFSET :offset";
 
-        $stmt = $this->pdo->prepare($sql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue($key, $value);
-        }
-        $stmt->bindValue(':limit', $per, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+        $items = $this->repo->findHeaderList($q, $per, $offset);
         Response::json(['items' => $items, 'total' => $total]);
     }
 
@@ -263,31 +231,7 @@ class PurchaseController
         $userId    = (int)($authUser['sub'] ?? 0);
         $isPrivileged = in_array($userRole, ['admin', 'gerente'], true);
 
-        $headerStatusSelect = "CASE
-                                   WHEN sc.nome IS NOT NULL THEN UPPER(sc.nome)
-                                   WHEN UPPER(IFNULL(h.status, '')) = 'RECEBIDA' THEN 'RECEBIDA'
-                                   ELSE 'AGUARDANDO'
-                               END";
-        $headerStatusJoin = '';
-        if (!($this->hasStatusCompraTable() && $this->hasComprasCabecalhoColumn('id_statuscompra'))) {
-            $headerStatusSelect = "CASE WHEN UPPER(IFNULL(h.status, '')) = 'RECEBIDA' THEN 'RECEBIDA' ELSE 'AGUARDANDO' END";
-        } else {
-            $headerStatusJoin = 'LEFT JOIN status_compra sc ON sc.id = h.id_statuscompra';
-        }
-
-        $headerStmt = $this->pdo->prepare(
-                "SELECT h.id, h.tipo_operacao, h.fornecedor_id, h.cliente_id, h.motorista_id, h.valor_total, {$headerStatusSelect} AS status, h.data_envio_prevista, h.data_entrega_prevista,
-                    f.razao_social AS fornecedor, cl.nome AS cliente, m.nome AS motorista
-             FROM compras_cabecalho h
-             LEFT JOIN fornecedores f ON f.id = h.fornecedor_id
-             LEFT JOIN clientes cl ON cl.id = h.cliente_id
-             LEFT JOIN motoristas m ON m.id = h.motorista_id
-             {$headerStatusJoin}
-             WHERE h.id = :id
-             LIMIT 1"
-        );
-        $headerStmt->execute(['id' => $id]);
-        $header = $headerStmt->fetch(PDO::FETCH_ASSOC);
+        $header = $this->repo->findHeaderById($id);
 
         if (!$header) {
             http_response_code(404);
@@ -303,40 +247,8 @@ class PurchaseController
             return;
         }
 
-        $itemsStmt = $this->pdo->prepare(
-              "SELECT c.id, p.nome AS produto, c.quantidade, c.valor_unitario,
-                    CASE WHEN UPPER(IFNULL(c.status, '')) = 'RECEBIDA' THEN 'RECEBIDA' ELSE 'AGUARDANDO' END AS status,
-                    c.data_compra
-             FROM compras c
-             LEFT JOIN produtos p ON p.id = c.produto_id
-             WHERE c.compra_cabecalho_id = :id
-               ORDER BY c.id ASC"
-        );
-        $itemsStmt->execute(['id' => $id]);
-        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $historico = [];
-        if ($this->hasHistoricoStatusCompraTable()) {
-            $historyJoin = $this->hasStatusCompraTable()
-                ? 'LEFT JOIN status_compra sc ON sc.id = hsc.id_statuscompra'
-                : '';
-            $historyStatusSelect = $this->hasStatusCompraTable()
-                ? "CASE WHEN sc.nome IS NOT NULL THEN UPPER(sc.nome) WHEN hsc.id_statuscompra = 2 THEN 'RECEBIDA' ELSE 'AGUARDANDO' END"
-                : "CASE WHEN hsc.id_statuscompra = 2 THEN 'RECEBIDA' ELSE 'AGUARDANDO' END";
-            $historyStmt = $this->pdo->prepare(
-                "SELECT hsc.usuario_id, hsc.id_statuscompra,
-                        {$historyStatusSelect} AS status,
-                        u.name AS usuario_nome,
-                        hsc.confirmado_em
-                 FROM historico_status_compra hsc
-                  LEFT JOIN users u ON u.id = hsc.usuario_id
-                 {$historyJoin}
-                 WHERE hsc.compra_cabecalho_id = :id
-                 ORDER BY hsc.confirmado_em DESC, hsc.id DESC"
-            );
-            $historyStmt->execute(['id' => $id]);
-            $historico = $historyStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
+        $items = $this->repo->findItemsByHeaderId($id);
+        $historico = $this->repo->findHeaderHistoryById($id);
 
         Response::json([
             'header' => $header,
@@ -409,83 +321,51 @@ class PurchaseController
         }
 
         $allowed = ['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'data_envio_prevista', 'data_entrega_prevista', 'status'];
-        $set = [];
-        $params = ['id' => $id];
+        $payload = [];
 
         foreach ($allowed as $field) {
             if (array_key_exists($field, $data)) {
                 $value = $field === 'status' ? $this->normalizeStatusCompraLabel($data[$field]) : $data[$field];
-                $set[] = $field . ' = :' . $field;
-                $params[$field] = $value;
-                if ($field === 'status') {
-                    $data[$field] = $value;
-                }
+                $payload[$field] = $value;
             }
         }
 
-        if (array_key_exists('status', $data) && $this->hasComprasCabecalhoColumn('id_statuscompra')) {
-            $set[] = 'id_statuscompra = :id_statuscompra';
-            $params['id_statuscompra'] = $this->statusCompraIdByNome($data['status'])
-                ?? ($data['status'] === 'RECEBIDA' ? 2 : 1);
+        if (array_key_exists('status', $payload) && $this->hasComprasCabecalhoColumn('id_statuscompra')) {
+            $payload['id_statuscompra'] = $this->statusCompraIdByNome($payload['status'])
+                ?? ($payload['status'] === 'RECEBIDA' ? 2 : 1);
         }
 
-        if (empty($set)) {
+        if (empty($payload)) {
             http_response_code(400);
             Response::json(['error' => 'Nenhum campo válido para atualização']);
             return;
         }
 
-        $stmt = $this->pdo->prepare('UPDATE compras_cabecalho SET ' . implode(', ', $set) . ' WHERE id = :id');
-        $stmt->execute($params);
-
-        $syncParts = [];
-        $syncParams = ['id' => $id];
-        foreach (['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'data_envio_prevista', 'data_entrega_prevista', 'status'] as $field) {
-            if (array_key_exists($field, $data) && $this->hasComprasColumn($field)) {
-                $syncParts[] = 'c.' . $field . ' = :s_' . $field;
-                $syncParams['s_' . $field] = $data[$field];
-            }
+        $updated = $this->repo->updateHeader($id, $payload);
+        if (!$updated) {
+            http_response_code(400);
+            Response::json(['error' => 'Falha ao atualizar cabeçalho de compra']);
+            return;
         }
 
-        if (!empty($syncParts)) {
-            $sqlSync = 'UPDATE compras c SET ' . implode(', ', $syncParts) . ' WHERE c.compra_cabecalho_id = :id';
-            $syncStmt = $this->pdo->prepare($sqlSync);
-            $syncStmt->execute($syncParams);
-        }
-
+        $this->repo->syncHeaderFieldsToItems($id, $payload);
         Response::json(['message' => 'Cabeçalho de compra atualizado']);
     }
 
     public function updateItem(int $id): void
     {
         $data = Request::body();
-        $allowed = ['tipo_operacao', 'fornecedor_id', 'cliente_id', 'motorista_id', 'produto_id', 'quantidade', 'valor_unitario', 'data_envio_prevista', 'data_entrega_prevista', 'status'];
-        $set = [];
-        $params = ['id' => $id];
-
-        foreach ($allowed as $field) {
-            if (array_key_exists($field, $data) && $this->hasComprasColumn($field)) {
-                $set[] = $field . ' = :' . $field;
-                $params[$field] = $data[$field];
-            }
-        }
-
-        if (empty($set)) {
+        $updated = $this->repo->updateItem($id, $data);
+        if (!$updated) {
             http_response_code(400);
-            Response::json(['error' => 'Nenhum campo válido para atualização']);
+            Response::json(['error' => 'Nenhum campo válido para atualização ou item não encontrado']);
             return;
         }
 
-        $stmt = $this->pdo->prepare('UPDATE compras SET ' . implode(', ', $set) . ' WHERE id = :id');
-        $stmt->execute($params);
-
-        if ($this->hasComprasColumn('compra_cabecalho_id')) {
-            $hStmt = $this->pdo->prepare('SELECT compra_cabecalho_id FROM compras WHERE id = :id LIMIT 1');
-            $hStmt->execute(['id' => $id]);
-            $row = $hStmt->fetch(PDO::FETCH_ASSOC);
-            $headerId = (int)($row['compra_cabecalho_id'] ?? 0);
+        if ($this->repo->findItemHeaderId($id) !== null) {
+            $headerId = $this->repo->findItemHeaderId($id);
             if ($headerId > 0 && $this->hasComprasCabecalhoTable()) {
-                $this->recalculateHeaderTotal($headerId);
+                $this->repo->recalculateHeaderTotal($headerId);
             }
         }
 
@@ -506,26 +386,20 @@ class PurchaseController
 
     public function deleteItem(int $id): void
     {
-        $headerId = 0;
-        if ($this->hasComprasColumn('compra_cabecalho_id')) {
-            $hStmt = $this->pdo->prepare('SELECT compra_cabecalho_id FROM compras WHERE id = :id LIMIT 1');
-            $hStmt->execute(['id' => $id]);
-            $row = $hStmt->fetch(PDO::FETCH_ASSOC);
-            $headerId = (int)($row['compra_cabecalho_id'] ?? 0);
+        $headerId = $this->repo->findItemHeaderId($id);
+        $deleted = $this->repo->deleteItem($id);
+        if (!$deleted) {
+            http_response_code(404);
+            Response::json(['error' => 'Item de compra não encontrado']);
+            return;
         }
 
-        $stmt = $this->pdo->prepare('DELETE FROM compras WHERE id = :id');
-        $stmt->execute(['id' => $id]);
-
-        if ($headerId > 0 && $this->hasComprasCabecalhoTable()) {
-            $countStmt = $this->pdo->prepare('SELECT COUNT(*) FROM compras WHERE compra_cabecalho_id = :id');
-            $countStmt->execute(['id' => $headerId]);
-            $left = (int)$countStmt->fetchColumn();
+        if ($headerId !== null && $headerId > 0 && $this->hasComprasCabecalhoTable()) {
+            $left = $this->repo->countItemsByHeaderId($headerId);
             if ($left === 0) {
-                $delHeader = $this->pdo->prepare('DELETE FROM compras_cabecalho WHERE id = :id');
-                $delHeader->execute(['id' => $headerId]);
+                $this->repo->deleteHeaderById($headerId);
             } else {
-                $this->recalculateHeaderTotal($headerId);
+                $this->repo->recalculateHeaderTotal($headerId);
             }
         }
 
@@ -562,12 +436,7 @@ class PurchaseController
             return;
         }
 
-        $sumStmt = $this->pdo->prepare('SELECT IFNULL(SUM(quantidade * valor_unitario), 0) FROM compras WHERE compra_cabecalho_id = :id');
-        $sumStmt->execute(['id' => $headerId]);
-        $total = (float)$sumStmt->fetchColumn();
-
-        $up = $this->pdo->prepare('UPDATE compras_cabecalho SET valor_total = :valor_total WHERE id = :id');
-        $up->execute(['valor_total' => $total, 'id' => $headerId]);
+        $this->repo->recalculateHeaderTotal($headerId);
     }
 
     public function receive(): void

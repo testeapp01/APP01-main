@@ -3,15 +3,14 @@ namespace App\Controllers;
 
 use App\Repositories\MotoristaRepository;
 use App\Helpers\Response;
-use PDO;
 
 class MotoristaController
 {
     private MotoristaRepository $repo;
 
-    public function __construct(private PDO $pdo, ?MotoristaRepository $repo = null)
+    public function __construct(MotoristaRepository $repo)
     {
-        $this->repo = $repo ?? new MotoristaRepository($this->pdo);
+        $this->repo = $repo;
     }
 
 
@@ -141,9 +140,8 @@ class MotoristaController
 
     public function listTiposCaminhao(): void
     {
-        $stmt = $this->pdo->query('SELECT id, nome FROM tipos_caminhao ORDER BY nome');
-        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        Response::json($items ?: []);
+        $items = $this->repo->listTiposCaminhao();
+        Response::json($items);
     }
 
     public function delete(int $id): void

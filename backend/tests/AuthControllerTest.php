@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Repositories\UserRepository;
 use PHPUnit\Framework\TestCase;
 
 final class AuthControllerTest extends TestCase
@@ -55,7 +56,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());
@@ -90,7 +91,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());
@@ -121,7 +122,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());
@@ -156,7 +157,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());
@@ -189,7 +190,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());
@@ -223,7 +224,7 @@ final class AuthControllerTest extends TestCase
         ];
 
         ob_start();
-        (new AuthController($pdo))->login();
+        (new AuthController(new UserRepository($pdo)))->login();
         $raw = ob_get_clean();
 
         $this->assertSame(200, http_response_code());

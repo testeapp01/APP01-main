@@ -10,30 +10,14 @@ class FornecedorController
 
     private \App\Repositories\FornecedorRepository $repo;
 
-    public function __construct(private PDO $pdo, ?\App\Repositories\FornecedorRepository $repo = null)
+    public function __construct(private PDO $pdo, \App\Repositories\FornecedorRepository $repo)
     {
-        $this->repo = $repo ?? new \App\Repositories\FornecedorRepository($this->pdo);
-    }
-
-    private function fornecedorColumns(): array
-    {
-        if ($this->fornecedorColumnsCache !== null) {
-            return $this->fornecedorColumnsCache;
-        }
-
-        $stmt = $this->pdo->query('SHOW COLUMNS FROM fornecedores');
-        $cols = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $this->fornecedorColumnsCache = array_values(array_filter(array_map(
-            static fn(array $row) => $row['Field'] ?? null,
-            $cols
-        )));
-
-        return $this->fornecedorColumnsCache;
+        $this->repo = $repo;
     }
 
     private function hasFornecedorColumn(string $column): bool
     {
-        return in_array($column, $this->fornecedorColumns(), true);
+        return $this->repo->hasColumn($column);
     }
 
     public function index(): void
@@ -49,7 +33,6 @@ class FornecedorController
             return 'NULL AS ' . $column;
         }, $wanted);
 
-        $stmt = $this->pdo->query('SELECT ' . implode(', ', $select) . ' FROM fornecedores ORDER BY razao_social ASC');
         $items = $this->repo->allSelectable($select);
         Response::json($items);
     }
@@ -124,12 +107,8 @@ class FornecedorController
             return;
         }
 
-        $columns = array_keys($insertData);
-        $placeholders = array_map(static fn(string $column) => ':' . $column, $columns);
-        $sql = 'INSERT INTO fornecedores (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
         try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute($insertData);
+            $id = $this->repo->create($insertData);
         } catch (\PDOException $e) {
             if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
                 http_response_code(409);
@@ -139,9 +118,14 @@ class FornecedorController
             http_response_code(500);
             Response::json(['error' => 'Falha ao salvar fornecedor.']);
             return;
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            Response::json(['error' => 'Falha ao salvar fornecedor.']);
+            return;
         }
+
         http_response_code(201);
-        Response::json(['id' => (int)$this->pdo->lastInsertId()]);
+        Response::json(['id' => $id]);
     }
 
     public function delete(int $id): void
