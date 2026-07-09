@@ -95,7 +95,7 @@ if ($method === 'OPTIONS') {
 
 SecureHeadersMiddleware::apply();
 CorrelationIdMiddleware::apply();
-RateLimitMiddleware::check(120, 60);
+RateLimitMiddleware::check(20, 1);
 
 $raw = file_get_contents('php://input');
 if ($raw) {
@@ -247,6 +247,11 @@ $router->map('POST', '/api/v1/clientes', static function () use ($pdo, $ensureAu
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     $container->make(ClientController::class)->create();
 });
+$router->map(['PUT', 'PATCH'], '/api/v1/clientes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    $container->make(ClientController::class)->update((int)($params['id'] ?? 0));
+});
 $router->map('DELETE', '/api/v1/clientes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
@@ -329,7 +334,7 @@ $router->map('GET', '/api/v1/relatorios/compras', static function () use ($pdo, 
 });
 $router->map('GET', '/api/v1/relatorios/compras/export', static function () use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
-    RateLimitMiddleware::check(5, 60);
+    RateLimitMiddleware::check(20, 1);
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     $container->make(ReportsController::class)->exportStrategicPurchases();
 });

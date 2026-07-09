@@ -2,11 +2,12 @@
 namespace App\Services;
 
 use App\Repositories\PurchaseRepository;
+use App\Repositories\ProductRepository;
 use App\Logger\Logger;
 
 class PurchaseService
 {
-    public function __construct(private PurchaseRepository $purchaseRepo)
+    public function __construct(private PurchaseRepository $purchaseRepo, private ?ProductRepository $productRepo = null)
     {
     }
 
@@ -30,8 +31,22 @@ class PurchaseService
 
         $this->purchaseRepo->updateStatus($id, 'RECEBIDA');
 
+        $novoEstoque = null;
+        $novoCustoMedio = null;
+        if ($this->productRepo !== null) {
+            $produtoId = (int)($compra['produto_id'] ?? 0);
+            $quantidade = (float)($compra['quantidade'] ?? 0);
+            $valorUnitario = (float)($compra['valor_unitario'] ?? 0);
+            if ($produtoId > 0 && $quantidade > 0) {
+                $this->productRepo->updateStockOnReceive($produtoId, $quantidade, $valorUnitario);
+                $produtoAtualizado = $this->productRepo->findById($produtoId);
+                $novoEstoque = $produtoAtualizado ? (float)($produtoAtualizado['estoque_atual'] ?? 0) : null;
+                $novoCustoMedio = $produtoAtualizado ? (float)($produtoAtualizado['custo_medio'] ?? 0) : null;
+            }
+        }
+
         Logger::get()->info('Compra recebida', ['compra_id' => $id]);
 
-        return ['message' => 'RECEBIDA'];
+        return ['message' => 'RECEBIDA', 'novo_estoque' => $novoEstoque, 'novo_custo_medio' => $novoCustoMedio];
     }
 }

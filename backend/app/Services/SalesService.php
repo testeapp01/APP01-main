@@ -55,12 +55,39 @@ class SalesService
     public function confirmDelivery(int $saleId): array
     {
         $sale = $this->salesRepo->findById($saleId);
-        if (!$sale) throw new \RuntimeException('Venda não encontrada');
-        if ($sale['status'] === 'ENTREGUE') throw new \RuntimeException('Venda já entregue');
+        if (!$sale) {
+            throw new \RuntimeException('Venda não encontrada');
+        }
+        if ($sale['status'] === 'ENTREGUE') {
+            throw new \RuntimeException('Venda já entregue');
+        }
+
+        $produtoId = (int)($sale['produto_id'] ?? 0);
+        $quantidade = (float)($sale['quantidade'] ?? 0);
+        if ($produtoId > 0 && $quantidade > 0) {
+            $produto = $this->productRepo->findById($produtoId);
+            if (!$produto) {
+                throw new \RuntimeException('Produto não encontrado', 404);
+            }
+
+            $estoqueAtual = (float)($produto['estoque_atual'] ?? 0);
+            if ($estoqueAtual < $quantidade) {
+                throw new \RuntimeException('Estoque insuficiente', 409);
+            }
+
+            $this->productRepo->updateStockOnDeliver($produtoId, $quantidade);
+        }
+
         $this->salesRepo->updateStatus($saleId, 'ENTREGUE');
+
+        $novoEstoque = null;
+        if ($produtoId > 0) {
+            $produtoAtualizado = $this->productRepo->findById($produtoId);
+            $novoEstoque = $produtoAtualizado ? (float)($produtoAtualizado['estoque_atual'] ?? 0) : null;
+        }
 
         Logger::get()->info('Venda entregue', ['sale_id' => $saleId]);
 
-        return ['message' => 'ENTREGUE'];
+        return ['message' => 'ENTREGUE', 'novo_estoque' => $novoEstoque];
     }
 }

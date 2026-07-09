@@ -359,9 +359,4 @@ class SalesRepository
 
         return '';
     }
-
-    private function hasColumn(string $column): bool
-    {
-        return in_array($column, $this->vendasColumns(), true);
-    }
 }

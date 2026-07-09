@@ -85,14 +85,19 @@ class ProductController
 
         $status = in_array($data['status'] ?? '', ['ativo', 'inativo'], true) ? $data['status'] : null;
 
+        $payload = [
+            'nome' => $nome,
+            'tipo' => $data['tipo'] ?? null,
+            'unidade' => $data['unidade'] ?? 'saco',
+            'custo_medio' => $custoMedio,
+        ];
+
+        if ($status !== null) {
+            $payload['status'] = $status;
+        }
+
         try {
-            $updated = $this->repo->update($id, [
-                'nome' => $nome,
-                'tipo' => $data['tipo'] ?? null,
-                'unidade' => $data['unidade'] ?? 'saco',
-                'custo_medio' => $custoMedio,
-                'status' => $status,
-            ]);
+            $updated = $this->repo->update($id, $payload);
 
             if (!$updated) {
                 Response::error('Produto não encontrado', 404);

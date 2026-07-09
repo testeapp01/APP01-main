@@ -21,12 +21,13 @@ class SalesController
     private SalesHeaderService $headerService;
     private OrderPdfService $pdfService;
 
-    public function __construct(private PDO $pdo, SalesRepository $repo, SalesCreationService $creationService, SalesHeaderService $headerService, OrderPdfService $pdfService)
+    public function __construct(private ?PDO $pdo = null, ?SalesRepository $repo = null, ?SalesCreationService $creationService = null, ?SalesHeaderService $headerService = null, ?OrderPdfService $pdfService = null)
     {
-        $this->repo = $repo;
-        $this->creationService = $creationService;
-        $this->headerService = $headerService;
-        $this->pdfService = $pdfService;
+        $this->pdo = $pdo ?? new PDO('sqlite::memory:');
+        $this->repo = $repo ?? new SalesRepository($this->pdo);
+        $this->creationService = $creationService ?? new SalesCreationService($this->pdo);
+        $this->headerService = $headerService ?? new SalesHeaderService($this->pdo);
+        $this->pdfService = $pdfService ?? new OrderPdfService($this->pdo);
     }
 
     private function vendasColumns(): array

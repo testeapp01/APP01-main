@@ -23,9 +23,25 @@ class MotoristaController
     public function create(): void
     {
         $data = \App\Helpers\Request::body();
-        if (empty($data['nome'])) {
+        $nome = trim((string)($data['nome'] ?? ''));
+        $telefone = trim((string)($data['telefone'] ?? ''));
+        $placa = trim((string)($data['placa'] ?? ''));
+
+        if ($nome === '') {
             http_response_code(400);
             Response::json(['error' => 'Nome obrigatório']);
+            return;
+        }
+
+        if ($telefone === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Telefone obrigatório']);
+            return;
+        }
+
+        if ($placa === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Placa obrigatória']);
             return;
         }
         // Normalize and ensure all fields are present
@@ -80,18 +96,35 @@ class MotoristaController
     public function update(int $id): void
     {
         $data = \App\Helpers\Request::body();
-        if (empty($data['nome'])) {
+        $nome = trim((string)($data['nome'] ?? ''));
+        $telefone = trim((string)($data['telefone'] ?? ''));
+        $placa = trim((string)($data['placa'] ?? ''));
+
+        if ($nome === '') {
             http_response_code(400);
             Response::json(['error' => 'Nome obrigatório']);
             return;
         }
 
+        if ($telefone === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Telefone obrigatório']);
+            return;
+        }
+
+        if ($placa === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Placa obrigatória']);
+            return;
+        }
+
         $data['cpf'] = $data['cpf'] ?? null;
-        $data['placa'] = $data['placa'] ?? null;
+        $data['placa'] = $placa !== '' ? $placa : null;
         $data['veiculo'] = $data['veiculo'] ?? null;
         $data['uf'] = $data['uf'] ?? null;
-        $data['telefone'] = $data['telefone'] ?? null;
+        $data['telefone'] = $telefone !== '' ? $telefone : null;
         $data['TpCaminhao'] = $data['TpCaminhao'] ?? null;
+        $data['nome'] = $nome;
 
         require_once __DIR__.'/../Helpers/Validator.php';
 

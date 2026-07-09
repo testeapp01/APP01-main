@@ -282,6 +282,7 @@
           v-model="novoMotorista.placa"
           placeholder="Placa"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <input
           v-model="novoMotorista.veiculo"
@@ -292,6 +293,7 @@
           v-model="novoMotorista.telefone"
           placeholder="Telefone"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <div class="mb-2">
           <CustomSelect
@@ -404,6 +406,7 @@ export default {
       novaCliente: { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true },
       novoMotorista: { nome: '', placa: '', veiculo: '', uf: '', telefone: '', TpCaminhao: '', status: true },
       editingClientIndex: null,
+      editingClientId: null,
       editingDriverIndex: null,
       editingDriverId: null,
       caminhaoOptions: [ { value: '', label: 'Tipo de Caminhão' } ],
@@ -503,8 +506,8 @@ export default {
       this.currentPageClients = 1
       await this.fetchClients()
     },
-    openCreateClient(){ this.editingClientIndex = null; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente = { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateClient=true },
-    closeCreateClient(){ this.showCreateClient=false; this.submittingClient=false; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente={nome:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cpf_cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingClientIndex = null },
+    openCreateClient(){ this.editingClientIndex = null; this.editingClientId = null; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente = { nome: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cpf_cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateClient=true },
+    closeCreateClient(){ this.showCreateClient=false; this.submittingClient=false; this.clientFeedback = { message: '', type: 'info' }; this.clienteDocumentoError = ''; this.novaCliente={nome:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cpf_cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingClientIndex = null; this.editingClientId = null },
     async createClient(){
       this.submittingClient = true
       this.clientFeedback = { message: 'Salvando cliente...', type: 'info' }
@@ -530,13 +533,16 @@ export default {
           uf: this.novaCliente.uf || null,
           status: !!this.novaCliente.status,
         }
-        const res = await api.post('/api/v1/clientes', payload)
+        const url = this.editingClientId ? `/api/v1/clientes/${this.editingClientId}` : '/api/v1/clientes'
+        const res = this.editingClientId
+          ? await api.put(url, payload)
+          : await api.post(url, payload)
         if (res.data && res.data.id) {
           this.clients.unshift({ id: res.data.id, ...payload })
         }
         this.currentPageClients = 1
         await this.fetchClients()
-        this.clientFeedback = { message: 'Cliente salvo com sucesso.', type: 'success' }
+        this.clientFeedback = { message: this.editingClientId ? 'Cliente atualizado com sucesso.' : 'Cliente salvo com sucesso.', type: 'success' }
         setTimeout(() => this.closeCreateClient(), 300)
       } catch (e) {
         console.error('Erro ao criar cliente', e)
@@ -546,7 +552,7 @@ export default {
         this.submittingClient = false
       }
     },
-    editClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) { this.editingClientIndex = idx; this.clienteDocumentoError = ''; this.novaCliente = { ...row, cep: this.applyCepMask(row.cep), cpf_cnpj: this.applyCpfCnpjMask(row.cpf_cnpj), status: !!row.status }; this.showCreateClient = true } },
+    editClient(row){ const idx = this.clients.indexOf(row); if (idx!==-1) { this.editingClientIndex = idx; this.editingClientId = row.id || null; this.clienteDocumentoError = ''; this.novaCliente = { ...row, cep: this.applyCepMask(row.cep), cpf_cnpj: this.applyCpfCnpjMask(row.cpf_cnpj), status: !!row.status }; this.showCreateClient = true } },
     deleteClient(row){
       if (!row?.id) return
       this.pendingDelete = { kind: 'cliente', id: row.id }

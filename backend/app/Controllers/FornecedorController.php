@@ -40,23 +40,53 @@ class FornecedorController
     public function create(): void
     {
         $data = \App\Helpers\Request::body();
-        if (empty($data['razao_social'])) {
+        $razaoSocial = trim((string)($data['razao_social'] ?? ''));
+        $cidade = trim((string)($data['cidade'] ?? ''));
+        $endereco = trim((string)($data['endereco'] ?? ''));
+        $bairro = trim((string)($data['bairro'] ?? ''));
+        $telefone = trim((string)($data['telefone'] ?? ''));
+        $email = trim((string)($data['email'] ?? ''));
+        $cep = trim((string)($data['cep'] ?? ''));
+
+        if ($razaoSocial === '') {
             http_response_code(400);
             Response::json(['error' => 'Razão social obrigatória']);
             return;
         }
+
+        if ($endereco === '' || $bairro === '' || $cidade === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Endereço, bairro e cidade são obrigatórios']);
+            return;
+        }
+
+        if ($telefone === '' || $email === '') {
+            http_response_code(400);
+            Response::json(['error' => 'Telefone e email são obrigatórios']);
+            return;
+        }
+
+        if ($cep !== '' && strlen(preg_replace('/\D/', '', $cep)) !== 8) {
+            http_response_code(400);
+            Response::json(['error' => 'CEP inválido']);
+            return;
+        }
+
         if (isset($data['status'])) {
             $data['status'] = $data['status'] ? 1 : 0;
         } else {
             $data['status'] = 1;
         }
         $data['uf'] = $data['uf'] ?? null;
-        $data['endereco'] = $data['endereco'] ?? null;
+        $data['endereco'] = $endereco !== '' ? $endereco : null;
         $data['numero'] = $data['numero'] ?? null;
         $data['complemento'] = $data['complemento'] ?? null;
-        $data['bairro'] = $data['bairro'] ?? null;
-        $data['cep'] = $data['cep'] ?? null;
-        $data['cidade'] = $data['cidade'] ?? null;
+        $data['bairro'] = $bairro !== '' ? $bairro : null;
+        $data['cep'] = $cep !== '' ? preg_replace('/\D/', '', $cep) : null;
+        $data['cidade'] = $cidade !== '' ? $cidade : null;
+        $data['razao_social'] = $razaoSocial;
+        $data['telefone'] = $telefone !== '' ? $telefone : null;
+        $data['email'] = $email !== '' ? $email : null;
         require_once __DIR__.'/../Helpers/Validator.php';
 
         if (!empty($data['cnpj'])) {
@@ -67,6 +97,10 @@ class FornecedorController
                 return;
             }
             $data['cnpj'] = $cnpjDigits;
+        } else {
+            http_response_code(400);
+            Response::json(['error' => 'CNPJ obrigatório']);
+            return;
         }
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {

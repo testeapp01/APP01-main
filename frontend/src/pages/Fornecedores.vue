@@ -244,6 +244,7 @@
           v-model="novoFornecedor.endereco"
           placeholder="Endereço"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
@@ -274,23 +275,27 @@
           v-model="novoFornecedor.cidade"
           placeholder="Cidade"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <input
           v-model="novoFornecedor.cnpj"
           placeholder="CNPJ"
           class="p-3 border border-gray-300 rounded-xl"
+          required
           @input="onFornecedorCnpjInput"
         >
         <input
           v-model="novoFornecedor.telefone"
           placeholder="Telefone"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <input
           v-model="novoFornecedor.email"
           placeholder="Email"
           type="email"
           class="p-3 border border-gray-300 rounded-xl"
+          required
         >
         <div class="mb-2 uf-field">
           <CustomSelect

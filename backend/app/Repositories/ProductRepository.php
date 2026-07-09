@@ -1,6 +1,7 @@
 <?php
 namespace App\Repositories;
 
+use App\Helpers\Schema;
 use PDO;
 
 class ProductRepository
@@ -141,18 +142,29 @@ class ProductRepository
      */
     public function updateStockOnDeliver(int $id, float $quantidade): void
     {
-        $stmt = $this->pdo->prepare('SELECT estoque_atual, estoque_reservado FROM produtos WHERE id = :id LIMIT 1');
+        $stmt = $this->pdo->prepare('SELECT estoque_atual FROM produtos WHERE id = :id LIMIT 1');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$row) return;
 
-        $novoEstoque    = max(0, (float)$row['estoque_atual'] - $quantidade);
-        $novaReserva    = max(0, (float)($row['estoque_reservado'] ?? 0) - $quantidade);
+        $novoEstoque = max(0, (float)$row['estoque_atual'] - $quantidade);
+
+        if (Schema::hasColumn($this->pdo, 'produtos', 'estoque_reservado')) {
+            $reservaStmt = $this->pdo->prepare('SELECT estoque_reservado FROM produtos WHERE id = :id LIMIT 1');
+            $reservaStmt->execute(['id' => $id]);
+            $reserva = (float)($reservaStmt->fetchColumn() ?: 0);
+            $novaReserva = max(0, $reserva - $quantidade);
+            $upStmt = $this->pdo->prepare(
+                'UPDATE produtos SET estoque_atual = :ea, estoque_reservado = :er WHERE id = :id'
+            );
+            $upStmt->execute(['ea' => $novoEstoque, 'er' => $novaReserva, 'id' => $id]);
+            return;
+        }
 
         $upStmt = $this->pdo->prepare(
-            'UPDATE produtos SET estoque_atual = :ea, estoque_reservado = :er WHERE id = :id'
+            'UPDATE produtos SET estoque_atual = :ea WHERE id = :id'
         );
-        $upStmt->execute(['ea' => $novoEstoque, 'er' => $novaReserva, 'id' => $id]);
+        $upStmt->execute(['ea' => $novoEstoque, 'id' => $id]);
     }
 
     /**
@@ -161,6 +173,16 @@ class ProductRepository
      */
     public function reservarEstoque(int $id, float $quantidade): array
     {
+        if (!Schema::hasColumn($this->pdo, 'produtos', 'estoque_reservado')) {
+            $stmt = $this->pdo->prepare('SELECT estoque_atual FROM produtos WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $id]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) return ['disponivel' => 0, 'alerta' => true];
+
+            $disponivel = max(0, (float)$row['estoque_atual']);
+            return ['disponivel' => $disponivel, 'alerta' => $quantidade > $disponivel];
+        }
+
         $stmt = $this->pdo->prepare(
             'SELECT estoque_atual, COALESCE(estoque_reservado, 0) AS estoque_reservado FROM produtos WHERE id = :id LIMIT 1'
         );
@@ -184,6 +206,10 @@ class ProductRepository
      */
     public function liberarReserva(int $id, float $quantidade): void
     {
+        if (!Schema::hasColumn($this->pdo, 'produtos', 'estoque_reservado')) {
+            return;
+        }
+
         $upStmt = $this->pdo->prepare(
             'UPDATE produtos SET estoque_reservado = GREATEST(0, estoque_reservado - :qty) WHERE id = :id'
         );

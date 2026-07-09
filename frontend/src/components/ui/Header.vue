@@ -223,6 +223,11 @@ export default {
       return this.userName.charAt(0).toUpperCase()
     },
   },
+  data() {
+    return {
+      auth: useAuthStore(),
+    }
+  },
   methods: {
     toggleTheme() {
       this.isDark = !this.isDark
@@ -230,8 +235,7 @@ export default {
       localStorage.setItem('safrion-theme', this.isDark ? 'dark' : 'light')
     },
     logout() {
-      const { useAuthStore } = require('../stores/auth')
-      useAuthStore().logout()
+      this.auth.logout()
     },
   },
   mounted() {

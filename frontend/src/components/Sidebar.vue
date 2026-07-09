@@ -173,6 +173,7 @@
           </h3>
           <div class="mt-1 space-y-1">
             <router-link
+              v-if="canSeeSystemLinks"
               to="/integracoes"
               class="nav-link"
               active-class="active"
@@ -191,6 +192,7 @@
           </h3>
           <div class="mt-1 space-y-1">
             <router-link
+              v-if="canSeeSystemLinks"
               to="/usuarios-empresas"
               class="nav-link"
               active-class="active"
@@ -228,6 +230,7 @@
 
 <script>
 import IconSet from './icons/IconSet.vue'
+import { useAuthStore } from '../stores/auth'
 
 export default {
   name: 'Sidebar',
@@ -245,6 +248,17 @@ export default {
     },
   },
   emits: ['close'],
+  data() {
+    return {
+      auth: useAuthStore(),
+    }
+  },
+  computed: {
+    canSeeSystemLinks() {
+      const role = (this.auth?.user?.role || '').toLowerCase()
+      return ['admin', 'adm', 'sistema', 'superadmin'].some(token => role.includes(token))
+    }
+  },
   methods: {
     closeOnMobile() {
       if (this.isMobile) {
@@ -252,8 +266,7 @@ export default {
       }
     },
     logout() {
-      const { useAuthStore } = require('../stores/auth')
-      useAuthStore().logout()
+      this.auth.logout()
     },
   },
 }
