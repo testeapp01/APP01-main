@@ -5,6 +5,15 @@ class Response
 {
     public static function json(mixed $data, int $status = 200): void
     {
+        if ($status === 200) {
+            if (is_array($data) && array_key_exists('error', $data)) {
+                $status = 400;
+            }
+            if (is_object($data) && property_exists($data, 'error')) {
+                $status = 400;
+            }
+        }
+
         if (!headers_sent()) {
             header('Content-Type: application/json; charset=utf-8');
             http_response_code($status);

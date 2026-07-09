@@ -1,22 +1,24 @@
 import axios from 'axios';
+import { useApiError } from '../composables/useApiError'
 
 const envBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
 const API_BASE_URL = import.meta.env.PROD
   ? '/api/v1'
   : (envBaseUrl || 'http://localhost:8000/api/v1');
 
-// Mock mode for development/testing without backend
-const MOCK_MODE = !import.meta.env.PROD && !envBaseUrl;
+// Mock mode for development/testing without backend; enable explicitly with VITE_USE_MOCKS=true
+const MOCK_MODE = !import.meta.env.PROD && import.meta.env.VITE_USE_MOCKS === 'true';
 
 const createMockAdapter = () => {
   return async (config) => {
-    const url = config.url || '';
+    const rawUrl = config.url || '';
+    const url = rawUrl.replace(/^\/+/, '');
     const storedEmail = localStorage.getItem('hf_mock_email') || 'user@example.com';
     
     // Debug log all requests
-    console.log('🔵 Mock adapter - URL:', url, '| Method:', config.method);
+    console.log('🔵 Mock adapter - URL:', rawUrl, '=>', url, '| Method:', config.method);
 
-    if (url === '/auth/login') {
+    if (url === 'auth/login') {
       const { email } = config.data ? JSON.parse(config.data) : {};
       const mockEmail = email || 'mock@example.com';
       localStorage.setItem('hf_mock_email', mockEmail);
@@ -32,7 +34,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url === '/auth/me') {
+    if (url === 'auth/me') {
       return {
         status: 200,
         statusText: 'OK',
@@ -42,8 +44,8 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.startsWith('/compras')) {
-      console.log('✅ Matched /compras endpoint');
+    if (url.startsWith('compras')) {
+      console.log('✅ Matched compras endpoint');
       return {
         status: 200,
         statusText: 'OK',
@@ -60,7 +62,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.startsWith('/vendas') && !url.includes('/vendas/')) {
+    if (url.startsWith('vendas') && !url.includes('vendas/')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -77,7 +79,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/clientes')) {
+    if (url.includes('clientes')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -91,7 +93,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/produtos')) {
+    if (url.includes('produtos')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -108,7 +110,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/fornecedores')) {
+    if (url.includes('fornecedores')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -122,7 +124,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/motoristas')) {
+    if (url.includes('motoristas')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -136,7 +138,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/relatorios/dashboard')) {
+    if (url.includes('relatorios/dashboard')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -153,7 +155,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/usuarios')) {
+    if (url.includes('usuarios')) {
       return {
         status: 200,
         statusText: 'OK',
@@ -167,7 +169,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/estoque')) {
+    if (url.includes('estoque')) {
       // Handle create adjustments
       if ((config.method || '').toLowerCase() === 'post') {
         return {
@@ -220,11 +222,21 @@ api.interceptors.request.use(config => {
 }, error => Promise.reject(error));
 
 api.interceptors.response.use(
-  response => response,
+  response => {
+    const data = response?.data
+    if (data && typeof data === 'object' && data.error) {
+      const error = new Error(data.error)
+      error.response = response
+      error.normalizedMessage = data.error
+      return Promise.reject(error)
+    }
+    return response
+  },
   error => {
     // Normalize backend error message into a single field for UI convenience
     try {
-      const backendMsg = error?.response?.data?.error || error?.response?.data?.message || null
+      const backendPayload = error?.response?.data || {}
+      const backendMsg = backendPayload?.error || backendPayload?.message || null
       error.normalizedMessage = backendMsg || error.message || 'Erro de requisição'
     } catch (e) {
       error.normalizedMessage = error.message || 'Erro de requisição'
