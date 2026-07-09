@@ -1,6 +1,8 @@
 <?php
 namespace App\Middlewares;
 
+use App\Helpers\Response;
+
 /**
  * Role-Based Access Control middleware.
  *
@@ -47,17 +49,13 @@ class AuthorizationMiddleware
     {
         $authUser = $GLOBALS['AUTH_USER'] ?? null;
         if (!is_array($authUser)) {
-            http_response_code(401);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Não autenticado']);
+            Response::error('Não autenticado', 401);
             exit;
         }
 
         $role = strtolower(trim((string) ($authUser['role'] ?? '')));
         if (!in_array($role, $allowedRoles, true)) {
-            http_response_code(403);
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Acesso negado: permissão insuficiente']);
+            Response::error('Acesso negado: permissão insuficiente', 403);
             exit;
         }
     }

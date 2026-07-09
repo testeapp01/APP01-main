@@ -6,11 +6,16 @@ class Response
     public static function json(mixed $data, int $status = 200): void
     {
         if ($status === 200) {
+            $currentStatus = http_response_code() ?: 200;
+            if ($currentStatus !== 200) {
+                $status = $currentStatus;
+            }
+
             if (is_array($data) && array_key_exists('error', $data)) {
-                $status = 400;
+                $status = max($status, 400);
             }
             if (is_object($data) && property_exists($data, 'error')) {
-                $status = 400;
+                $status = max($status, 400);
             }
         }
 

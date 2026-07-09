@@ -1,6 +1,8 @@
 <?php
 namespace App\Middlewares;
 
+use App\Helpers\Response;
+
 class RateLimitMiddleware
 {
     /**
@@ -20,9 +22,7 @@ class RateLimitMiddleware
         }
 
         if ($ok === false) {
-            http_response_code(429);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Too Many Requests']);
+            Response::error('Too Many Requests', 429);
             exit;
         }
 
@@ -46,9 +46,7 @@ class RateLimitMiddleware
         );
 
         if (count($data['timestamps']) >= $maxRequests) {
-            http_response_code(429);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Too Many Requests']);
+            Response::error('Too Many Requests', 429);
             exit;
         }
 

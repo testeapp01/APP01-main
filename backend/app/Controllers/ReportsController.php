@@ -51,8 +51,7 @@ class ReportsController
     {
         $format = strtolower((string)($_GET['format'] ?? 'csv'));
         if (!in_array($format, ['csv', 'xlsx'], true)) {
-            http_response_code(400);
-            Response::json(['error' => 'Formato de exportação inválido.']);
+            Response::error('Formato de exportação inválido.', 400);
             return;
         }
 

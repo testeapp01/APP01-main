@@ -29,6 +29,7 @@ use App\Controllers\EstoqueController;
 use App\Controllers\QuebrasController;
 use App\Controllers\LoteController;
 use App\Controllers\TabelaPrecoController;
+use App\Helpers\Response;
 use App\Bootstrap\Container;
 
 ini_set('display_errors', '0');
@@ -50,7 +51,7 @@ set_exception_handler(static function (\Throwable $e): void {
         http_response_code(500);
     }
 
-    echo json_encode(['error' => 'Erro interno. Tente novamente.']);
+    Response::error('Erro interno. Tente novamente.', 500);
 });
 
 set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
@@ -130,8 +131,7 @@ $router->map('GET', '/api/v1/health', static function () use ($pdo): void {
     $opsToken = getenv('OPS_TOKEN') ?: '';
     $provided  = $_SERVER['HTTP_X_OPS_TOKEN'] ?? ($_GET['ops_token'] ?? '');
     if ($opsToken === '' || !hash_equals($opsToken, (string) $provided)) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Unauthorized']);
+        Response::error('Unauthorized', 401);
         return;
     }
 
@@ -157,8 +157,7 @@ $router->map('GET', '/api/v1/metrics', static function (): void {
     $opsToken = getenv('OPS_TOKEN') ?: '';
     $provided  = $_SERVER['HTTP_X_OPS_TOKEN'] ?? ($_GET['ops_token'] ?? '');
     if ($opsToken === '' || !hash_equals($opsToken, (string) $provided)) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Unauthorized']);
+        Response::error('Unauthorized', 401);
         return;
     }
     echo json_encode(Metrics::snapshot());
@@ -496,6 +495,5 @@ $router->map('DELETE', '/api/v1/usuarios/{id}', static function (array $params) 
 
 if (!$router->dispatch($method, $uri)) {
     Metrics::increment('http_errors_total');
-    http_response_code(404);
-    echo json_encode(['error' => 'Not found']);
+    Response::error('Not found', 404);
 }

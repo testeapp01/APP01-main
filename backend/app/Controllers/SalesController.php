@@ -160,17 +160,15 @@ class SalesController
                 $message = 'Não foi possível processar a venda.';
             }
 
-            http_response_code($statusCode);
             error_log('[SalesController::create] ' . $e->getMessage());
-            Response::json(['error' => $message]);
+            Response::error($message, $statusCode);
         }
     }
 
     public function showHeader(int $id): void
     {
         if (!$this->hasVendasCabecalhoTable()) {
-            http_response_code(404);
-            Response::json(['error' => 'Cabeçalho de venda não disponível neste ambiente.']);
+            Response::error('Cabeçalho de venda não disponível neste ambiente.', 404);
             return;
         }
 
@@ -186,16 +184,14 @@ class SalesController
         $header = $this->repo->findHeaderById($id, $hasStatusPedidoTable, $hasIdStatusPedidoColumn);
 
         if (!$header) {
-            http_response_code(404);
-            Response::json(['error' => 'Pedido não encontrado']);
+            Response::error('Pedido não encontrado', 404);
             return;
         }
 
         // Enforce ownership
         $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
         if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
-            http_response_code(403);
-            Response::json(['error' => 'Acesso negado']);
+            Response::error('Acesso negado', 403);
             return;
         }
 
@@ -213,16 +209,14 @@ class SalesController
     public function printHeaderPdf(int $id): void
     {
         if (!$this->hasVendasCabecalhoTable()) {
-            http_response_code(404);
-            Response::json(['error' => 'Impressão de venda não disponível neste ambiente.']);
+            Response::error('Impressão de venda não disponível neste ambiente.', 404);
             return;
         }
 
         try {
             $pdf = $this->pdfService->renderSalesHeaderPdf($id);
             if ($pdf === null) {
-                http_response_code(404);
-                Response::json(['error' => 'Pedido de venda não encontrado']);
+                Response::error('Pedido de venda não encontrado', 404);
                 return;
             }
 
@@ -231,8 +225,7 @@ class SalesController
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             echo $pdf;
         } catch (\Throwable $e) {
-            http_response_code(500);
-            Response::json(['error' => 'Não foi possível gerar o PDF de venda.']);
+            Response::error('Não foi possível gerar o PDF de venda.', 500);
         }
     }
 
@@ -250,21 +243,18 @@ class SalesController
             } catch (\RuntimeException $e) {
                 $code = (int)$e->getCode();
                 if ($code === 404 || $code === 409) {
-                    http_response_code($code);
-                    Response::json(['error' => $e->getMessage()]);
+                    Response::error($e->getMessage(), $code);
                     return;
                 }
-                http_response_code(400);
                 error_log('[SalesController::deliverHeader] ' . $e->getMessage());
-                Response::json(['error' => 'Não foi possível confirmar a entrega do pedido.']);
+                Response::error('Não foi possível confirmar a entrega do pedido.', 400);
                 return;
             }
         }
 
         $id = $data['venda_id'] ?? null;
         if (!$id) {
-            http_response_code(400);
-            Response::json(['error' => 'venda_id obrigatório']);
+            Response::error('venda_id obrigatório', 400);
             return;
         }
 
@@ -272,9 +262,8 @@ class SalesController
             $res = $workflow->deliverItem((int)$id, $this->currentUserId());
             Response::json($res);
         } catch (\RuntimeException $e) {
-            http_response_code(400);
             error_log('[SalesController::deliver] ' . $e->getMessage());
-            Response::json(['error' => 'Não foi possível confirmar a entrega.']);
+            Response::error('Não foi possível confirmar a entrega.', 400);
         }
     }
 
@@ -285,8 +274,7 @@ class SalesController
             Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 500);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage(), $code >= 400 ? $code : 500);
         }
     }
 

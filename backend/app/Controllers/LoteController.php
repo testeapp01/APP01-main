@@ -44,8 +44,7 @@ class LoteController
         $quantidade   = (float)($data['quantidade_entrada'] ?? 0);
 
         if ($produtoId <= 0 || $dataValidade === '' || $quantidade <= 0) {
-            http_response_code(422);
-            Response::json(['error' => 'produto_id, data_validade e quantidade_entrada são obrigatórios']);
+            Response::error('produto_id, data_validade e quantidade_entrada são obrigatórios', 422);
             return;
         }
 
@@ -93,16 +92,14 @@ class LoteController
         }
 
         if (empty($sets)) {
-            http_response_code(400);
-            Response::json(['error' => 'Nenhum campo para atualizar']);
+            Response::error('Nenhum campo para atualizar', 400);
             return;
         }
 
         $updated = $this->repo->update($id, $data);
 
         if (!$updated) {
-            http_response_code(404);
-            Response::json(['error' => 'Lote não encontrado']);
+            Response::error('Lote não encontrado', 404);
             return;
         }
 

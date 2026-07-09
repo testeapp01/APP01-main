@@ -75,8 +75,7 @@ class EstoqueController
         $valorUnit  = (float)($data['valor_unitario'] ?? 0);
 
         if ($produtoId <= 0 || $quantidade <= 0) {
-            http_response_code(422);
-            Response::json(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
+            Response::error('produto_id e quantidade são obrigatórios e devem ser > 0', 422);
             return;
         }
 
@@ -88,15 +87,19 @@ class EstoqueController
         $prod = $this->repo->findProduto($produtoId);
 
         if (!$prod) {
-            http_response_code(404);
-            Response::json(['error' => 'Produto não encontrado']);
+            Response::error('Produto não encontrado', 404);
             return;
         }
 
         $saldoAntes = (float)$prod['estoque_atual'];
         $isEntrada  = isset($data['direcao']) ? $data['direcao'] === 'entrada' : true;
         $delta      = $isEntrada ? $quantidade : -$quantidade;
-        $saldoDepois = max(0, $saldoAntes + $delta);
+        $saldoDepois = $saldoAntes + $delta;
+
+        if (!$isEntrada && $saldoDepois < 0) {
+            Response::error('Estoque insuficiente para saída', 422);
+            return;
+        }
 
         $this->pdo->beginTransaction();
         try {
@@ -121,15 +124,13 @@ class EstoqueController
             Response::json(['success' => true, 'saldo' => $saldoDepois]);
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            http_response_code(500);
-            Response::json(['error' => 'Falha ao registrar movimentação']);
+            Response::error('Falha ao registrar movimentação', 500);
         }
     }
 
     /** DELETE /api/v1/estoque/{id} — apenas ajustes manuais podem ser removidos (soft) */
     public function delete(int $id): void
     {
-        http_response_code(400);
-        Response::json(['error' => 'Movimentações automáticas não podem ser excluídas. Registre um ajuste manual para corrigir.']);
+        Response::error('Movimentações automáticas não podem ser excluídas. Registre um ajuste manual para corrigir.', 400);
     }
 }

@@ -39,8 +39,7 @@ class QuebrasController
         $obs       = trim((string)($data['observacao'] ?? ''));
 
         if ($produtoId <= 0 || $quantidade <= 0) {
-            http_response_code(422);
-            Response::json(['error' => 'produto_id e quantidade são obrigatórios e devem ser > 0']);
+            Response::error('produto_id e quantidade são obrigatórios e devem ser > 0', 422);
             return;
         }
 
@@ -50,8 +49,7 @@ class QuebrasController
         $prod = $this->repo->findProduto($produtoId);
 
         if (!$prod) {
-            http_response_code(404);
-            Response::json(['error' => 'Produto não encontrado']);
+            Response::error('Produto não encontrado', 404);
             return;
         }
 
@@ -68,8 +66,7 @@ class QuebrasController
         $userId   = (int)($authUser['sub'] ?? 0);
 
         if ($userId <= 0) {
-            http_response_code(401);
-            Response::json(['error' => 'Usuário não autenticado']);
+            Response::error('Usuário não autenticado', 401);
             return;
         }
 
@@ -108,8 +105,7 @@ class QuebrasController
             Response::json(['id' => $quebraId, 'valor_total' => $valorTotal, 'saldo_atual' => $saldoDepois]);
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
-            http_response_code(500);
-            Response::json(['error' => 'Falha ao registrar quebra']);
+            Response::error('Falha ao registrar quebra', 500);
         }
     }
 

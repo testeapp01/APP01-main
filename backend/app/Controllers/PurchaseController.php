@@ -137,8 +137,7 @@ class PurchaseController
     public function index(): void
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
-            http_response_code(500);
-            Response::json(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
+            Response::error('Estrutura de compras por cabeçalho não disponível. Execute as migrations.', 500);
             return;
         }
 
@@ -212,16 +211,14 @@ class PurchaseController
             Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 400);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage() ?: 'Não foi possível criar a compra.', $code >= 400 ? $code : 400);
         }
     }
 
     public function showHeader(int $id): void
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
-            http_response_code(500);
-            Response::json(['error' => 'Estrutura de compras por cabeçalho não disponível. Execute as migrations.']);
+            Response::error('Estrutura de compras por cabeçalho não disponível. Execute as migrations.', 500);
             return;
         }
 
@@ -234,16 +231,14 @@ class PurchaseController
         $header = $this->repo->findHeaderById($id);
 
         if (!$header) {
-            http_response_code(404);
-            Response::json(['error' => 'Pedido de compra não encontrado']);
+            Response::error('Pedido de compra não encontrado', 404);
             return;
         }
 
         // Enforce ownership: non-privileged user can only see their own records (or pre-migration NULLs)
         $createdBy = isset($header['created_by']) ? (int)$header['created_by'] : null;
         if (!$isPrivileged && $createdBy !== null && $createdBy !== $userId) {
-            http_response_code(403);
-            Response::json(['error' => 'Acesso negado']);
+            Response::error('Acesso negado', 403);
             return;
         }
 
@@ -260,16 +255,14 @@ class PurchaseController
     public function printHeaderPdf(int $id): void
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
-            http_response_code(404);
-            Response::json(['error' => 'Impressão de compra não disponível neste ambiente.']);
+            Response::error('Impressão de compra não disponível neste ambiente.', 404);
             return;
         }
 
         try {
             $pdf = $this->pdfService->renderPurchaseHeaderPdf($id);
             if ($pdf === null) {
-                http_response_code(404);
-                Response::json(['error' => 'Pedido de compra não encontrado']);
+                Response::error('Pedido de compra não encontrado', 404);
                 return;
             }
 
@@ -278,44 +271,38 @@ class PurchaseController
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
             echo $pdf;
         } catch (\Throwable $e) {
-            http_response_code(500);
-            Response::json(['error' => 'Não foi possível gerar o PDF de compra.']);
+            Response::error('Não foi possível gerar o PDF de compra.', 500);
         }
     }
 
     public function updateHeader(int $id): void
     {
         if (!$this->hasComprasCabecalhoTable() || !$this->hasComprasColumn('compra_cabecalho_id')) {
-            http_response_code(404);
-            Response::json(['error' => 'Edição por cabeçalho não disponível neste ambiente.']);
+            Response::error('Edição por cabeçalho não disponível neste ambiente.', 404);
             return;
         }
 
         $currentStatus = $this->currentHeaderStatusCompra($id);
         if ($currentStatus === null) {
-            http_response_code(404);
-            Response::json(['error' => 'Pedido de compra não encontrado']);
+            Response::error('Pedido de compra não encontrado', 404);
             return;
         }
 
         $data = Request::body();
         if ($currentStatus === 'RECEBIDA') {
-            http_response_code(409);
-            Response::json(['error' => 'Não é permitido editar pedido de compra recebido']);
+            Response::error('Não é permitido editar pedido de compra recebido', 409);
             return;
         }
 
         if (array_key_exists('status', $data)) {
             $nextStatus = $this->normalizeStatusCompraLabel($data['status']);
             if (!$this->canTransitionCompra($currentStatus, $nextStatus)) {
-                http_response_code(409);
-                Response::json(['error' => 'Transição de status inválida para este pedido de compra']);
+                Response::error('Transição de status inválida para este pedido de compra', 409);
                 return;
             }
 
             if ($currentStatus !== $nextStatus && $nextStatus === 'RECEBIDA') {
-                http_response_code(409);
-                Response::json(['error' => 'Use a confirmação de entrega para finalizar o pedido de compra']);
+                Response::error('Use a confirmação de entrega para finalizar o pedido de compra', 409);
                 return;
             }
         }
@@ -336,15 +323,13 @@ class PurchaseController
         }
 
         if (empty($payload)) {
-            http_response_code(400);
-            Response::json(['error' => 'Nenhum campo válido para atualização']);
+            Response::error('Nenhum campo válido para atualização', 400);
             return;
         }
 
         $updated = $this->repo->updateHeader($id, $payload);
         if (!$updated) {
-            http_response_code(400);
-            Response::json(['error' => 'Falha ao atualizar cabeçalho de compra']);
+            Response::error('Falha ao atualizar cabeçalho de compra', 400);
             return;
         }
 
@@ -357,8 +342,7 @@ class PurchaseController
         $data = Request::body();
         $updated = $this->repo->updateItem($id, $data);
         if (!$updated) {
-            http_response_code(400);
-            Response::json(['error' => 'Nenhum campo válido para atualização ou item não encontrado']);
+            Response::error('Nenhum campo válido para atualização ou item não encontrado', 400);
             return;
         }
 
@@ -379,8 +363,7 @@ class PurchaseController
             Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 500);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage(), $code >= 400 ? $code : 500);
         }
     }
 
@@ -389,8 +372,7 @@ class PurchaseController
         $headerId = $this->repo->findItemHeaderId($id);
         $deleted = $this->repo->deleteItem($id);
         if (!$deleted) {
-            http_response_code(404);
-            Response::json(['error' => 'Item de compra não encontrado']);
+            Response::error('Item de compra não encontrado', 404);
             return;
         }
 
@@ -413,8 +395,7 @@ class PurchaseController
             Response::json($result);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 400);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage(), $code >= 400 ? $code : 400);
         }
     }
 
@@ -425,8 +406,7 @@ class PurchaseController
             Response::json($res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 400);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage(), $code >= 400 ? $code : 400);
         }
     }
 
@@ -444,8 +424,7 @@ class PurchaseController
         $data = Request::body();
         $id = $data['compra_id'] ?? null;
         if (!$id) {
-            http_response_code(400);
-            Response::json(['error' => 'compra_id obrigatório']);
+            Response::error('compra_id obrigatório', 400);
             return;
         }
 
@@ -454,8 +433,7 @@ class PurchaseController
             Response::json(['message' => 'Compra marcada como RECEBIDA'] + $res);
         } catch (\RuntimeException $e) {
             $code = (int)$e->getCode();
-            http_response_code($code >= 400 ? $code : 400);
-            Response::json(['error' => $e->getMessage()]);
+            Response::error($e->getMessage(), $code >= 400 ? $code : 400);
         }
     }
 }

@@ -38,14 +38,12 @@ class ClientController
             ],
         ]);
         if (!empty($errors)) {
-            http_response_code(422);
-            Response::json(['error' => 'Payload inválido', 'details' => $errors]);
+            Response::error('Payload inválido', 422, ['details' => $errors]);
             return;
         }
 
         if (empty($data['nome'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Nome obrigatório']);
+            Response::error('Nome obrigatório', 400);
             return;
         }
         // Normalize status, uf, and ensure all fields are present
@@ -63,30 +61,25 @@ class ClientController
         if ($data['cpf_cnpj']) {
             $cpfCnpjDigits = preg_replace('/\D/', '', (string)$data['cpf_cnpj']);
             if (strlen($cpfCnpjDigits) !== 11 && strlen($cpfCnpjDigits) !== 14) {
-                http_response_code(400);
-                Response::json(['error' => 'CPF/CNPJ inválido']);
+                Response::error('CPF/CNPJ inválido', 400);
                 return;
             }
 
             if (strlen($cpfCnpjDigits) === 11 && !\Validator::validateCPF($cpfCnpjDigits)) {
-                http_response_code(400);
-                Response::json(['error' => 'CPF inválido']);
+                Response::error('CPF inválido', 400);
                 return;
             }
 
             if (strlen($cpfCnpjDigits) === 14 && !\Validator::validateCNPJ($cpfCnpjDigits)) {
-                http_response_code(400);
-                Response::json(['error' => 'CNPJ inválido']);
+                Response::error('CNPJ inválido', 400);
                 return;
             }
 
             if ($this->repo->hasCpfCnpj($cpfCnpjDigits)) {
-                http_response_code(409);
-                Response::json([
-                    'error' => strlen($cpfCnpjDigits) === 11
-                        ? 'CPF já cadastrado.'
-                        : 'CNPJ já cadastrado.'
-                ]);
+                Response::error(
+                    strlen($cpfCnpjDigits) === 11 ? 'CPF já cadastrado.' : 'CNPJ já cadastrado.',
+                    409
+                );
                 return;
             }
 
@@ -94,14 +87,12 @@ class ClientController
         }
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone inválido']);
+            Response::error('Telefone inválido', 400);
             return;
         }
 
         if ($data['email'] && !\Validator::validateEmail($data['email'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Email inválido']);
+            Response::error('Email inválido', 400);
             return;
         }
         if (isset($data['status'])) {
@@ -119,8 +110,7 @@ class ClientController
         require_once __DIR__.'/../Helpers/Validator.php';
 
         if (!$this->repo->findById($id)) {
-            http_response_code(404);
-            Response::json(['error' => 'Cliente não encontrado']);
+            Response::error('Cliente não encontrado', 404);
             return;
         }
 
@@ -130,8 +120,7 @@ class ClientController
         if (array_key_exists('nome', $data)) {
             $nome = trim((string)($data['nome'] ?? ''));
             if ($nome === '') {
-                http_response_code(400);
-                Response::json(['error' => 'Nome obrigatório']);
+                Response::error('Nome obrigatório', 400);
                 return;
             }
             $fields['nome'] = $nome;
@@ -176,28 +165,25 @@ class ClientController
             } else {
                 $cpfCnpjDigits = preg_replace('/\D/', '', (string)$rawDocument);
                 if (strlen($cpfCnpjDigits) !== 11 && strlen($cpfCnpjDigits) !== 14) {
-                    http_response_code(400);
-                    Response::json(['error' => 'CPF/CNPJ inválido']);
+                    Response::error('CPF/CNPJ inválido', 400);
                     return;
                 }
 
                 if (strlen($cpfCnpjDigits) === 11 && !\Validator::validateCPF($cpfCnpjDigits)) {
-                    http_response_code(400);
-                    Response::json(['error' => 'CPF inválido']);
+                    Response::error('CPF inválido', 400);
                     return;
                 }
 
                 if (strlen($cpfCnpjDigits) === 14 && !\Validator::validateCNPJ($cpfCnpjDigits)) {
-                    http_response_code(400);
-                    Response::json(['error' => 'CNPJ inválido']);
+                    Response::error('CNPJ inválido', 400);
                     return;
                 }
 
                 if ($this->repo->hasCpfCnpj($cpfCnpjDigits, $id)) {
-                    http_response_code(409);
-                    Response::json([
-                        'error' => strlen($cpfCnpjDigits) === 11 ? 'CPF já cadastrado.' : 'CNPJ já cadastrado.'
-                    ]);
+                    Response::error(
+                        strlen($cpfCnpjDigits) === 11 ? 'CPF já cadastrado.' : 'CNPJ já cadastrado.',
+                        409
+                    );
                     return;
                 }
 
@@ -210,26 +196,22 @@ class ClientController
         }
 
         if (empty($fields)) {
-            http_response_code(400);
-            Response::json(['error' => 'Nenhum campo para atualizar']);
+            Response::error('Nenhum campo para atualizar', 400);
             return;
         }
         if (isset($fields['telefone']) && $fields['telefone'] !== null && $fields['telefone'] !== '' && !\Validator::validateTelefone($fields['telefone'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone inválido']);
+            Response::error('Telefone inválido', 400);
             return;
         }
 
         if (isset($fields['email']) && $fields['email'] !== null && $fields['email'] !== '' && !\Validator::validateEmail($fields['email'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Email inválido']);
+            Response::error('Email inválido', 400);
             return;
         }
 
         $updated = $this->repo->update($id, $fields);
         if (!$updated) {
-            http_response_code(404);
-            Response::json(['error' => 'Cliente não encontrado']);
+            Response::error('Cliente não encontrado', 404);
             return;
         }
 
@@ -242,8 +224,7 @@ class ClientController
             $this->repo->delete($id);
             Response::json(['message' => 'Cliente removido com sucesso']);
         } catch (\PDOException $e) {
-            http_response_code(409);
-            Response::json(['error' => 'Não foi possível excluir o cliente. Verifique vínculos com vendas.']);
+            Response::error('Não foi possível excluir o cliente. Verifique vínculos com vendas.', 409);
         }
     }
 }

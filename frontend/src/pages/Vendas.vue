@@ -484,6 +484,7 @@ import CustomSelect from '../components/ui/CustomSelect.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import { useToast } from '../composables/useToast'
 import { useFormat } from '../composables/useFormat'
+import { useApiError } from '../composables/useApiError'
 import { showApiError } from '../services/api'
 import PaginationPremium from '../components/ui/PaginationPremium.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
@@ -688,7 +689,6 @@ export default {
         if (!this.novaVenda.cliente_id) throw new Error('Cliente obrigatório')
         const items = (this.novaVenda.items || []).filter(it => it && it.produto_id)
         if (items.length === 0) throw new Error('Adicione pelo menos um produto')
-        const totalValue = items.reduce((sum, it) => sum + ((it.quantidade || 1) * (it.valor_unitario || 0)), 0)
         const payload = {
           cliente_id: this.novaVenda.cliente_id,
           motorista_id: this.novaVenda.motorista_id || null,
@@ -698,8 +698,8 @@ export default {
           comissao_motorista_em_dinheiro: this.novaVenda.comissao_motorista_em_dinheiro,
           items: items.map(it => ({ produto_id: it.produto_id, quantidade: it.quantidade || 1, valor_unitario: it.valor_unitario || 0 }))
         }
-        await api.post('/api/v1/vendas', payload)
-        const resData = (await api.post('/api/v1/vendas', payload).catch(() => ({ data: {} }))).data
+        const res = await api.post('/api/v1/vendas', payload)
+        const resData = res.data || {}
         if (resData?.estoque_alerta) {
           this.saleFeedback = { message: 'Venda criada. ⚠️ Atenção: estoque insuficiente em um ou mais produtos.', type: 'warning' }
         } else {
@@ -710,6 +710,7 @@ export default {
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao criar venda:', e)
+        const { getMessage } = useApiError()
         this.saleFeedback = { message: getMessage(e, 'Falha ao salvar venda.'), type: 'error' }
       } finally {
         this.submittingSale = false

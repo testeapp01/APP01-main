@@ -28,20 +28,17 @@ class MotoristaController
         $placa = trim((string)($data['placa'] ?? ''));
 
         if ($nome === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Nome obrigatório']);
+            Response::error('Nome obrigatório', 400);
             return;
         }
 
         if ($telefone === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone obrigatório']);
+            Response::error('Telefone obrigatório', 400);
             return;
         }
 
         if ($placa === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Placa obrigatória']);
+            Response::error('Placa obrigatória', 400);
             return;
         }
         // Normalize and ensure all fields are present
@@ -56,16 +53,14 @@ class MotoristaController
         if (!empty($data['cpf'])) {
             $cpfDigits = preg_replace('/\D/', '', (string)$data['cpf']);
             if (strlen($cpfDigits) !== 11 || !\Validator::validateCPF($cpfDigits)) {
-                http_response_code(400);
-                Response::json(['error' => 'CPF inválido']);
+                Response::error('CPF inválido', 400);
                 return;
             }
             $data['cpf'] = $cpfDigits;
         }
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone inválido']);
+            Response::error('Telefone inválido', 400);
             return;
         }
         if (isset($data['status'])) {
@@ -79,13 +74,11 @@ class MotoristaController
         } catch (\PDOException $e) {
             $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
             if ($mysqlCode === 1452) {
-                http_response_code(400);
-                Response::json(['error' => 'Tipo de caminhão inválido.']);
+                Response::error('Tipo de caminhão inválido.', 400);
                 return;
             }
 
-            http_response_code(500);
-            Response::json(['error' => 'Falha ao salvar motorista.']);
+            Response::error('Falha ao salvar motorista.', 500);
             return;
         }
 
@@ -101,20 +94,17 @@ class MotoristaController
         $placa = trim((string)($data['placa'] ?? ''));
 
         if ($nome === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Nome obrigatório']);
+            Response::error('Nome obrigatório', 400);
             return;
         }
 
         if ($telefone === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone obrigatório']);
+            Response::error('Telefone obrigatório', 400);
             return;
         }
 
         if ($placa === '') {
-            http_response_code(400);
-            Response::json(['error' => 'Placa obrigatória']);
+            Response::error('Placa obrigatória', 400);
             return;
         }
 
@@ -131,16 +121,14 @@ class MotoristaController
         if (!empty($data['cpf'])) {
             $cpfDigits = preg_replace('/\D/', '', (string)$data['cpf']);
             if (strlen($cpfDigits) !== 11 || !\Validator::validateCPF($cpfDigits)) {
-                http_response_code(400);
-                Response::json(['error' => 'CPF inválido']);
+                Response::error('CPF inválido', 400);
                 return;
             }
             $data['cpf'] = $cpfDigits;
         }
 
         if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
-            http_response_code(400);
-            Response::json(['error' => 'Telefone inválido']);
+            Response::error('Telefone inválido', 400);
             return;
         }
 
@@ -148,8 +136,7 @@ class MotoristaController
 
         $found = $this->repo->findById($id);
         if (!$found) {
-            http_response_code(404);
-            Response::json(['error' => 'Motorista não encontrado']);
+            Response::error('Motorista não encontrado', 404);
             return;
         }
 
@@ -158,13 +145,11 @@ class MotoristaController
         } catch (\PDOException $e) {
             $mysqlCode = isset($e->errorInfo[1]) ? (int)$e->errorInfo[1] : 0;
             if ($mysqlCode === 1452) {
-                http_response_code(400);
-                Response::json(['error' => 'Tipo de caminhão inválido.']);
+                Response::error('Tipo de caminhão inválido.', 400);
                 return;
             }
 
-            http_response_code(500);
-            Response::json(['error' => 'Falha ao atualizar motorista.']);
+            Response::error('Falha ao atualizar motorista.', 500);
             return;
         }
 
@@ -183,8 +168,7 @@ class MotoristaController
             $this->repo->delete($id);
             Response::json(['message' => 'Motorista removido com sucesso']);
         } catch (\PDOException $e) {
-            http_response_code(409);
-            Response::json(['error' => 'Não foi possível excluir o motorista. Verifique vínculos com compras.']);
+            Response::error('Não foi possível excluir o motorista. Verifique vínculos com compras.', 409);
         }
     }
 }

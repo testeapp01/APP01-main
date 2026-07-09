@@ -1,6 +1,7 @@
 <?php
 namespace App\Middlewares;
 
+use App\Helpers\Response;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
@@ -20,23 +21,20 @@ class AuthMiddleware
         }
 
         if (!$token) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Token não fornecido']);
+            Response::error('Token não fornecido', 401);
             exit;
         }
 
         try {
             $secret = getenv('JWT_SECRET');
             if (!$secret || strlen($secret) < 32) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Erro de configuração do servidor']);
+                Response::error('Erro de configuração do servidor', 500);
                 exit;
             }
             $decoded = (array) JWT::decode($token, new Key($secret, 'HS256'));
             return $decoded;
         } catch (\Throwable $e) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Token inválido ou expirado']);
+            Response::error('Token inválido ou expirado', 401);
             exit;
         }
     }

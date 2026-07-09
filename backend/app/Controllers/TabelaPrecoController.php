@@ -28,8 +28,7 @@ class TabelaPrecoController
         $nome = trim((string)($data['nome'] ?? ''));
 
         if ($nome === '') {
-            http_response_code(422);
-            Response::json(['error' => 'Nome é obrigatório']);
+            Response::error('Nome é obrigatório', 422);
             return;
         }
 
@@ -72,16 +71,14 @@ class TabelaPrecoController
         }
 
         if (empty($sets)) {
-            http_response_code(400);
-            Response::json(['error' => 'Nenhum campo para atualizar']);
+            Response::error('Nenhum campo para atualizar', 400);
             return;
         }
 
         $updated = $this->repo->update($id, $params);
 
         if (!$updated) {
-            http_response_code(404);
-            Response::json(['error' => 'Tabela de preço não encontrada']);
+            Response::error('Tabela de preço não encontrada', 404);
             return;
         }
 
