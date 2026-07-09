@@ -369,6 +369,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog.vue'
 import PaginationPremium from '../components/ui/PaginationPremium.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import api from '../services/api'
+import { useApiError } from '../composables/useApiError'
 
 export default {
   name: 'ClientsDrivers',
