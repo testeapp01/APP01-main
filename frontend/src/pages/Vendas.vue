@@ -484,6 +484,7 @@ import CustomSelect from '../components/ui/CustomSelect.vue'
 import ActionDropdown from '../components/ui/ActionDropdown.vue'
 import { useToast } from '../composables/useToast'
 import { useFormat } from '../composables/useFormat'
+import { showApiError } from '../services/api'
 import PaginationPremium from '../components/ui/PaginationPremium.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 
@@ -671,9 +672,7 @@ export default {
         useToast().notify('Pedido excluído com sucesso', { type: 'success' })
         this.loadVendas()
       } catch (e) {
-        const { getMessage } = useApiError()
-        const { show } = useApiError()
-        show(e, 'Não foi possível excluir o pedido')
+        showApiError(e, 'Não foi possível excluir o pedido', { type: 'error' })
       }
     },
     openItems(id) {
@@ -711,7 +710,6 @@ export default {
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao criar venda:', e)
-        const { getMessage } = useApiError()
         this.saleFeedback = { message: getMessage(e, 'Falha ao salvar venda.'), type: 'error' }
       } finally {
         this.submittingSale = false
@@ -776,7 +774,7 @@ export default {
         }
         setTimeout(() => window.URL.revokeObjectURL(url), 8000)
       }).catch((err) => {
-        alert(err?.response?.data?.error || 'Não foi possível gerar o PDF de venda.')
+        showApiError(err, 'Não foi possível gerar o PDF de venda.', { type: 'error' })
       })
     },
   },

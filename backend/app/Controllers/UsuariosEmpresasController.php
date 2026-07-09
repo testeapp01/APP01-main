@@ -78,6 +78,22 @@ class UsuariosEmpresasController
             }
         }
 
+        $errors = [];
+        if (!isset($params['usuario_id']) || (string)$params['usuario_id'] === '') {
+            $errors['usuario_id'] = 'Usuário é obrigatório';
+        }
+        if (!isset($params['empresa_id']) || (string)$params['empresa_id'] === '') {
+            $errors['empresa_id'] = 'Empresa é obrigatória';
+        }
+        if (!isset($params['role_empresa']) || trim((string)$params['role_empresa']) === '') {
+            $errors['role_empresa'] = 'Permissão na empresa é obrigatória';
+        }
+
+        if (!empty($errors)) {
+            Response::error('Payload inválido', 422, ['details' => $errors]);
+            return;
+        }
+
         if (empty($cols)) {
             Response::error('Nenhuma coluna disponível para inserção', 500);
             return;
@@ -88,13 +104,13 @@ class UsuariosEmpresasController
         $empresaTable = $this->resolveEmpresaTable();
         if (isset($params['usuario_id']) && $userTable !== null) {
             if (!$this->existsInTable($userTable, 'id', $params['usuario_id'])) {
-                Response::error('Usuário não encontrado', 400);
+                Response::error('Payload inválido', 422, ['details' => ['usuario_id' => 'Usuário não encontrado']]);
                 return;
             }
         }
         if (isset($params['empresa_id']) && $empresaTable !== null) {
             if (!$this->existsInTable($empresaTable, 'id', $params['empresa_id'])) {
-                Response::error('Empresa não encontrada', 400);
+                Response::error('Payload inválido', 422, ['details' => ['empresa_id' => 'Empresa não encontrada']]);
                 return;
             }
         }
@@ -129,24 +145,31 @@ class UsuariosEmpresasController
         }
 
         if (empty($sets)) {
-            Response::error('Nada para atualizar', 400);
+            Response::error('Payload inválido', 422, ['details' => ['payload' => 'Nada para atualizar']]);
             return;
         }
 
         // Validate FK references on update if present
+        $errors = [];
         $userTable = $this->resolveUserTable();
         $empresaTable = $this->resolveEmpresaTable();
         if (isset($params['usuario_id']) && $userTable !== null) {
             if (!$this->existsInTable($userTable, 'id', $params['usuario_id'])) {
-                Response::error('Usuário não encontrado', 400);
-                return;
+                $errors['usuario_id'] = 'Usuário não encontrado';
             }
         }
         if (isset($params['empresa_id']) && $empresaTable !== null) {
             if (!$this->existsInTable($empresaTable, 'id', $params['empresa_id'])) {
-                Response::error('Empresa não encontrada', 400);
-                return;
+                $errors['empresa_id'] = 'Empresa não encontrada';
             }
+        }
+        if (isset($params['role_empresa']) && trim((string)$params['role_empresa']) === '') {
+            $errors['role_empresa'] = 'Permissão na empresa é obrigatória';
+        }
+
+        if (!empty($errors)) {
+            Response::error('Payload inválido', 422, ['details' => $errors]);
+            return;
         }
 
         $sql = 'UPDATE ' . $table . ' SET ' . implode(', ', $sets) . ' WHERE id = :id';

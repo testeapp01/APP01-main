@@ -251,8 +251,6 @@ api.interceptors.response.use(
   }
 );
 
-import { useApiError } from '../composables/useApiError'
-
 export function showApiError(error, fallback = 'Erro de requisição', opts = {}) {
   try {
     const { show } = useApiError()

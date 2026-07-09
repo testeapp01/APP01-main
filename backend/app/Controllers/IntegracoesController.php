@@ -47,9 +47,9 @@ class IntegracoesController
         $data = Request::body();
         // Basic validation
         $nome = trim((string)($data['nome'] ?? ''));
+        $errors = [];
         if ($nome === '') {
-            Response::error('Nome da integração é obrigatório', 400);
-            return;
+            $errors['nome'] = 'Nome da integração é obrigatório';
         }
 
         $possible = ['nome', 'tipo', 'status', 'config'];
@@ -71,10 +71,10 @@ class IntegracoesController
         if (isset($params['status'])) {
             $s = strtolower(trim((string)$params['status']));
             if (!in_array($s, ['ativo','inativo'], true)) {
-                Response::error('Status inválido', 400);
-                return;
+                $errors['status'] = 'Status inválido';
+            } else {
+                $params['status'] = $s;
             }
-            $params['status'] = $s;
         }
 
         // If config column exists and is provided, ensure it's valid JSON (store as string)
@@ -85,10 +85,14 @@ class IntegracoesController
                 // validate JSON string
                 json_decode((string)$params['config']);
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    Response::error('Configuração inválida: JSON esperado', 400);
-                    return;
+                    $errors['config'] = 'Configuração inválida: JSON esperado';
                 }
             }
+        }
+
+        if (!empty($errors)) {
+            Response::error('Payload inválido', 422, ['details' => $errors]);
+            return;
         }
 
         $sql = 'INSERT INTO ' . $table . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', array_map(fn($c) => ':' . $c, $cols)) . ')';
@@ -121,22 +125,22 @@ class IntegracoesController
         }
 
         if (empty($sets)) {
-            Response::error('Nada para atualizar', 400);
+            Response::error('Payload inválido', 422, ['details' => ['payload' => 'Nada para atualizar']]);
             return;
         }
 
+        $errors = [];
         // Validate provided fields
         if (isset($params['nome']) && trim((string)$params['nome']) === '') {
-            Response::error('Nome da integração é obrigatório', 400);
-            return;
+            $errors['nome'] = 'Nome da integração é obrigatório';
         }
         if (isset($params['status'])) {
             $s = strtolower(trim((string)$params['status']));
             if (!in_array($s, ['ativo','inativo'], true)) {
-                Response::error('Status inválido', 400);
-                return;
+                $errors['status'] = 'Status inválido';
+            } else {
+                $params['status'] = $s;
             }
-            $params['status'] = $s;
         }
         if (isset($params['config'])) {
             if (is_array($params['config'])) {
@@ -144,10 +148,14 @@ class IntegracoesController
             } else {
                 json_decode((string)$params['config']);
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    Response::error('Configuração inválida: JSON esperado', 400);
-                    return;
+                    $errors['config'] = 'Configuração inválida: JSON esperado';
                 }
             }
+        }
+
+        if (!empty($errors)) {
+            Response::error('Payload inválido', 422, ['details' => $errors]);
+            return;
         }
 
         $sql = 'UPDATE ' . $table . ' SET ' . implode(', ', $sets) . ' WHERE id = :id';

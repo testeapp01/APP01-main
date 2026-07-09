@@ -612,7 +612,7 @@
 </template>
 
 <script>
-import api from '../services/api'
+import api, { showApiError } from '../services/api'
 import BaseButton from '../components/ui/BaseButton.vue'
 import BaseTable from '../components/ui/BaseTable.vue'
 import SideDrawer from '../components/ui/SideDrawer.vue'
@@ -952,7 +952,7 @@ export default {
         setTimeout(() => { this.showEditModal = false }, 300)
         this.loadCompras()
       } catch (err) {
-        this.editFeedback = { message: err?.response?.data?.error || 'Não foi possível atualizar a compra.', type: 'error' }
+        this.editFeedback = { message: getMessage(err, 'Não foi possível atualizar a compra.'), type: 'error' }
       } finally {
         this.submittingEdit = false
       }
@@ -965,7 +965,7 @@ export default {
         await api.delete(`/api/v1/compras/cabecalhos/${row.id}`)
         this.loadCompras()
       } catch (err) {
-        alert(err?.response?.data?.error || 'Não foi possível excluir a compra.')
+        showApiError(err, 'Não foi possível excluir a compra.', { type: 'error' })
       }
     },
     async confirmDelivery(row) {
@@ -976,7 +976,7 @@ export default {
         await api.post(`/api/v1/compras/cabecalhos/${row.id}/confirmar-entrega`, {})
         this.loadCompras()
       } catch (err) {
-        alert(err?.response?.data?.error || 'Não foi possível confirmar a entrega.')
+        showApiError(err, 'Não foi possível confirmar a entrega.', { type: 'error' })
       }
     },
     openCreateModal() { this.showCreateModal = true; this.purchaseFeedback = { message: '', type: 'info' } },
@@ -1012,7 +1012,7 @@ export default {
         }
         setTimeout(() => window.URL.revokeObjectURL(url), 8000)
       } catch (err) {
-        alert(err?.response?.data?.error || 'Não foi possível gerar o PDF de compra.')
+        showApiError(err, 'Não foi possível gerar o PDF de compra.', { type: 'error' })
       }
     },
   },

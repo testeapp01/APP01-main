@@ -114,7 +114,7 @@
 
 <script>
 import { ref, computed } from 'vue'
-import api from '../services/api'
+import api, { showApiError } from '../services/api'
 import PageHero from '../components/ui/PageHero.vue'
 import BaseTable from '../components/ui/BaseTable.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
@@ -166,7 +166,8 @@ export default {
         const res = await api.get('/usuarios-empresas')
         usuariosEmpresas.value = res.data || res.data.data || []
       } catch (err) {
-        feedback.value = { message: 'Erro ao carregar vínculos', type: 'error' }
+        const message = showApiError(err, 'Erro ao carregar vínculos', { type: 'error' })
+        feedback.value = { message, type: 'error' }
       } finally {
         loading.value = false
       }
@@ -207,8 +208,8 @@ export default {
         }
         setTimeout(() => closeCreateModal(), 1500)
       } catch (err) {
-        const msg = err?.response?.data?.error || 'Erro ao salvar vínculo'
-        feedback.value = { message: msg, type: 'error' }
+        const message = showApiError(err, editMode.value ? 'Erro ao atualizar vínculo' : 'Erro ao salvar vínculo', { type: 'error' })
+        feedback.value = { message, type: 'error' }
       } finally {
         submitting.value = false
       }
@@ -226,8 +227,8 @@ export default {
         confirmDeleteOpen.value = false
         feedback.value = { message: 'Vínculo removido!', type: 'success' }
       } catch (err) {
-        const msg = err?.response?.data?.error || 'Erro ao remover vínculo'
-        feedback.value = { message: msg, type: 'error' }
+        const message = showApiError(err, 'Erro ao remover vínculo', { type: 'error' })
+        feedback.value = { message, type: 'error' }
       }
     }
 
