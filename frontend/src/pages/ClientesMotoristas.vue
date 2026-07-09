@@ -546,8 +546,8 @@ export default {
         setTimeout(() => this.closeCreateClient(), 300)
       } catch (e) {
         console.error('Erro ao criar cliente', e)
-        const backendError = e?.response?.data?.error
-        this.clientFeedback = { message: backendError || 'Falha ao salvar cliente. Tente novamente.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.clientFeedback = { message: getMessage(e, 'Falha ao salvar cliente. Tente novamente.'), type: 'error' }
       } finally {
         this.submittingClient = false
       }
@@ -589,7 +589,8 @@ export default {
         setTimeout(() => this.closeCreateDriver(), 300)
       } catch (e) {
         console.error('Erro ao criar motorista', e)
-        this.driverFeedback = { message: e?.response?.data?.error || 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.driverFeedback = { message: getMessage(e, 'Falha ao salvar motorista. Tente novamente.'), type: 'error' }
       } finally {
         this.submittingDriver = false
       }
@@ -624,9 +625,11 @@ export default {
         }
       } catch (e) {
         if (this.pendingDelete.kind === 'cliente') {
-          this.clientFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o cliente.', type: 'error' }
+          const { getMessage } = useApiError()
+          this.clientFeedback = { message: getMessage(e, 'Não foi possível excluir o cliente.'), type: 'error' }
         } else {
-          this.driverFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o motorista.', type: 'error' }
+          const { getMessage } = useApiError()
+          this.driverFeedback = { message: getMessage(e, 'Não foi possível excluir o motorista.'), type: 'error' }
         }
       } finally {
         this.cancelDelete()
@@ -695,8 +698,27 @@ export default {
       const d2 = calc(cnpj.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
       return d1 === Number(cnpj[12]) && d2 === Number(cnpj[13])
     },
-    onClienteCepInput() {
+    async onClienteCepInput() {
       this.novaCliente.cep = this.applyCepMask(this.novaCliente.cep)
+      const digits = this.onlyDigits(this.novaCliente.cep)
+      if (digits.length === 8) {
+        await this.fetchEnderecoFromCep(digits)
+      }
+    },
+    async fetchEnderecoFromCep(cep) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        if (!response.ok) return
+        const data = await response.json()
+        if (data && !data.erro) {
+          this.novaCliente.endereco = data.logradouro || this.novaCliente.endereco
+          this.novaCliente.bairro = data.bairro || this.novaCliente.bairro
+          this.novaCliente.cidade = data.localidade || this.novaCliente.cidade
+          this.novaCliente.uf = data.uf || this.novaCliente.uf
+        }
+      } catch {
+        // ignore CEP lookup failures
+      }
     },
     onClienteCpfCnpjInput() {
       this.clienteDocumentoError = ''

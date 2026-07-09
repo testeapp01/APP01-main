@@ -168,6 +168,17 @@ const createMockAdapter = () => {
     }
 
     if (url.includes('/estoque')) {
+      // Handle create adjustments
+      if ((config.method || '').toLowerCase() === 'post') {
+        return {
+          status: 201,
+          statusText: 'Created',
+          headers: config.headers,
+          config,
+          data: { success: true }
+        }
+      }
+
       return {
         status: 200,
         statusText: 'OK',
@@ -181,33 +192,7 @@ const createMockAdapter = () => {
       };
     }
 
-    if (url.includes('/usuarios-empresas')) {
-      return {
-        status: 200,
-        statusText: 'OK',
-        headers: config.headers,
-        config,
-        data: [
-          { id: 1, usuario_id: 1, usuario_nome: 'Admin User', empresa_id: 1, empresa_nome: 'Empresa Matriz', role_empresa: 'admin', status: true },
-          { id: 2, usuario_id: 2, usuario_nome: 'Gerente Vendas', empresa_id: 1, empresa_nome: 'Empresa Matriz', role_empresa: 'manager', status: true },
-          { id: 3, usuario_id: 3, usuario_nome: 'Operador', empresa_id: 2, empresa_nome: 'Filial SP', role_empresa: 'user', status: true }
-        ]
-      };
-    }
-
-    if (url.includes('/integracoes')) {
-      return {
-        status: 200,
-        statusText: 'OK',
-        headers: config.headers,
-        config,
-        data: [
-          { id: 1, nome: 'Integração Stripe', tipo: 'API', status: 'ativo', ultimo_sincronismo: '2026-07-03 10:30' },
-          { id: 2, nome: 'Integração Shopify', tipo: 'Webhook', status: 'ativo', ultimo_sincronismo: '2026-07-03 11:15' },
-          { id: 3, nome: 'Integração Contábil', tipo: 'OAuth', status: 'inativo', ultimo_sincronismo: 'Nunca' }
-        ]
-      };
-    }
+    // Removed mock endpoints for usuarios-empresas and integracoes to use real backend in dev when available.
 
     throw new Error('Mock endpoint not found: ' + url);
   };
@@ -234,13 +219,45 @@ api.interceptors.request.use(config => {
   return config;
 }, error => Promise.reject(error));
 
-api.interceptors.response.use(response => response, error => {
-  if (error.response && error.response.status === 401) {
-    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-      window.location.assign('/login');
+api.interceptors.response.use(
+  response => response,
+  error => {
+    // Normalize backend error message into a single field for UI convenience
+    try {
+      const backendMsg = error?.response?.data?.error || error?.response?.data?.message || null
+      error.normalizedMessage = backendMsg || error.message || 'Erro de requisição'
+    } catch (e) {
+      error.normalizedMessage = error.message || 'Erro de requisição'
     }
+
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
+    return Promise.reject(error);
   }
-  return Promise.reject(error);
-});
+);
+
+import { useApiError } from '../composables/useApiError'
+
+export function showApiError(error, fallback = 'Erro de requisição', opts = {}) {
+  try {
+    const { show } = useApiError()
+    return show(error, fallback, opts)
+  } catch (e) {
+    // fallback: if composable not available, log and return message
+    // eslint-disable-next-line no-console
+    console.error('showApiError fallback', e)
+    const msg = error?.response?.data?.error || error?.message || fallback
+    try {
+      // dynamic import of toast to avoid circular deps
+      import('../composables/useToast').then(mod => {
+        try { mod.useToast().notify(msg, { type: opts.type || 'error' }) } catch (_) {}
+      })
+    } catch (_) {}
+    return msg
+  }
+}
 
 export default api;

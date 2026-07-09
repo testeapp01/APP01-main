@@ -255,8 +255,8 @@ export default {
   },
   computed: {
     canSeeSystemLinks() {
-      const role = (this.auth?.user?.role || '').toLowerCase()
-      return ['admin', 'adm', 'sistema', 'superadmin'].some(token => role.includes(token))
+      const role = (this.auth?.user?.role || '').toString().trim().toLowerCase()
+      return ['adm sistema', 'adm_sistema', 'admsistema'].includes(role)
     }
   },
   methods: {

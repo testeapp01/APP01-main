@@ -82,6 +82,50 @@ class FornecedorRepository
         return (int)$this->pdo->lastInsertId();
     }
 
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM fornecedores WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function update(int $id, array $data): bool
+    {
+        $possible = [
+            'razao_social' => $data['razao_social'] ?? null,
+            'endereco' => $data['endereco'] ?? null,
+            'numero' => $data['numero'] ?? null,
+            'complemento' => $data['complemento'] ?? null,
+            'bairro' => $data['bairro'] ?? null,
+            'cep' => $data['cep'] ?? null,
+            'cidade' => $data['cidade'] ?? null,
+            'cnpj' => $data['cnpj'] ?? null,
+            'email' => $data['email'] ?? null,
+            'telefone' => $data['telefone'] ?? null,
+            'status' => $data['status'] ?? 1,
+            'uf' => $data['uf'] ?? null,
+        ];
+
+        $updateData = [];
+        foreach ($possible as $column => $value) {
+            if ($this->hasColumn($column)) {
+                $updateData[$column] = $value;
+            }
+        }
+
+        if (empty($updateData)) {
+            return false;
+        }
+
+        $setClauses = array_map(static fn(string $column) => sprintf('%s = :%s', $column, $column), array_keys($updateData));
+        $stmt = $this->pdo->prepare('UPDATE fornecedores SET ' . implode(', ', $setClauses) . ' WHERE id = :id');
+        $updateData['id'] = $id;
+        $stmt->execute($updateData);
+
+        return $stmt->rowCount() > 0;
+    }
+
     public function delete(int $id): bool
     {
         $stmt = $this->pdo->prepare('DELETE FROM fornecedores WHERE id = :id');

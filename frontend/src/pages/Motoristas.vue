@@ -239,7 +239,8 @@ export default {
         this.currentPage = 1
         await this.load()
       } catch (e) {
-        this.driverFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o motorista.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.driverFeedback = { message: getMessage(e, 'Não foi possível excluir o motorista.'), type: 'error' }
       } finally {
         this.cancelDeleteMotorista()
       }
@@ -267,7 +268,8 @@ export default {
         setTimeout(() => this.closeCreateModal(), 300)
         await this.load()
       } catch (e) {
-        this.driverFeedback = { message: e?.response?.data?.error || 'Falha ao salvar motorista. Tente novamente.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.driverFeedback = { message: getMessage(e, 'Falha ao salvar motorista. Tente novamente.'), type: 'error' }
       } finally {
         this.submittingDriver = false
       }

@@ -671,7 +671,9 @@ export default {
         useToast().notify('Pedido excluído com sucesso', { type: 'success' })
         this.loadVendas()
       } catch (e) {
-        useToast().notify(e?.response?.data?.error || 'Não foi possível excluir o pedido', { type: 'error' })
+        const { getMessage } = useApiError()
+        const { show } = useApiError()
+        show(e, 'Não foi possível excluir o pedido')
       }
     },
     openItems(id) {
@@ -709,7 +711,8 @@ export default {
         this.loadVendas()
       } catch (e) {
         console.error('Erro ao criar venda:', e)
-        this.saleFeedback = { message: e?.response?.data?.error || e?.message || 'Falha ao salvar venda.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.saleFeedback = { message: getMessage(e, 'Falha ao salvar venda.'), type: 'error' }
       } finally {
         this.submittingSale = false
       }

@@ -223,7 +223,7 @@
 
     <SideDrawer
       :open="showCreateFornecedor"
-      title="Adicionar Fornecedor"
+      :title="editingFornecedorId ? 'Editar Fornecedor' : 'Adicionar Fornecedor'"
       @close="closeCreateFornecedor"
     >
       <form
@@ -332,7 +332,7 @@
             :disabled="submittingFornecedor"
             :loading="submittingFornecedor"
           >
-            {{ submittingFornecedor ? 'Salvando...' : 'Adicionar' }}
+            {{ submittingFornecedor ? 'Salvando...' : (editingFornecedorId ? 'Salvar' : 'Adicionar') }}
           </BaseButton>
         </div>
       </form>
@@ -389,6 +389,7 @@ export default {
       fornecedorFeedback: { message: '', type: 'info' },
       novoFornecedor: { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', telefone: '', email: '', uf: '', status: true },
       editingFornecedorIndex: null,
+      editingFornecedorId: null,
       confirmDeleteOpen: false,
       confirmDeleteMessage: '',
       deletingFornecedor: false,
@@ -460,11 +461,11 @@ export default {
       this.currentPageFornecedores = 1
       await this.fetchFornecedores()
     },
-    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
-    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null },
+    openCreateFornecedor(){ this.editingFornecedorIndex = null; this.editingFornecedorId = null; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor = { razao_social: '', endereco: '', numero: '', complemento: '', bairro: '', cep: '', cidade: '', cnpj: '', telefone: '', email: '', uf: '', status: true }; this.showCreateFornecedor=true },
+    closeCreateFornecedor(){ this.showCreateFornecedor=false; this.submittingFornecedor=false; this.fornecedorFeedback = { message: '', type: 'info' }; this.novoFornecedor={razao_social:'',endereco:'',numero:'',complemento:'',bairro:'',cep:'',cidade:'',cnpj:'',telefone:'',email:'',uf:'',status:true}; this.editingFornecedorIndex = null; this.editingFornecedorId = null },
     async createFornecedor(){
       this.submittingFornecedor = true
-      this.fornecedorFeedback = { message: 'Salvando fornecedor...', type: 'info' }
+      this.fornecedorFeedback = { message: this.editingFornecedorId ? 'Atualizando fornecedor...' : 'Salvando fornecedor...', type: 'info' }
       try {
         const payload = {
           razao_social: this.novoFornecedor.razao_social,
@@ -480,23 +481,25 @@ export default {
           uf: this.novoFornecedor.uf || null,
           status: !!this.novoFornecedor.status,
         }
-        const res = await api.post('/api/v1/fornecedores', payload)
-        if (res.data && res.data.id) {
-          this.fornecedores.unshift({ id: res.data.id, ...payload })
+        let res
+        if (this.editingFornecedorId) {
+          res = await api.put(`/api/v1/fornecedores/${this.editingFornecedorId}`, payload)
+        } else {
+          res = await api.post('/api/v1/fornecedores', payload)
         }
         this.currentPageFornecedores = 1
         await this.fetchFornecedores()
-        this.fornecedorFeedback = { message: 'Fornecedor salvo com sucesso.', type: 'success' }
+        this.fornecedorFeedback = { message: this.editingFornecedorId ? 'Fornecedor atualizado com sucesso.' : 'Fornecedor salvo com sucesso.', type: 'success' }
         setTimeout(() => this.closeCreateFornecedor(), 300)
       } catch (e) {
-        console.error('Erro ao criar fornecedor', e)
-        const backendError = e?.response?.data?.error
-        this.fornecedorFeedback = { message: backendError || 'Falha ao salvar fornecedor. Tente novamente.', type: 'error' }
+        console.error('Erro ao salvar fornecedor', e)
+        const { getMessage } = useApiError()
+        this.fornecedorFeedback = { message: getMessage(e, 'Falha ao salvar fornecedor. Tente novamente.'), type: 'error' }
       } finally {
         this.submittingFornecedor = false
       }
     },
-    editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.novoFornecedor = { ...row, cep: this.applyCepMask(row.cep), cnpj: this.applyCnpjMask(row.cnpj), status: !!row.status }; this.showCreateFornecedor = true } },
+    editFornecedor(row){ const idx = this.fornecedores.indexOf(row); if (idx!==-1) { this.editingFornecedorIndex = idx; this.editingFornecedorId = row.id || null; this.novoFornecedor = { ...row, cep: this.applyCepMask(row.cep), cnpj: this.applyCnpjMask(row.cnpj), status: !!row.status }; this.showCreateFornecedor = true } },
     deleteFornecedor(row){
       if (!row?.id) return
       this.fornecedorToDelete = row
@@ -518,7 +521,8 @@ export default {
         await this.fetchFornecedores()
       } catch (e) {
         console.error('Erro ao excluir fornecedor', e)
-        this.fornecedorFeedback = { message: e?.response?.data?.error || 'Não foi possível excluir o fornecedor.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.fornecedorFeedback = { message: getMessage(e, 'Não foi possível excluir o fornecedor.'), type: 'error' }
       } finally {
         this.cancelDeleteFornecedor()
       }
@@ -549,8 +553,27 @@ export default {
         .replace(/(\d{3})(\d)/, '$1/$2')
         .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
     },
-    onFornecedorCepInput() {
+    async onFornecedorCepInput() {
       this.novoFornecedor.cep = this.applyCepMask(this.novoFornecedor.cep)
+      const digits = this.onlyDigits(this.novoFornecedor.cep)
+      if (digits.length === 8) {
+        await this.fetchEnderecoFromCep(digits)
+      }
+    },
+    async fetchEnderecoFromCep(cep) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+        if (!response.ok) return
+        const data = await response.json()
+        if (data && !data.erro) {
+          this.novoFornecedor.endereco = data.logradouro || this.novoFornecedor.endereco
+          this.novoFornecedor.bairro = data.bairro || this.novoFornecedor.bairro
+          this.novoFornecedor.cidade = data.localidade || this.novoFornecedor.cidade
+          this.novoFornecedor.uf = data.uf || this.novoFornecedor.uf
+        }
+      } catch {
+        // ignore CEP lookup failures
+      }
     },
     onFornecedorCnpjInput() {
       this.novoFornecedor.cnpj = this.applyCnpjMask(this.novoFornecedor.cnpj)

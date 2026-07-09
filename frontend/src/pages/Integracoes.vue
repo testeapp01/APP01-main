@@ -307,7 +307,8 @@ export default {
         setTimeout(() => this.closeCreateModal(), 300)
         await this.loadIntegracoes()
       } catch (e) {
-        this.feedback = { message: e?.response?.data?.error || 'Erro ao salvar integração.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.feedback = { message: getMessage(e, 'Erro ao salvar integração.'), type: 'error' }
       } finally {
         this.submitting = false
       }

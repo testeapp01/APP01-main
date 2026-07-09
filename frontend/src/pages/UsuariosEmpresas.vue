@@ -207,7 +207,8 @@ export default {
         }
         setTimeout(() => closeCreateModal(), 1500)
       } catch (err) {
-        feedback.value = { message: 'Erro ao salvar vínculo', type: 'error' }
+        const msg = err?.response?.data?.error || 'Erro ao salvar vínculo'
+        feedback.value = { message: msg, type: 'error' }
       } finally {
         submitting.value = false
       }
@@ -225,7 +226,8 @@ export default {
         confirmDeleteOpen.value = false
         feedback.value = { message: 'Vínculo removido!', type: 'success' }
       } catch (err) {
-        feedback.value = { message: 'Erro ao remover vínculo', type: 'error' }
+        const msg = err?.response?.data?.error || 'Erro ao remover vínculo'
+        feedback.value = { message: msg, type: 'error' }
       }
     }
 

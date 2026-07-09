@@ -23,6 +23,8 @@ use App\Controllers\MotoristaController;
 use App\Controllers\ProductController;
 use App\Controllers\FornecedorController;
 use App\Controllers\UserController;
+use App\Controllers\UsuariosEmpresasController;
+use App\Controllers\IntegracoesController;
 use App\Controllers\EstoqueController;
 use App\Controllers\QuebrasController;
 use App\Controllers\LoteController;
@@ -291,10 +293,59 @@ $router->map('POST', '/api/v1/fornecedores', static function () use ($pdo, $ensu
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
     $container->make(FornecedorController::class)->create();
 });
+$router->map(['PUT', 'PATCH'], '/api/v1/fornecedores/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::MANAGERS);
+    $container->make(FornecedorController::class)->update((int)($params['id'] ?? 0));
+});
 $router->map('DELETE', '/api/v1/fornecedores/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
     $ensureAuth();
     AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
     $container->make(FornecedorController::class)->delete((int)($params['id'] ?? 0));
+});
+
+// === USUÁRIOS - EMPRESAS (system-only) ===
+$router->map('GET', '/api/v1/usuarios-empresas', static function () use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(UsuariosEmpresasController::class)->index();
+});
+$router->map('POST', '/api/v1/usuarios-empresas', static function () use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(UsuariosEmpresasController::class)->create();
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/usuarios-empresas/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(UsuariosEmpresasController::class)->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/usuarios-empresas/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(UsuariosEmpresasController::class)->delete((int)($params['id'] ?? 0));
+});
+
+// === INTEGRAÇÕES (system-only) ===
+$router->map('GET', '/api/v1/integracoes', static function () use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(IntegracoesController::class)->index();
+});
+$router->map('POST', '/api/v1/integracoes', static function () use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(IntegracoesController::class)->create();
+});
+$router->map(['PUT', 'PATCH'], '/api/v1/integracoes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(IntegracoesController::class)->update((int)($params['id'] ?? 0));
+});
+$router->map('DELETE', '/api/v1/integracoes/{id}', static function (array $params) use ($pdo, $ensureAuth, $container): void {
+    $ensureAuth();
+    AuthorizationMiddleware::requireRole(...AuthorizationMiddleware::ADMIN_ONLY);
+    $container->make(IntegracoesController::class)->delete((int)($params['id'] ?? 0));
 });
 
 $router->map('GET', '/api/v1/produtos', static function () use ($pdo, $ensureAuth, $container): void {

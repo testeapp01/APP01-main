@@ -162,6 +162,95 @@ class FornecedorController
         Response::json(['id' => $id]);
     }
 
+    public function update(int $id): void
+    {
+        $existing = $this->repo->findById($id);
+        if (!$existing) {
+            Response::error('Fornecedor não encontrado', 404);
+            return;
+        }
+
+        $data = \App\Helpers\Request::body();
+        $razaoSocial = trim((string)($data['razao_social'] ?? ''));
+        $cidade = trim((string)($data['cidade'] ?? ''));
+        $endereco = trim((string)($data['endereco'] ?? ''));
+        $bairro = trim((string)($data['bairro'] ?? ''));
+        $telefone = trim((string)($data['telefone'] ?? ''));
+        $email = trim((string)($data['email'] ?? ''));
+        $cep = trim((string)($data['cep'] ?? ''));
+
+        if ($razaoSocial === '') {
+            Response::error('Razão social obrigatória', 400);
+            return;
+        }
+
+        if ($endereco === '' || $bairro === '' || $cidade === '') {
+            Response::error('Endereço, bairro e cidade são obrigatórios', 400);
+            return;
+        }
+
+        if ($telefone === '' || $email === '') {
+            Response::error('Telefone e email são obrigatórios', 400);
+            return;
+        }
+
+        if ($cep !== '' && strlen(preg_replace('/\D/', '', $cep)) !== 8) {
+            Response::error('CEP inválido', 400);
+            return;
+        }
+
+        if (!empty($data['cnpj'])) {
+            $cnpjDigits = preg_replace('/\D/', '', (string)$data['cnpj']);
+            if (strlen($cnpjDigits) !== 14 || !\Validator::validateCNPJ($cnpjDigits)) {
+                Response::error('CNPJ inválido', 400);
+                return;
+            }
+            $data['cnpj'] = $cnpjDigits;
+        } else {
+            Response::error('CNPJ obrigatório', 400);
+            return;
+        }
+
+        if ($data['telefone'] && !\Validator::validateTelefone($data['telefone'])) {
+            Response::error('Telefone inválido', 400);
+            return;
+        }
+
+        if ($data['email'] && !\Validator::validateEmail($data['email'])) {
+            Response::error('Email inválido', 400);
+            return;
+        }
+
+        if (isset($data['status'])) {
+            $data['status'] = $data['status'] ? 1 : 0;
+        } else {
+            $data['status'] = $existing['status'] ?? 1;
+        }
+        $data['uf'] = $data['uf'] ?? $existing['uf'] ?? null;
+        $data['endereco'] = $endereco !== '' ? $endereco : null;
+        $data['numero'] = $data['numero'] ?? $existing['numero'] ?? null;
+        $data['complemento'] = $data['complemento'] ?? $existing['complemento'] ?? null;
+        $data['bairro'] = $bairro !== '' ? $bairro : null;
+        $data['cep'] = $cep !== '' ? preg_replace('/\D/', '', $cep) : null;
+        $data['cidade'] = $cidade !== '' ? $cidade : null;
+        $data['razao_social'] = $razaoSocial;
+        $data['telefone'] = $telefone !== '' ? $telefone : null;
+        $data['email'] = $email !== '' ? $email : null;
+
+        try {
+            $updated = $this->repo->update($id, $data);
+            if (!$updated) {
+                Response::error('Fornecedor não encontrado', 404);
+                return;
+            }
+        } catch (\Throwable) {
+            Response::error('Falha ao atualizar fornecedor.', 500);
+            return;
+        }
+
+        Response::json(['success' => true]);
+    }
+
     public function delete(int $id): void
     {
         try {

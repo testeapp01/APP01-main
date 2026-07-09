@@ -222,6 +222,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import api from '../services/api'
+import { useApiError } from '../composables/useApiError'
 import BaseTable from '../components/ui/BaseTable.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 import SideDrawer from '../components/ui/SideDrawer.vue'
@@ -356,9 +357,11 @@ export default {
         setTimeout(() => closeCreateModal(), 300)
         loadProdutos()
       } catch (e) {
-        console.error('Erro ao salvar produto:', e)
-        productFeedback.value = { message: 'Falha ao salvar produto. Revise os dados.', type: 'error' }
-        useToast().notify('Falha ao salvar produto', { type: 'error' })
+          console.error('Erro ao salvar produto:', e)
+            const { getMessage } = useApiError()
+            const msg = getMessage(e, 'Falha ao salvar produto. Revise os dados.')
+            productFeedback.value = { message: msg, type: 'error' }
+            useToast().notify(msg, { type: 'error' })
       } finally {
         submittingProduct.value = false
       }
@@ -375,7 +378,9 @@ export default {
         await loadProdutos()
       } catch (e) {
         console.error('Erro ao excluir produto:', e)
-        useToast().notify(e?.response?.data?.error || 'Falha ao excluir produto', { type: 'error' })
+        const { getMessage } = useApiError()
+        const { show } = useApiError()
+        show(e, 'Falha ao excluir produto')
       }
     }
 

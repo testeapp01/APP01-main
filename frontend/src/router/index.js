@@ -12,9 +12,9 @@ const routes = [
   { path: '/produtos', name: 'Produtos', component: () => import('../pages/Produtos.vue'), meta: { requiresAuth: true } },
   { path: '/fornecedores', name: 'Fornecedores', component: () => import('../pages/Fornecedores.vue'), meta: { requiresAuth: true } },
   { path: '/usuarios', name: 'Usuarios', component: () => import('../pages/Usuarios.vue'), meta: { requiresAuth: true } },
-  { path: '/usuarios-empresas', name: 'UsuariosEmpresas', component: () => import('../pages/UsuariosEmpresas.vue'), meta: { requiresAuth: true } },
+  { path: '/usuarios-empresas', name: 'UsuariosEmpresas', component: () => import('../pages/UsuariosEmpresas.vue'), meta: { requiresAuth: true, requiresSystem: true } },
   { path: '/estoque', name: 'Estoque', component: () => import('../pages/Estoque.vue'), meta: { requiresAuth: true } },
-  { path: '/integracoes', name: 'Integracoes', component: () => import('../pages/Integracoes.vue'), meta: { requiresAuth: true } },
+  { path: '/integracoes', name: 'Integracoes', component: () => import('../pages/Integracoes.vue'), meta: { requiresAuth: true, requiresSystem: true } },
   { path: '/relatorios', name: 'Relatorios', component: () => import('../pages/Relatorios.vue'), meta: { requiresAuth: true } },
   { path: '/configuracoes', name: 'Configuracoes', component: () => import('../pages/Configuracoes.vue'), meta: { requiresAuth: true } },
   { path: '/login', name: 'Login', component: () => import('../pages/Login.vue'), meta: { publicOnly: true } },
@@ -39,6 +39,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.requiresSystem && !auth.isSystemUser) {
+    return { path: '/' }
   }
 
   if (to.meta.publicOnly && isAuthenticated) {

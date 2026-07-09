@@ -443,7 +443,8 @@ export default {
         setTimeout(() => this.closeCreateModal(), 300)
         await this.loadUsuarios()
       } catch (e) {
-        this.feedback = { message: e?.response?.data?.error || 'Erro ao salvar usuário.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.feedback = { message: getMessage(e, 'Erro ao salvar usuário.'), type: 'error' }
       } finally {
         this.submitting = false
       }

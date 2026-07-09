@@ -829,7 +829,8 @@ export default {
         this.loadCompras()
       } catch (e) {
         console.error('Erro ao criar compra:', e)
-        this.purchaseFeedback = { message: e?.response?.data?.error || 'Não foi possível salvar a compra. Revise os dados e tente novamente.', type: 'error' }
+        const { getMessage } = useApiError()
+        this.purchaseFeedback = { message: getMessage(e, 'Não foi possível salvar a compra. Revise os dados e tente novamente.'), type: 'error' }
       } finally {
         this.submittingPurchase = false
       }

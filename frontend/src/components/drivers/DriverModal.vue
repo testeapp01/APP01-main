@@ -27,6 +27,7 @@
         v-model="local.placa"
         placeholder="Placa"
         class="p-3 border border-gray-300 rounded-xl"
+        required
       >
       <input
         v-model="local.veiculo"
@@ -37,6 +38,7 @@
         v-model="local.telefone"
         placeholder="Telefone"
         class="p-3 border border-gray-300 rounded-xl"
+        required
       >
       <div class="mb-2 uf-field">
         <CustomSelect

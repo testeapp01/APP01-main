@@ -18,6 +18,8 @@ namespace App\Middlewares;
 class AuthorizationMiddleware
 {
     public const ROLE_ADMIN    = 'admin';
+    // System-level admin (frontend may use 'adm sistema' label)
+    public const ROLE_SYSTEM   = 'adm sistema';
     public const ROLE_GERENTE  = 'gerente';
     public const ROLE_SUPORTE  = 'suporte';
     public const ROLE_VENDEDOR = 'vendedor';
@@ -33,7 +35,7 @@ class AuthorizationMiddleware
     public const SENIOR = [self::ROLE_ADMIN, self::ROLE_GERENTE];
 
     /** Only admin can perform destructive or user-management operations */
-    public const ADMIN_ONLY = [self::ROLE_ADMIN];
+    public const ADMIN_ONLY = [self::ROLE_ADMIN, self::ROLE_SYSTEM];
 
     /**
      * Abort with 403 if the authenticated user's role is not in $allowedRoles.

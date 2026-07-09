@@ -177,8 +177,8 @@ export default {
   name: 'Header',
   emits: ['toggle-sidebar', 'open-command-palette'],
   data() {
-    const auth = useAuthStore()
     return {
+      auth: useAuthStore(),
       showNotifications: false,
       showProfile: false,
       isDark: false,
@@ -214,19 +214,14 @@ export default {
       return 0
     },
     userName() {
-      return localStorage.getItem('hf_mock_email')?.split('@')[0] || 'Usuário'
+      return this.auth?.user?.name || this.auth?.user?.email?.split('@')[0] || localStorage.getItem('hf_mock_email')?.split('@')[0] || 'Usuário'
     },
     userEmail() {
-      return localStorage.getItem('hf_mock_email') || 'user@safrion.store'
+      return this.auth?.user?.email || localStorage.getItem('hf_mock_email') || 'user@safrion.store'
     },
     userInitial() {
-      return this.userName.charAt(0).toUpperCase()
+      return (this.userName || 'U').charAt(0).toUpperCase()
     },
-  },
-  data() {
-    return {
-      auth: useAuthStore(),
-    }
   },
   methods: {
     toggleTheme() {
